@@ -1,0 +1,85 @@
+{
+  "changeset_id": "50e5ce1613601ebf",
+  "base_version": "0.1.0-draft.1",
+  "generated_at": "2026-10-13T09:56:48.935489+00:00",
+  "operations": [
+    {
+      "op": "replace",
+      "path": "/entities/Supplier/properties/supplier_name/display_name",
+      "value": "供应商工商注册名称"
+    },
+    {
+      "op": "replace",
+      "path": "/entities/Supplier/properties/total_delivery_amount/type",
+      "value": "DOUBLE"
+    },
+    {
+      "op": "add",
+      "path": "/entities/PaymentRecord",
+      "value": {
+        "display_name": "付款记录",
+        "table_name": "payment_record",
+        "description": "FIM 财务系统登记的每次付款明细，挂在对账单下（fixture 新增实体）",
+        "properties": {
+          "payment_nr": {
+            "display_name": "付款单号",
+            "description": "FIM 付款单唯一编号",
+            "type": "STRING",
+            "primary": true
+          },
+          "payment_amount": {
+            "display_name": "付款金额",
+            "description": "本次付款金额（元）",
+            "type": "DECIMAL",
+            "uom": "元"
+          }
+        },
+        "provenance": {
+          "doc": "A_schema/supplier_ddl.sql",
+          "reviewed": true
+        }
+      }
+    },
+    {
+      "op": "remove",
+      "path": "/rules/供应商冻结提醒"
+    },
+    {
+      "op": "add",
+      "path": "/rules/大额对账单提醒",
+      "value": {
+        "rule_type": "trigger",
+        "name": "大额对账单提醒",
+        "upstream": [
+          "ReconciliationStatement"
+        ],
+        "logic": {
+          "ALL": [
+            {
+              "field": "invoice_amount",
+              "operator": ">",
+              "value": 100000
+            }
+          ]
+        },
+        "downstream": "mark_large_invoice",
+        "description": "发票金额超 10 万元的对账单触发大额提醒（fixture 新增 add 类规则）"
+      }
+    }
+  ],
+  "breaking": [
+    {
+      "op_ref": 1,
+      "reason": "属性 Supplier.total_delivery_amount 类型 DECIMAL -> DOUBLE：下游类型假设失效"
+    },
+    {
+      "op_ref": 3,
+      "reason": "删除规则「供应商冻结提醒」：衍生字段/触发行为失去计算来源"
+    }
+  ],
+  "summary": {
+    "add": 2,
+    "remove": 1,
+    "replace": 2
+  }
+}

@@ -168,3 +168,49 @@ entities:
 8. **外键-links 一致性（v0.2）**：links 别名与外键字段对应关系可解释；外键字段值域/类型与目标实体主键兼容（type 相同或均可字符串化）
 
 受控词表检查（fnb/mfg 既有术语优先复用，新词入库走评审）——seeds 就绪后作为第 9 条启用。
+
+## 8. studio-model 互导格式（v0.2.1，2026-10-13 按试用上传的两份真实模板实证）
+
+Studio 模板 YAML 是团队第二种本体载体（与引擎注册 JSON 并存）。格式（两模板一致实证）：
+
+```yaml
+format: studio-model
+object_types: [ {code, name, description, enabled, attrs: [{code, name, type, required, isKey, defaultValue, description, isDerived}]} ]
+link_types:   [ {code, source, target, name, cardinality, description, sourcePropertyCode, targetPropertyCode} ]
+rule_types:   [ {code, name, ruleType, mode, description, ruleConfig: {expression}, outputEntityCode, outputPropertyCode, outputPropertyName, initializationStrategy} ]
+```
+
+**类型映射**：STRING↔string、BOOLEAN↔boolean、DATE↔date、TIMESTAMP↔datetime、DOUBLE↔double、INTEGER→double、DECIMAL→double（模板侧数值统一 double；逆向 double→DSL DOUBLE 并注记，不猜 INTEGER）。模板侧 string 存数值的字段（如 sled_days）是模板质量问题，lint 报 warning。
+
+**编译约定（DSL → studio-model）**：
+- 实体→object_type（code=实体名、name=display_name）；`derived: true` 或衍生规则目标字段 → attrs.isDerived=true（实证：16 衍生字段与 16 条 calculation 输出严格对应）。
+- links→link_type：`links.{alias}: Target` → `{source: Target, target: 本实体, cardinality: "1:n", sourcePropertyCode: Target 主键, targetPropertyCode: 外键字段}`。**外键字段约定 = 目标主键字段名**（fnb/gold 全部满足；不满足时编译报错，v0.3 候选：links 显式 fk 声明）。关系 name 用 links 别名的中文业务名（无则留空）。
+- 表达式：DSL 英文 code 引用（`sku.abc_type`、`SUM(sales_orders.x)`）→ 模板中文名引用（`[SKU.abc_type 的 display_name]`、`SUM([对方实体 display_name（复数语境）.属性 display_name])`）——统一用 display_name 生成，模板内部自洽即可。
+- **trigger/admission 规则模板不承载**（实证：两模板 ruleType 仅 calculation）——编译时告警并在导入说明列出"N 条 trigger 规则不进模板，需引擎侧配置"。
+- code 生成（rel_/rule_ 前缀）：稳定 hash（如 md5(关键要素)[:8]），保证重复编译幂等。
+
+**逆向（studio-model → DSL）**：结构直接映射；cardinality 信息丢失（DSL 无基数，接受并注记）；表达式中文名→code 需按 name 映射解析，解析不到的引用报 error。lint 输入支持：对 studio-model 文件做结构检查（主键存在、连线属性可解析、悬空引用、孤立实体、表达式函数白名单、isDerived 与 calculation 输出一致性）——试用评审暴露的 P0（上卷公式引用错属性、主键连主键、孤立实体）均属此检查范围。
+
+## 9. 变更集（changeset）格式
+
+增量建模（base_version 非 null）时，产出与目标快照的变更集：
+
+```json
+{
+  "changeset_id": "<hash>",
+  "base_version": "<基于的快照版本>",
+  "generated_at": "<ISO8601>",
+  "operations": [
+    {"op": "add|remove|replace", "path": "/entities/<E>", "...": "add/replace 携带新值，remove 仅 path"},
+    {"op": "add", "path": "/entities/<E>/properties/<f>"},
+    {"op": "remove", "path": "/links/<alias>"},
+    {"op": "replace", "path": "/rules/<name>/logic"}
+  ],
+  "breaking": [{"op_ref": <序号>, "reason": "<影响说明>"}],
+  "summary": {"add": n1, "remove": n2, "replace": n3}
+}
+```
+
+**breaking 判定（确定性规则）**：remove 实体/属性/links/规则、replace 属性 type、replace 主键集合、replace 规则 logic = **breaking**（影响下游查询/技能/看板，须人审重点关注）；add 类与 display_name/description 变更 = 非 breaking。变更集附 **diff 版拓扑**（新增绿 `style` 高亮 / 删除红 strikethrough / 修改黄）。
+
+**版本冲突校验（行为测试样例四的基础）**：变更集携带 base_version；导入/评审时若目标快照当前版本 ≠ base_version → **拒绝并要求重读快照重新生成 diff**，禁止强推覆盖。

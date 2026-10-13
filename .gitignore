@@ -1,0 +1,4 @@
+__pycache__/
+.playwright-mcp/
+.tmp-m2-verify/
+mermaid-diff-visual.png

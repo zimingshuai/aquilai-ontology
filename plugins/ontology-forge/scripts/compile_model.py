@@ -1,9 +1,11 @@
-"""DSL v0.2 模型编译器：把 YAML 模型编译为本体引擎注册格式（自 poc/m0/scripts 迁移增强）。
+"""DSL v0.2 模型编译器：把 YAML 模型编译为本体引擎注册格式与 Studio 模板（自 poc/m0/scripts 迁移增强）。
 
-主要 Input：DSL YAML 模型路径（位置参数）。
-主要 Output：<模型目录>/engine-bundle/ 下三件产物——objects.json（实体注册表）、
+主要 Input：DSL YAML 模型路径（位置参数）+ --target 编译目标（engine / studio-model / both，默认 both）。
+主要 Output：<模型目录>/engine-bundle/ 下产物——engine 目标产出三件（objects.json（实体注册表）、
 rules.json（规则注册表，二者序列化参数与 M0 POC 版完全一致：ensure_ascii=False、indent=2）、
-import-README.md（平台侧导入说明）。编译只取引擎格式白名单键，DSL 自有字段
+import-README.md（平台侧导入说明））；studio-model 目标额外产出 studio-model.yaml（dsl-spec §8
+互导格式，trigger/admission 不进模板并告警列出；links 外键缺失的连线跳过并报错列出（不猜），
+此时退出码 1 但产物照写以便人工处理）。编译只取引擎格式白名单键，DSL 自有字段
 （governance/provenance/uom/enum_values/source 及顶层 CQ/open_questions/conflicts/assumptions）
 按 dsl-spec §6 编译剥离清单剥离，产物不含引擎格式之外的键（内置自查）。
 通用性要求：编译逻辑完全由 DSL 结构驱动，不含任何实体名特判。
@@ -18,6 +20,9 @@ from typing import Any
 
 # 第三方依赖导入
 import yaml
+
+# 项目内部模块导入
+import studio_model
 
 # ===========一、常量（DSL 规范 §2/§3/§6 的机械映射）==========
 # ALLOWED_TYPES：DSL 的 7 种属性类型枚举（与引擎 data_type 同名）。
@@ -212,29 +217,24 @@ def _write_import_readme(bundle_dir: Path, model_path: Path,
     (bundle_dir / "import-README.md").write_text(text, encoding="utf-8")
 
 
-def main() -> None:
-    """命令行入口：读 DSL YAML -> 编译 -> 剥离自查 -> 写 engine-bundle 三件产物。"""
-    parser = argparse.ArgumentParser(description="DSL YAML 编译为本体引擎注册格式（engine-bundle）")
-    parser.add_argument("model", help="DSL YAML 模型路径")
-    parser.add_argument("-o", "--bundle-dir", default=None,
-                        help="输出目录（默认 <模型目录>/engine-bundle）")
-    args = parser.parse_args()
-    model_path = Path(args.model)
-    # bundle_dir：产物目录，缺省为模型同目录下的 engine-bundle。
-    bundle_dir = Path(args.bundle_dir) if args.bundle_dir else model_path.parent / "engine-bundle"
-    bundle_dir.mkdir(parents=True, exist_ok=True)
+def _compile_engine_target(model: dict[str, Any], model_path: Path, bundle_dir: Path) -> None:
+    """engine 目标编译落盘：编译 -> 剥离自查 -> 写三件产物 -> 打印统计（与既有版本行为一致）。
 
-    #   1. 读取 DSL 模型（YAML 结构驱动编译，无任何实体名特判）
-    model = yaml.safe_load(model_path.read_text(encoding="utf-8"))
-    #   2. 编译为引擎注册格式
+    Args:
+        model: safe_load 得到的 DSL 模型 dict。
+        model_path: 源 DSL 模型路径。
+        bundle_dir: engine-bundle 目录路径。
+    Returns:
+        None；产物键泄漏时 SystemExit(1)。
+    """
+    #   1. 编译为引擎注册格式并做剥离自查（DSL 自有字段泄漏即失败）
     objects, rules_payload = compile_model(model)
-    #   3. 剥离自查：产物键集合不得超出引擎格式白名单（DSL 自有字段泄漏即失败）
     leaks = assert_engine_only(objects, rules_payload)
     if leaks:
         for leak in leaks:
             print(f"错误：编译产物泄漏 DSL 自有字段——{leak}", file=sys.stderr)
         raise SystemExit(1)
-    #   4. 落盘两份 JSON（序列化参数与 M0 POC 版完全一致：ensure_ascii=False、indent=2）
+    #   2. 落盘两份 JSON（序列化参数与 M0 POC 版完全一致：ensure_ascii=False、indent=2）
     out_objects = bundle_dir / "objects.json"
     out_rules = bundle_dir / "rules.json"
     out_objects.write_text(
@@ -243,7 +243,7 @@ def main() -> None:
     out_rules.write_text(
         json.dumps(rules_payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    #   5. 生成导入说明并打印统计摘要（==== 定界的关键事件）
+    #   3. 生成导入说明并打印统计摘要（==== 定界的关键事件）
     _write_import_readme(bundle_dir, model_path, objects, rules_payload)
     rule_type_counts: dict[str, int] = {}
     for rule in rules_payload["rules"]:
@@ -254,6 +254,79 @@ def main() -> None:
     print(f"规则类型分布: {rule_type_counts}")
     print(f"====剥离自查通过====: 产物仅含引擎格式键")
     print(f"产物: {out_objects} / {out_rules} / {bundle_dir / 'import-README.md'}")
+
+
+def _compile_studio_target(model: dict[str, Any], model_path: Path,
+                           bundle_dir: Path, *, alone: bool) -> int:
+    """studio-model 目标编译落盘（dsl-spec §8 互导格式）。
+
+    Args:
+        model: safe_load 得到的 DSL 模型 dict。
+        model_path: 源 DSL 模型路径。
+        bundle_dir: 产物目录路径（studio-model.yaml 与 JSON 同级）。
+        alone: 是否为 --target studio-model 单独目标（决定 README 全量重写还是追加章节）。
+    Returns:
+        退出码：0=无编译错误；1=存在编译错误（产物仍写出供人工处理）。
+    """
+    #   1. 编译：类型映射 / links->1:n 连线 / derived->calculation；trigger 不进模板
+    studio, errors, warnings = studio_model.compile_studio_model(model)
+    #   2. YAML 落盘（sort_keys=False 保持模板键序；width 放宽避免长表达式折行；稳定 hash 保证幂等）
+    out_studio = bundle_dir / "studio-model.yaml"
+    out_studio.write_text(
+        yaml.dump(studio, allow_unicode=True, sort_keys=False, default_flow_style=False, width=4096),
+        encoding="utf-8",
+    )
+    #   3. README：单独目标写简头 + Studio 章节；both 目标在引擎 README 末尾追加章节
+    section = studio_model.studio_readme_section(studio, errors, warnings)
+    readme_path = bundle_dir / "import-README.md"
+    if alone:
+        header = (
+            "# Studio 模板产物（studio-model.yaml）\n\n"
+            f"- 溯源：由 compile_model.py --target studio-model 从 `{model_path.name}` 编译生成，"
+            "重新编译会覆盖，请勿手改。本目标不产出引擎注册 JSON（需要时改用 --target engine/both）。\n"
+        )
+        readme_path.write_text(header + section, encoding="utf-8")
+    else:
+        with readme_path.open("a", encoding="utf-8") as readme_file:
+            readme_file.write(section)
+    #   4. 错误/告警全量输出（不掩盖），再打印统计摘要（==== 定界的关键事件）
+    for error in errors:
+        print(f"错误：{error}", file=sys.stderr)
+    for warning in warnings:
+        print(f"警告：{warning}")
+    print(f"====studio-model 编译完成====: {out_studio}")
+    print(f"object_types: {len(studio['object_types'])}，link_types: {len(studio['link_types'])}，"
+          f"rule_types: {len(studio['rule_types'])}，编译错误: {len(errors)}，告警: {len(warnings)}")
+    return 1 if errors else 0
+
+
+def main() -> None:
+    """命令行入口：读 DSL YAML -> 按 --target 编译引擎注册格式与/或 Studio 模板并落盘。"""
+    parser = argparse.ArgumentParser(description="DSL YAML 编译为本体引擎注册格式与 Studio 模板")
+    parser.add_argument("model", help="DSL YAML 模型路径")
+    parser.add_argument("-o", "--bundle-dir", default=None,
+                        help="输出目录（默认 <模型目录>/engine-bundle）")
+    parser.add_argument("--target", choices=("engine", "studio-model", "both"), default="both",
+                        help="编译目标：engine=仅引擎注册 JSON（与既有版本行为一致）；"
+                             "studio-model=仅 Studio 模板 YAML；both=两者（默认）。"
+                             "studio-model 产物为 <bundle>/studio-model.yaml；trigger/admission 规则"
+                             "不进模板（stdout 告警列出，需引擎侧配置）；links 外键缺失的连线跳过并报错"
+                             "（不猜），此时退出码 1 但产物照写")
+    args = parser.parse_args()
+    model_path = Path(args.model)
+    # bundle_dir：产物目录，缺省为模型同目录下的 engine-bundle。
+    bundle_dir = Path(args.bundle_dir) if args.bundle_dir else model_path.parent / "engine-bundle"
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+
+    #   1. 读取 DSL 模型（YAML 结构驱动编译，无任何实体名特判）
+    model = yaml.safe_load(model_path.read_text(encoding="utf-8"))
+    #   2. engine 目标（产物与字节级输出同既有版本）
+    if args.target in ("engine", "both"):
+        _compile_engine_target(model, model_path, bundle_dir)
+    #   3. studio-model 目标（错误全量列出后退出码 1，产物照写）
+    if args.target in ("studio-model", "both"):
+        sys.exit(_compile_studio_target(model, model_path, bundle_dir,
+                                        alone=args.target == "studio-model"))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 > 数据来源：`poc/m0/fnb/snapshot_objects.json`（引擎 get_meta_objects 实测快照，2026-10-13 M0 POC 提取）。
 > 用途：本体建模时优先复用既有实体/字段/别名，避免另造同义词。
-> **mfg 域速查待补（M1 后续）。**
+> **mfg 域速查已补：见 `mfg-entities.md`（2026-10-13 M2）。**
 
 ## 实体清单（15 个）
 
