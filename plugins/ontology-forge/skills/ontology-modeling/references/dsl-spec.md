@@ -10,7 +10,7 @@
 ontology: <string>            # 本体标识（kebab-case，如 fnb、supplier-recon）
 version: <string>             # 语义化版本，草稿态带 -draft.N 后缀
 base_version: <string|null>   # 增量建模时基于的引擎快照版本；从零建库为 null
-governance:                   # 本体级治理（Palantir 规则：必配 owner + maturity）
+governance:                   # 本体级治理（新建本体必配；快照逆向导出可缺省，lint 降为 warning）
   owner: <string>
   maturity: experimental|active|deprecated
 entities: { ... }             # 实体（见 §2），必填
@@ -41,6 +41,8 @@ entities:
         uom: <string>            # 可选，量纲（kg/元/天/件）
         enum_values: [<string>]  # 可选，枚举值清单
         source: <string>         # 可选，provenance（来源文档#位置）
+        derived: <bool>          # 可选，标注该字段由 derived_property 规则计算（lint 规则 7 方向 B
+                                 #   依据：标了 derived: true 就必须有对应规则；不标则仅正向检查）
     links:                     # 可选；键 = 引用别名（同时是规则表达式的引用前缀）
       <alias>: <TargetEntity>   # 默认别名 = 目标表名 snake_case；可用短别名（如 wh）
     provenance:                # 可选
@@ -52,7 +54,7 @@ entities:
 1. **衍生字段必须在 properties 中声明**：derived_property 规则的目标字段必须已在该 upstream 实体的 properties 里声明（含 type/display_name/description），计算逻辑由规则承载。引擎实际形态即如此（fnb 的 SKUInWarehouse.properties 含 inventory_turnover_days / idd / inventory_level 等衍生字段）。类型为推断时在 assumptions 记录。
 2. **外键字段保留为属性 + links 并存声明**：外键字段（如 supplier_code）作为普通属性保留声明，同时以 links 声明引用关系（引擎实际：fnb PurchaseOrder.properties 有 sku_code/wh_code 且 links 并存）。
 
-**links 语义**：`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。反向一对多集合不写进 links（引擎侧由对方持有引用推导），但在规则表达式中可用复数表名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 引用方表名 + s**（引擎实测惯例：`purchase_orders`、`sku_in_whs`）。例外（es 结尾等）以引擎实际为准，编译时从快照校验。
+**links 语义**：`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。反向一对多集合不写进 links（引擎侧由对方持有引用推导），但在规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s，而非表名+s 的 sku_in_warehouses）；M1 lint 按双形态白名单校验，v0.3 待引擎侧确认生成规则后收敛为单形态）。
 
 ## 3. rules（规则，三类）
 

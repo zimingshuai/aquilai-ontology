@@ -1,0 +1,75 @@
+{
+  "rules": [
+    {
+      "rule_type": "derived_property",
+      "name": "对账差异金额",
+      "upstream": [
+        "ReconciliationStatement"
+      ],
+      "logic": "recon_diff_amount: invoice_amount - COALESCE(reconciled_amount, 0)",
+      "downstream": "Computed Property",
+      "description": "发票金额 − 已对账金额（元）；无已对账金额按 0 处理；负值=多对账，保留不取绝对值"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "对账差异率",
+      "upstream": [
+        "ReconciliationStatement"
+      ],
+      "logic": "recon_diff_rate: COALESCE(recon_diff_amount / invoice_amount, 9999)",
+      "downstream": "Computed Property",
+      "description": "差异金额 ÷ 发票金额（比率）；发票金额为 0 或缺失时记 9999（异常大，保证触发复核）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "供应商交货总额",
+      "upstream": [
+        "Supplier"
+      ],
+      "logic": "total_delivery_amount: SUM(purchase_contracts.delivery_records.delivery_amount)",
+      "downstream": "Computed Property",
+      "description": "该供应商所有合同下全部交货记录的交货金额合计（元，含税）"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "对账差异复核触发",
+      "upstream": [
+        "ReconciliationStatement"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "recon_diff_amount",
+            "operator": ">",
+            "value": 2000
+          },
+          {
+            "field": "recon_diff_rate",
+            "operator": ">",
+            "value": 0.05
+          }
+        ]
+      },
+      "downstream": "mark_recon_review",
+      "description": "差异金额超 2000 元且差异率超 5% 的对账单自动标记需复核"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "供应商冻结提醒",
+      "upstream": [
+        "Supplier"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "frozen_flag",
+            "operator": "==",
+            "value": true
+          }
+        ]
+      },
+      "downstream": "mark_supplier_frozen",
+      "description": "供应商冻结时触发提醒，对账单不再自动推进"
+    }
+  ]
+}
