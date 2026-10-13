@@ -1,0 +1,20 @@
+{
+  "service": "data-service-fnb",
+  "endpoint": "https://aquilair-mcp0.idcs.elitescloud.com/mcp",
+  "fetched_at": "2026-09-30T10:33:53+08:00",
+  "script_version": "1.0.0",
+  "files": {
+    "meta-objects.json": {
+      "bytes": 35423,
+      "items": 15
+    },
+    "meta-actions.json": {
+      "bytes": 9172,
+      "items": 1
+    },
+    "meta-rules.json": {
+      "bytes": 22560,
+      "items": 1
+    }
+  }
+}

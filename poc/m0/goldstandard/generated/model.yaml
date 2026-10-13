@@ -1,0 +1,457 @@
+# ============================================================
+# 供应商对账域本体（supplier-recon）· 元数据 DSL v0.1
+# 生成方式：盲测实验——仅依据 modeling-brief 资料包生成
+#   （brief.yaml + A_schema/ + B_scenarios/ + C_interviews/）
+# 生成日期：2026-10-13 ｜ 状态：draft，待人审
+# ============================================================
+
+ontology: supplier-recon          # brief.yaml: domain（供应商对账域）
+version: 0.1.0-draft.1            # 首次生成，草稿态
+base_version: null                # brief.yaml: target_engine=new，从零新建本体
+
+governance:
+  owner: 王财务                   # brief.yaml: business_owner
+  maturity: experimental          # 新建本体首次生成，未经人审
+
+# ============================================================
+# 实体：与 A_schema/data_dictionary.md 四张表一一对应
+# （supplier/purchase_contract/delivery_record/reconciliation_statement）
+# ============================================================
+entities:
+
+  Supplier:
+    display_name: 供应商
+    table_name: supplier
+    description: >-
+      供应商主数据（来源 SRM 系统），对账与结算的业务主体。
+      因合同纠纷或质检问题被冻结期间，停止对账与付款。
+    provenance:
+      doc: "modeling-brief/A_schema/data_dictionary.md#supplier + modeling-brief/A_schema/supplier_ddl.sql"
+      reviewed: false
+    properties:
+      supplier_code:
+        display_name: 供应商编码
+        description: SRM 系统供应商唯一编码
+        type: STRING
+        primary: true
+        source: "modeling-brief/A_schema/data_dictionary.md#supplier.supplier_code"
+      supplier_name:
+        display_name: 供应商名称
+        description: 供应商营业执照全称
+        type: STRING
+        source: "modeling-brief/A_schema/data_dictionary.md#supplier.supplier_name"
+      settlement_type:
+        display_name: 结算方式
+        description: 与供应商约定的付款周期
+        type: STRING
+        enum_values: [月结30天, 月结60天, 货到付款]
+        source: "modeling-brief/A_schema/data_dictionary.md#supplier.settlement_type"
+      frozen_flag:
+        display_name: 冻结标记
+        description: 1=冻结（合同纠纷或质检问题时冻结，停止对账与付款）；0=正常
+        type: BOOLEAN
+        source: "modeling-brief/A_schema/data_dictionary.md#supplier.frozen_flag（DDL 物理类型 TINYINT(1)，按数据字典 BOOLEAN 建模，见 assumptions as-001）"
+      create_time:
+        display_name: 创建时间
+        description: 供应商主数据创建时间
+        type: TIMESTAMP
+        source: "modeling-brief/A_schema/data_dictionary.md#supplier.create_time"
+      update_time:
+        display_name: 更新时间
+        description: 供应商主数据最近更新时间
+        type: TIMESTAMP
+        source: "modeling-brief/A_schema/data_dictionary.md#supplier.update_time"
+      total_delivery_amount:
+        display_name: 供应商交货总额
+        description: 该供应商所有合同下全部交货记录的交货金额合计（元，含税）；由规则「供应商交货总额」衍生，全量口径不限期间
+        type: DECIMAL
+        uom: 元
+        source: "modeling-brief/B_scenarios/rules.md#供应商交货总额（字段本体为衍生，类型系推断，见 assumptions as-002）"
+    # Supplier 不持有指向其他实体的外键，无 links；
+    # 其被 purchase_contract / reconciliation_statement 引用，反向集合由引擎侧推导
+
+  PurchaseContract:
+    display_name: 采购合同
+    table_name: purchase_contract
+    description: >-
+      采购合同（来源 SRM 系统），由某供应商签约；每次交货都挂在某份采购合同下。
+    provenance:
+      doc: "modeling-brief/A_schema/data_dictionary.md#purchase_contract + modeling-brief/A_schema/supplier_ddl.sql"
+      reviewed: false
+    properties:
+      contract_nr:
+        display_name: 采购合同号
+        description: SRM 合同唯一编号
+        type: STRING
+        primary: true
+        source: "modeling-brief/A_schema/data_dictionary.md#purchase_contract.contract_nr"
+      supplier_code:
+        display_name: 签约供应商
+        description: 合同签约方的供应商编码
+        type: STRING
+        source: "modeling-brief/A_schema/data_dictionary.md#purchase_contract.supplier_code（FK→supplier）"
+      contract_amount:
+        display_name: 合同总金额
+        description: 合同含税总金额（元）
+        type: DECIMAL
+        uom: 元
+        source: "modeling-brief/A_schema/data_dictionary.md#purchase_contract.contract_amount"
+      sign_date:
+        display_name: 签约日期
+        description: 合同签署日期
+        type: DATE
+        source: "modeling-brief/A_schema/data_dictionary.md#purchase_contract.sign_date"
+      status:
+        display_name: 合同状态
+        description: 生效=正常履约；终止=到期或提前终止；作废=签署后取消
+        type: STRING
+        enum_values: [生效, 终止, 作废]
+        source: "modeling-brief/A_schema/data_dictionary.md#purchase_contract.status"
+    links:
+      supplier: Supplier           # 持有 supplier_code 指向 Supplier；别名取默认（目标表名 snake_case）
+
+  DeliveryRecord:
+    display_name: 交货记录
+    table_name: delivery_record
+    description: >-
+      交货记录（来源 WMS 系统），每次交货挂在某份采购合同下；
+      查「某供应商的交货」需沿 合同→交货 两级关联（见访谈记录）。
+    provenance:
+      doc: "modeling-brief/A_schema/data_dictionary.md#delivery_record + modeling-brief/A_schema/supplier_ddl.sql + modeling-brief/C_interviews/interview_finance.md（合同和交货的关系）"
+      reviewed: false
+    properties:
+      delivery_nr:
+        display_name: 交货单号
+        description: WMS 交货单唯一编号
+        type: STRING
+        primary: true
+        source: "modeling-brief/A_schema/data_dictionary.md#delivery_record.delivery_nr"
+      contract_nr:
+        display_name: 关联合同
+        description: 本次交货所属采购合同
+        type: STRING
+        source: "modeling-brief/A_schema/data_dictionary.md#delivery_record.contract_nr（FK→purchase_contract）"
+      delivery_qty:
+        display_name: 交货数量
+        description: 本次交货件数
+        type: DOUBLE
+        uom: 件
+        source: "modeling-brief/A_schema/data_dictionary.md#delivery_record.delivery_qty"
+      delivery_amount:
+        display_name: 交货金额
+        description: 本次交货金额（元，含税）
+        type: DECIMAL
+        uom: 元
+        source: "modeling-brief/A_schema/data_dictionary.md#delivery_record.delivery_amount"
+      delivery_date:
+        display_name: 交货日期
+        description: 实际到货日期
+        type: DATE
+        source: "modeling-brief/A_schema/data_dictionary.md#delivery_record.delivery_date"
+    links:
+      purchase_contract: PurchaseContract   # 持有 contract_nr 指向 PurchaseContract；默认别名
+
+  ReconciliationStatement:
+    display_name: 对账单
+    table_name: reconciliation_statement
+    description: >-
+      对账单（来源 FIM 财务发票系统），按「供应商 + 月份」生成，一个供应商每月一张；
+      记录本期发票金额与双方核对一致的已对账金额，是月度对账与差异处理的主单据。
+    provenance:
+      doc: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement + modeling-brief/A_schema/supplier_ddl.sql + modeling-brief/C_interviews/interview_finance.md（对账单和供应商的关系）"
+      reviewed: false
+    properties:
+      recon_nr:
+        display_name: 对账单号
+        description: FIM 对账单唯一编号
+        type: STRING
+        primary: true
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.recon_nr"
+      supplier_code:
+        display_name: 对账供应商
+        description: 本对账单对应的供应商
+        type: STRING
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.supplier_code（FK→supplier）"
+      recon_period:
+        display_name: 对账期间
+        description: 对账月份，格式 yyyy-MM
+        type: STRING
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.recon_period"
+      invoice_amount:
+        display_name: 发票金额
+        description: 供应商本期开具发票总额（元）
+        type: DECIMAL
+        uom: 元
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.invoice_amount"
+      reconciled_amount:
+        display_name: 已对账金额
+        description: 双方核对一致确认的金额（元）
+        type: DECIMAL
+        uom: 元
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.reconciled_amount"
+      status:
+        display_name: 对账状态
+        description: open=对账中；confirmed=双方确认；disputed=存在争议
+        type: STRING
+        enum_values: [open, confirmed, disputed]
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.status"
+      create_time:
+        display_name: 创建时间
+        description: 对账单创建时间
+        type: TIMESTAMP
+        source: "modeling-brief/A_schema/data_dictionary.md#reconciliation_statement.create_time"
+      recon_diff_amount:
+        display_name: 对账差异金额
+        description: 发票金额 − 已对账金额（元）；正值=尚有未核对一致的部分，负值=多对账（保留负值不取绝对值）；由规则「对账差异金额」衍生
+        type: DECIMAL
+        uom: 元
+        source: "modeling-brief/B_scenarios/rules.md#对账差异金额（字段本体为衍生，类型系推断，见 assumptions as-002）"
+      recon_diff_rate:
+        display_name: 对账差异率
+        description: 差异金额 ÷ 发票金额（比率，非百分数）；由规则「对账差异率」衍生；「发票金额为 0 或缺失时记 9999」的兜底口径受方言限制未入表达式，见 open_questions oq-001
+        type: DECIMAL
+        uom: 比率
+        source: "modeling-brief/B_scenarios/rules.md#对账差异率（字段本体为衍生，类型系推断，见 assumptions as-002）"
+    links:
+      supplier: Supplier           # 持有 supplier_code 指向 Supplier；默认别名
+
+# ============================================================
+# 规则：口径全部来自 B_scenarios/rules.md，
+# 与 B_scenarios/decisions.md、C_interviews/interview_finance.md 交叉一致
+# ============================================================
+rules:
+
+  - rule_type: derived_property
+    name: 对账差异金额
+    upstream: [ReconciliationStatement]
+    logic: "recon_diff_amount: invoice_amount - COALESCE(reconciled_amount, 0)"
+    description: >-
+      发票金额 − 已对账金额（元）。正值 = 尚有未核对一致的部分；
+      负值 = 多对账（少见，保留负值不取绝对值）；
+      无已对账金额时按 0 处理（COALESCE 兜底）。
+      来源：B_scenarios/rules.md §对账差异金额；
+      佐证：C_interviews/interview_finance.md（发票金额减去已对账金额就是差异金额）、
+      B_scenarios/decisions.md 决策1/决策3。
+
+  - rule_type: derived_property
+    name: 对账差异率
+    upstream: [ReconciliationStatement]
+    logic: "recon_diff_rate: recon_diff_amount / invoice_amount"
+    description: >-
+      差异金额 ÷ 发票金额（比率，非百分数）。
+      口径补充：发票金额为 0 或缺失时，差异率应记为 9999（视为异常大，保证触发复核规则）——
+      DSL v0.1 表达式方言仅有四则/点路径/SUM/COALESCE/MAX，无条件分支函数，
+      该兜底无法声明式表达，本表达式仅承载基础除法，兜底落点待确认（open_questions oq-001）。
+      来源：B_scenarios/rules.md §对账差异率；
+      佐证：C_interviews/interview_finance.md（发票金额要是没有，差异率当异常处理，内部约定记 9999）。
+
+  - rule_type: derived_property
+    name: 供应商交货总额
+    upstream: [Supplier, PurchaseContract, DeliveryRecord]
+    logic: "total_delivery_amount: SUM(delivery_records.delivery_amount)"
+    description: >-
+      该供应商所有合同下全部交货记录的交货金额合计（元，含税），全量口径不限期间。
+      关联路径：Supplier ← purchase_contract（合同持有 supplier_code）← delivery_record
+      （交货持有 contract_nr），即从供应商侧经「合同→交货」两级反向聚合取 delivery_records；
+      方言示例仅演示单跳反向聚合，两跳前缀的可解析性待引擎确认（open_questions oq-002）。
+      来源：B_scenarios/rules.md §供应商交货总额（依据：交货记录按合同关联到供应商）；
+      佐证：C_interviews/interview_finance.md（查"某供应商的交货"要顺着 合同→交货 两级找）。
+      注意：与 B_scenarios/decisions.md 决策3「本期实际交付金额」存在期间口径出入，见 conflicts cf-001。
+
+  - rule_type: trigger
+    name: 复核触发
+    upstream: [ReconciliationStatement]
+    logic:
+      ALL:
+        - { field: recon_diff_amount, operator: '>', value: 2000 }
+        - { field: recon_diff_rate, operator: '>', value: 0.05 }
+    downstream: mark_recon_review
+    description: >-
+      对账单同时满足 差异金额 > 2000 元 且 差异率 > 0.05（即 5%，两条件缺一不可，
+      只超一个不用）时，标记该对账单为「需复核」——系统动作 mark_recon_review，由平台内置处理。
+      来源：B_scenarios/rules.md §复核触发（运算符原文为 > 2000 / > 0.05）；
+      佐证：B_scenarios/decisions.md 决策1（超过 2000 元且超过 5% 自动标记）、
+      C_interviews/interview_finance.md（两个都超线——金额超 2000 块、差异率超 5%——就必须人工复核，只超一个不用）。
+
+  - rule_type: trigger
+    name: 冻结拦截
+    upstream: [Supplier]
+    logic:
+      ALL:
+        - { field: frozen_flag, operator: '==', value: true }
+    downstream: mark_supplier_frozen
+    description: >-
+      供应商冻结标记为真（合同纠纷或质检问题时由 SRM 冻结）时，触发供应商冻结提醒——
+      系统动作 mark_supplier_frozen，由平台内置处理；冻结期间对账单不再自动推进
+      （不能自动确认）。「自动推进」的具体拦截机制资料包未定义（open_questions oq-003）。
+      来源：B_scenarios/rules.md §冻结拦截；
+      佐证：B_scenarios/decisions.md 决策2（冻结中的供应商，其所有对账单不应继续推进）、
+      C_interviews/interview_finance.md（冻结期间不能自动确认对账单，系统要给个提醒）。
+
+# 动作：一期 DSL 不含（槽位保留）；mark_recon_review / mark_supplier_frozen
+# 按 rules.md 原文为「平台内置处理」的隐式 action，直接作为 trigger 下游引用（assumptions as-004）
+actions: []
+
+# ============================================================
+# 能力问题：逐条来自 B_scenarios/decisions.md §能力问题
+# ============================================================
+competency_questions:
+
+  - id: cq-001
+    q: 哪些对账单的差异金额超阈值且差异率超阈值（即需要复核）？
+    covered_by:
+      - ReconciliationStatement.recon_diff_amount
+      - ReconciliationStatement.recon_diff_rate
+    # 来源：decisions.md 能力问题1；支撑决策1（差异金额>2000 且 差异率>5% → 需复核）
+
+  - id: cq-002
+    q: 哪些供应商处于冻结状态？
+    covered_by:
+      - Supplier.frozen_flag
+    # 来源：decisions.md 能力问题2；支撑决策2（冻结供应商不宜推进对账）
+
+  - id: cq-003
+    q: 某供应商本期发票金额、已对账金额、差异金额分别是多少？
+    covered_by:
+      - ReconciliationStatement.recon_period
+      - ReconciliationStatement.invoice_amount
+      - ReconciliationStatement.reconciled_amount
+      - ReconciliationStatement.recon_diff_amount
+    # 来源：decisions.md 能力问题3；「本期」= 对账期间 recon_period（yyyy-MM，按供应商每月一张）
+
+  - id: cq-004
+    q: 某供应商名下所有交货记录的金额合计是多少？
+    covered_by:
+      - Supplier.total_delivery_amount
+    # 来源：decisions.md 能力问题4 / 决策3；支撑与发票金额交叉核对发现多开票/漏开票
+
+# ============================================================
+# 待确认问题：资料包未讲清、禁止脑补的信息，人审前须清零或标记接受
+# ============================================================
+open_questions:
+
+  - id: oq-001
+    question: >-
+      差异率兜底值 9999 的实现层在哪里？rules.md 要求「发票金额为 0 或缺失时差异率记为 9999
+      （视为异常大，保证触发复核）」，但 DSL v0.1 表达式方言（dsl/README.md §3.1）仅有
+      四则运算/点路径/SUM/COALESCE/MAX，无条件分支函数，该兜底无法写进 derived_property
+      表达式。应落在引擎方言扩展（IF/CASE）、数据侧预计算，还是触发规则前置处理？
+      在裁决前，recon_diff_rate 仅承载基础除法，发票金额为 0 的对账单在引擎中的差异率
+      行为未定义。
+    missing_from: "B_scenarios/rules.md（只给口径未给实现层）；dsl/README.md §3.1（方言能力边界）"
+
+  - id: oq-002
+    question: >-
+      供应商交货总额的两跳反向聚合是否可被引擎解析？total_delivery_amount 需从 Supplier
+      经 purchase_contract（对方持有 supplier_code）到 delivery_record（对方持有 contract_nr）
+      两级反向聚合，表达式写作 SUM(delivery_records.delivery_amount)。DSL §2 示例仅演示
+      单跳复数引用（SUM(sales_orders.unfulfill_qty)），delivery_records 前缀能否从 supplier
+      实体解析需引擎快照验证；若不支持，是否改为逐级衍生（先在 PurchaseContract 上算
+      每合同交货合计，再 SUM 到 Supplier）？
+    missing_from: "dsl/README.md §2/§3.1（未定义多跳反向聚合语法）；B_scenarios/rules.md（口径只说所有合同下全部交货合计，未给实现路径）"
+
+  - id: oq-003
+    question: >-
+      冻结拦截中「对账单不再自动推进」的具体机制是什么？rules.md 与访谈只说触发
+      mark_supplier_frozen 提醒且冻结期间不能自动确认对账单，但资料包未定义「自动推进/
+      自动确认」对应的具体动作或状态迁移（如 open→confirmed 的自动动作）。若需 admission
+      式拦截，须先定义 action，而一期 DSL 不含 actions。拦截语义在引擎侧如何落地？
+    missing_from: "B_scenarios/rules.md §冻结拦截；C_interviews/interview_finance.md（均无动作/状态机定义）"
+
+  - id: oq-004
+    question: >-
+      争议单（disputed）如何产生与处置？reconciliation_statement.status 含 disputed 枚举，
+      decisions.md 决策1 的 KPI 提到「争议单处理时长」，但资料包未说明争议单的产生机制
+      （复核不通过即转争议？人工标记？）与处置路径，争议处理流程无法建模。
+    missing_from: "B_scenarios/decisions.md 决策1 KPI；A_schema/data_dictionary.md（仅枚举值定义，无流程说明）"
+
+  - id: oq-005
+    question: >-
+      mark_recon_review 打标的承载字段是什么？复核触发动作为对账单标记「需复核」，但
+      A_schema 的 reconciliation_statement 表没有承载该标记的字段（如 review_flag/
+      review_status）。是引擎动作隐式落库到表外、由平台内置处理，还是需要补充物理字段？
+    missing_from: "A_schema/data_dictionary.md + A_schema/supplier_ddl.sql（无复核标记字段）；B_scenarios/rules.md §复核触发（只定义动作名）"
+
+  - id: oq-006
+    question: >-
+      对账单「供应商 + 月份」唯一性是业务约定还是硬约束？访谈称「一个供应商每月一张对账单」，
+      但 DDL 未声明 supplier_code + recon_period 唯一约束。若同一供应商同月出现多张对账单，
+      差异口径按单张还是按期间汇总，资料包未说明。
+    missing_from: "C_interviews/interview_finance.md（口头约定）；A_schema/supplier_ddl.sql（无唯一键定义）"
+
+# ============================================================
+# 口径冲突记录：保留双方定义与来源，不擅自裁决
+# ============================================================
+conflicts:
+
+  - id: cf-001
+    topic: 供应商交货总额（total_delivery_amount）的期间口径
+    side_a:
+      claim: "供应商交货总额 = 该供应商所有合同下全部交货记录的交货金额合计——全量口径，不限期间"
+      source: "modeling-brief/B_scenarios/rules.md §供应商交货总额"
+    side_b:
+      claim: "决策3 问「某供应商本期实际交付了多少金额」，用途为与本期发票金额交叉核对、发现多开票/漏开票——隐含按期间（本期）过滤的口径"
+      source: "modeling-brief/B_scenarios/decisions.md 决策3"
+    handling: >-
+      按 rules.md 的明示口径建为全量合计（total_delivery_amount 不含期间过滤）；
+      「本期交付金额」是否需要单独的按 recon_period / 交货月份过滤的衍生口径，
+      提请人审裁决。brief.yaml 声明 known_conflicts 为空，本条为生成过程新发现的
+      口径出入，如实记录、不擅自裁决。
+
+# ============================================================
+# 生成假设清单
+# ============================================================
+assumptions:
+
+  - id: as-001
+    statement: >-
+      frozen_flag 建为 BOOLEAN：数据字典 data_type=BOOLEAN；DDL 物理类型 TINYINT(1)
+      （SQL 布尔惯用表示，1=冻结/0=正常）。两者语义一致，不构成口径冲突，按数据字典类型建模。
+    basis: "A_schema/data_dictionary.md#supplier.frozen_flag + A_schema/supplier_ddl.sql"
+
+  - id: as-002
+    statement: >-
+      三个衍生字段（recon_diff_amount / recon_diff_rate / total_delivery_amount）的物理类型
+      为推断而非资料包明示：金额类取 DECIMAL（与同域金额字段 contract_amount/delivery_amount
+      等一致），差异率取 DECIMAL（比率，非百分数）。资料包仅给口径未给类型。
+    basis: "B_scenarios/rules.md（仅口径）；dsl/README.md lint 规则4 要求 derived 目标字段必须存在于 upstream 实体属性，故必须先行声明类型"
+
+  - id: as-003
+    statement: >-
+      衍生字段以实体属性形式声明（含 display_name/description/uom/source），计算逻辑由
+      derived_property 规则承载；「需复核」标记未建为属性（资料包将其定义为系统动作打标，
+      承载字段不明，见 oq-005）。
+    basis: "dsl/README.md §3.1 + lint 规则4；B_scenarios/rules.md §复核触发"
+
+  - id: as-004
+    statement: >-
+      mark_recon_review / mark_supplier_frozen 作为平台内置隐式 action 直接引用
+      （rules.md 原文明言「由平台内置处理」），不在 actions 槽位声明（一期 DSL 不含 actions）。
+    basis: "B_scenarios/rules.md §复核触发/§冻结拦截 + dsl/README.md §3.2/§4"
+
+  - id: as-005
+    statement: >-
+      links 一律使用默认别名（= 目标表名 snake_case：supplier、purchase_contract），
+      不引入短别名——资料包无短别名诉求，规范默认即此。
+    basis: "dsl/README.md §2（默认别名规则）"
+
+  - id: as-006
+    statement: >-
+      外键字段（purchase_contract.supplier_code、delivery_record.contract_nr、
+      reconciliation_statement.supplier_code）按数据字典保留为 STRING 属性，同时以 links
+      声明引用关系；被引用方（Supplier/PurchaseContract）不写反向集合 links，反向引用
+      仅在规则表达式中以复数表名（purchase_contracts / delivery_records）使用。
+    basis: "A_schema/data_dictionary.md pk/fk 列 + dsl/README.md §2 links 语义"
+
+  - id: as-007
+    statement: >-
+      实体展示名取自数据字典 business_term 与访谈用语（供应商/采购合同/交货记录/对账单）；
+      delivery_record 的表级展示名数据字典未直接给出，依其字段「交货单号/交货数量/交货金额」
+      及访谈用语「交货记录」取名「交货记录」。
+    basis: "A_schema/data_dictionary.md + C_interviews/interview_finance.md"
+
+  - id: as-008
+    statement: >-
+      版本号取 0.1.0-draft.1（草稿态 -draft.N 后缀，首次生成）；maturity=experimental
+      （新本体未经人审）。owner 取 brief.yaml 的 business_owner（王财务）。
+    basis: "dsl/README.md §1（版本与治理规则）+ brief.yaml（target_engine=new / business_owner）"

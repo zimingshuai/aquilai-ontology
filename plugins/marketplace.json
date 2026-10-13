@@ -1,0 +1,15 @@
+{
+  "name": "dev-aquilair-ontology",
+  "plugins": [
+    {
+      "name": "ontology-forge",
+      "source": "./ontology-forge",
+      "version": "0.1.0",
+      "description": "LLM 辅助本体元数据设计：资料摄取归位、DSL 起草、硬校验、CQ 回验、拓扑可视化、编译为引擎注册格式",
+      "displayName": "Ontology Forge",
+      "displayName_i18n": { "zh-CN": "本体锻造（Ontology Forge）" },
+      "description_i18n": { "zh-CN": "LLM 辅助本体元数据设计：上传文档自动归位、DSL 起草、lint 硬校验、CQ 回验、Mermaid 拓扑、编译为引擎注册格式，人工审核后导入本体引擎" },
+      "category": "developer-tools"
+    }
+  ]
+}

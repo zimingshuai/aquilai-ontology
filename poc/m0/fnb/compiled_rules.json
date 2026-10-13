@@ -1,0 +1,774 @@
+{
+  "rules": [
+    {
+      "rule_type": "derived_property",
+      "name": "品类编码",
+      "upstream": [
+        "SKU"
+      ],
+      "logic": "pc_code: product_category.pc_code",
+      "downstream": "Computed Property",
+      "description": "品类编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "品类名称",
+      "upstream": [
+        "SKU"
+      ],
+      "logic": "pc_name: product_category.pc_name",
+      "downstream": "Computed Property",
+      "description": "品类名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU编码",
+      "upstream": [
+        "PurchaseOrder"
+      ],
+      "logic": "sku_code: sku.sku_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "PurchaseOrder"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": "采购订单所属仓库"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU编码",
+      "upstream": [
+        "SalesOrder"
+      ],
+      "logic": "sku_code: sku.sku_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU名称",
+      "upstream": [
+        "SalesOrder"
+      ],
+      "logic": "sku_name: sku.sku_name",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "SalesOrder"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU编码",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "sku_code: sku.sku_code",
+      "downstream": "Computed Property",
+      "description": "SKU编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU名称",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "sku_name: sku.sku_name",
+      "downstream": "Computed Property",
+      "description": "SKU名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "品类编码",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "pc_code: sku.product_category.pc_code",
+      "downstream": "Computed Property",
+      "description": "品类编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "品类名称",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "pc_name: sku.product_category.pc_name",
+      "downstream": "Computed Property",
+      "description": "品类名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": "仓库编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库名称",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "wh_name: warehouse.wh_name",
+      "downstream": "Computed Property",
+      "description": "仓库名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未到货采购量",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "undelivery_purchase_qty: SUM(purchase_orders.undelivery_qty)",
+      "downstream": "Computed Property",
+      "description": "发往该仓该SKU的实时未到货/在途采购量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未到货调拨量",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "undelivery_replenishment_qty: SUM(replenishment_orders.undelivery_qty)",
+      "downstream": "Computed Property",
+      "description": "发往该仓该SKU的实时未到货调拨量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未交货销售订单量",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "undelivery_sales_qty: SUM(sales_orders.undelivery_qty)",
+      "downstream": "Computed Property",
+      "description": "未交货销售订单量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "销售订单缺货量",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "unfulfill_sales_qty: SUM(sales_orders.unfulfill_qty)",
+      "downstream": "Computed Property",
+      "description": "销售订单缺货量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU库存元天",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "idd: inventory_aging_days * onhand_inventory_qty * inventory_unit_cost",
+      "downstream": "Computed Property",
+      "description": "用于衡量当前库存按库存金额加权后的平均持有天数，反映库存资金占用时间及库存老化程度"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU库存周转天数",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": "inventory_turnover_days: COALESCE(average_inventory_qty / average_daily_outbound_qty, 9999)",
+      "downstream": "Computed Property",
+      "description": "用于衡量库存资金按当前出库速度可维持的天数，反映其库存周转效率和资金占用水平"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "品类编码",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "pc_code: product_category.pc_code",
+      "downstream": "Computed Property",
+      "description": "品类编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "品类名称",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "pc_name: product_category.pc_name",
+      "downstream": "Computed Property",
+      "description": "品类名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": "仓库编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库名称",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "wh_name: warehouse.wh_name",
+      "downstream": "Computed Property",
+      "description": "仓库名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未到货采购量",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "undelivery_purchase_qty: SUM(sku_in_whs.undelivery_purchase_qty)",
+      "downstream": "Computed Property",
+      "description": "SKU品类下聚合的实时未到货/在途采购量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未到货调拨量",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "undelivery_replenishment_qty: SUM(sku_in_whs.undelivery_replenishment_qty)",
+      "downstream": "Computed Property",
+      "description": "SKU品类下聚合的实时未到货调拨量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未交货销售订单量",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "undelivery_sales_qty: SUM(sku_in_whs.undelivery_sales_qty)",
+      "downstream": "Computed Property",
+      "description": "SKU品类下聚合的未交货销售订单量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "销售订单缺货量",
+      "upstream": [
+        "ProductCategoryInWarehouse"
+      ],
+      "logic": "unfulfill_sales_qty: SUM(sku_in_whs.unfulfill_sales_qty)",
+      "downstream": "Computed Property",
+      "description": "SKU品类下聚合的销售订单缺货量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": "仓库编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库名称",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "wh_name: warehouse.wh_name",
+      "downstream": "Computed Property",
+      "description": "仓库名称"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未到货采购量",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "undelivery_purchase_qty: SUM(sku_in_whs.undelivery_purchase_qty)",
+      "downstream": "Computed Property",
+      "description": "仓库总实时未到货/在途采购量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未到货调拨量",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "undelivery_replenishment_qty: SUM(sku_in_whs.undelivery_replenishment_qty)",
+      "downstream": "Computed Property",
+      "description": "仓库总实时未到货调拨量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未交货销售订单量",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "undelivery_sales_qty: SUM(sku_in_whs.undelivery_sales_qty)",
+      "downstream": "Computed Property",
+      "description": "仓库总未交货销售订单量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "销售订单缺货量",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "unfulfill_sales_qty: SUM(sku_in_whs.unfulfill_sales_qty)",
+      "downstream": "Computed Property",
+      "description": "仓库总销售订单缺货量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库加权平均库存元天",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "average_idd: SUM(sku_in_whs.idd * sku_in_whs.influencing_factor) / SUM(sku_in_whs.influencing_factor)",
+      "downstream": "Computed Property",
+      "description": "仓库下SKU的加权平均库存元天"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库加权平均库存周转天数",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": "average_inventory_turnover_days: SUM(sku_in_whs.inventory_turnover_days * sku_in_whs.influencing_factor) / SUM(sku_in_whs.influencing_factor)",
+      "downstream": "Computed Property",
+      "description": "仓库下SKU的加权平均库存周转天数"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "InventoryInWHProblem"
+      ],
+      "logic": "wh_code: wh.wh_code",
+      "downstream": "Computed Property",
+      "description": "业务问题所属仓库编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "库存业务问题编码",
+      "upstream": [
+        "InventoryInWHCause"
+      ],
+      "logic": "problem_code: problem.problem_code",
+      "downstream": "Computed Property",
+      "description": "库存业务问题编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "库存业务问题类型",
+      "upstream": [
+        "InventoryInWHCause"
+      ],
+      "logic": "problem_type: problem.problem_type",
+      "downstream": "Computed Property",
+      "description": "原因对应的库存业务问题类型"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU编码",
+      "upstream": [
+        "InventoryInWHCause"
+      ],
+      "logic": "sku_code: sku_in_wh.sku_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "InventoryInWHCause"
+      ],
+      "logic": "wh_code: sku_in_wh.wh_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU编码",
+      "upstream": [
+        "ForecastSalesDemand"
+      ],
+      "logic": "sku_code: sku.sku_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU名称",
+      "upstream": [
+        "ForecastSalesDemand"
+      ],
+      "logic": "sku_name: sku.sku_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "ForecastSalesDemand"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": ""
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "SKU编码",
+      "upstream": [
+        "ForecastSalesTrace"
+      ],
+      "logic": "sku_code: sku.sku_code",
+      "downstream": "Computed Property",
+      "description": "SKU编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "ForecastSalesTrace"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": "仓库编码"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "需求预测偏差值",
+      "upstream": [
+        "ForecastSalesTrace"
+      ],
+      "logic": "bias_qty: forecast_sales_qty - actual_sales_qty",
+      "downstream": "Computed Property",
+      "description": "需求预测量 - 实际销售量"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库编码",
+      "upstream": [
+        "InventoryRisk"
+      ],
+      "logic": "wh_code: warehouse.wh_code",
+      "downstream": "Computed Property",
+      "description": "库存风险来源仓库"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "仓库名称",
+      "upstream": [
+        "InventoryRisk"
+      ],
+      "logic": "wh_name: warehouse.wh_name",
+      "downstream": "Computed Property",
+      "description": "库存风险来源仓库名称"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "库存周转天数偏低预警",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "sku.abc_type",
+            "operator": "in",
+            "value": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": ">=",
+            "value": 0
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": "<=",
+            "value": 10
+          }
+        ]
+      },
+      "downstream": "update_inventory_level",
+      "description": "针对A/B/C类SKU，当库存周转天数介于0至10天时触发，更新库存等级为'偏低'。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "库存周转天数正常标记",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "sku.abc_type",
+            "operator": "in",
+            "value": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": ">=",
+            "value": 11
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": "<=",
+            "value": 30
+          }
+        ]
+      },
+      "downstream": "update_inventory_level",
+      "description": "针对A/B/C类SKU，当库存周转天数介于11至30天时触发，更新库存等级为'正常'。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "库存周转天数偏高预警",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "sku.abc_type",
+            "operator": "in",
+            "value": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": ">=",
+            "value": 31
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": "<=",
+            "value": 60
+          }
+        ]
+      },
+      "downstream": "update_inventory_level",
+      "description": "针对A/B/C类SKU，当库存周转天数介于31至60天时触发，更新库存等级为'偏高'。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "库存周转天数异常高预警",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "sku.abc_type",
+            "operator": "in",
+            "value": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          {
+            "field": "inventory_turnover_days",
+            "operator": ">=",
+            "value": 61
+          }
+        ]
+      },
+      "downstream": "update_inventory_level",
+      "description": "针对A/B/C类SKU，当库存周转天数大于等于61天时触发，标记库存周转天数异常高。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "供需匹配缺货预警",
+      "upstream": [
+        "SKUInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "sku.abc_type",
+            "operator": "in",
+            "value": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          {
+            "field": "unfulfill_sales_qty",
+            "operator": ">",
+            "value": 0
+          }
+        ]
+      },
+      "downstream": "update_supply_demand_matching",
+      "description": "针对A/B/C类SKU，当未满足的销售数量大于0时触发，标记当前供需状态为缺货。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "仓库库存超储极高风险(P1)",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "average_inventory_turnover_days",
+            "operator": ">=",
+            "value": 61
+          }
+        ]
+      },
+      "downstream": "add_risk_event",
+      "description": "当在仓平均库存周转天数达到或超过61天时，触发P1级别极高超储风险告警并实施专项管控。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "仓库库存超储高风险(P2)",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "average_inventory_turnover_days",
+            "operator": ">=",
+            "value": 51
+          },
+          {
+            "field": "average_inventory_turnover_days",
+            "operator": "<=",
+            "value": 60
+          }
+        ]
+      },
+      "downstream": "add_risk_event",
+      "description": "当在仓平均库存周转天数介于51至60天时，触发P2级别超储高风险告警并实施专项管控。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "仓库库存超储低风险(P3)",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "average_inventory_turnover_days",
+            "operator": ">=",
+            "value": 30
+          },
+          {
+            "field": "average_inventory_turnover_days",
+            "operator": "<=",
+            "value": 50
+          }
+        ]
+      },
+      "downstream": "add_risk_event",
+      "description": "当在仓平均库存周转天数介于30至50天时，触发P3级别超储低风险告警。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "仓库库存缺货极高风险(P0)",
+      "upstream": [
+        "InventoryInWarehouse"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "unfulfill_sales_qty",
+            "operator": ">",
+            "value": 0
+          }
+        ]
+      },
+      "downstream": "add_risk_event",
+      "description": "当在仓未满足的销售订单需求大于0时，触发最高级别(P0)的缺货风险告警并实施专项管控。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "高危风险升级为业务问题",
+      "upstream": [
+        "InventoryRisk"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "risk_level",
+            "operator": "in",
+            "value": [
+              "P0",
+              "P1",
+              "P2"
+            ]
+          }
+        ]
+      },
+      "downstream": "create_problem_from_risk",
+      "description": "监控新产生的风险事件，若风险等级达到 P0/P1/P2，则自动升级并立项为仓库库存业务问题。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "低危风险发送告警消息",
+      "upstream": [
+        "InventoryRisk"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "risk_level",
+            "operator": "==",
+            "value": "P3"
+          }
+        ]
+      },
+      "downstream": "send_risk_message",
+      "description": "监控新产生的风险事件，若风险等级为 P3，则不升级为业务问题，仅发送告警消息。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "业务问题根因分析",
+      "upstream": [
+        "InventoryInWHProblem"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "problem_code",
+            "operator": "!=",
+            "value": ""
+          }
+        ]
+      },
+      "downstream": "analyze_root_cause",
+      "description": "监控新产生的仓库库存业务问题，一旦立项则触发根因分析算法，自动追溯采购、调拨及需求预测异常并生成根因记录。"
+    }
+  ]
+}

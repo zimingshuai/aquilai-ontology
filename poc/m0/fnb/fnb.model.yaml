@@ -1,0 +1,1228 @@
+ontology: fnb
+version: 0.1.0-draft.1
+base_version: null
+entities:
+  ProductCategory:
+    display_name: 产品品类
+    table_name: product_category
+    description: 餐饮食用品及供应链物料的标准品类层级与分类定义
+    properties:
+      pc_code:
+        display_name: 品类编码
+        description: 品类编码
+        type: STRING
+        primary: true
+      pc_name:
+        display_name: 品类名称
+        description: 品类名称
+        type: STRING
+      description:
+        display_name: 品类描述
+        description: 品类描述
+        type: STRING
+  SKU:
+    display_name: 商品SKU
+    table_name: sku
+    description: 餐饮与供应链场景下的物料单元，记录产品基础物理规格及型号信息
+    properties:
+      sku_code:
+        display_name: SKU编码
+        description: SKU编码
+        type: STRING
+        primary: true
+      sku_name:
+        display_name: SKU名称
+        description: SKU名称
+        type: STRING
+      abc_type:
+        display_name: ABC分类
+        description: 按照SKU对库存金额的累计贡献进行排序，并根据累计贡献比例划分A/B/C等级
+        type: STRING
+      material_type:
+        display_name: 所属物料层级
+        description: 所属物料层级
+        type: STRING
+      base_uom:
+        display_name: 基础计量单位
+        description: 基础计量单位
+        type: STRING
+      purchase_uom:
+        display_name: 采购计量单位
+        description: 采购计量单位
+        type: STRING
+      sales_uom:
+        display_name: 销售计量单位
+        description: 销售计量单位
+        type: STRING
+      shelf_life_days:
+        display_name: 总货架寿命天数
+        description: 从商品生产日期到商品失效日期之间允许流通、存储和销售的最长时间，用于衡量商品整体可销售周期，是库存管理、保质期控制和供应链决策的重要基础指标。
+        type: INTEGER
+      min_receive_shelf_life:
+        display_name: 收货最小剩余货架期
+        description: 供应商送货到仓库或门店时，商品必须至少保留的可销售时间，用于保障收货商品具备足够的销售周期，降低临期和报损风险。
+        type: INTEGER
+      sled_days:
+        display_name: 最佳赏味期天数
+        description: 商品在规定储存条件下能够保持最佳口感、风味、品质状态的时间周期，用于指导食品质量管理、库存周转和临期运营策略。
+        type: INTEGER
+      storage_type:
+        display_name: 存储类型
+        description: 常温品/冷鲜品/冷冻品
+        type: STRING
+      storage_condition:
+        display_name: 存储条件
+        description: 常温/冷藏/冷冻
+        type: STRING
+      temp_control_req:
+        display_name: 温度控制要求
+        description: 温度控制要求（Temperature Control Requirement）
+        type: STRING
+      allergen:
+        display_name: 过敏原
+        description: 标识物料是否包含过敏原，如小麦、坚果、乳制品等
+        type: STRING
+      organic_flag:
+        display_name: 有机标识
+        description: 标识该SKU是否为有机产品：Y/N
+        type: BOOLEAN
+      trace_code:
+        display_name: 追溯码
+        description: 用于批次追踪、供应链追溯的编码
+        type: STRING
+      status:
+        display_name: SKU状态
+        description: 表示SKU当前状态，如正常、停用、冻结等
+        type: STRING
+      create_time:
+        display_name: 创建时间
+        description: 数据行创建时间
+        type: TIMESTAMP
+      update_time:
+        display_name: 更新时间
+        description: 数据行更新时间
+        type: TIMESTAMP
+      launch_date:
+        display_name: 上市日期
+        description: SKU首次进入市场或供应链体系的日期
+        type: DATE
+      pc_code:
+        display_name: 品类编码
+        description: 品类编码
+        type: STRING
+      pc_name:
+        display_name: 品类名称
+        description: 品类名称
+        type: STRING
+    links:
+      product_category: ProductCategory
+  Warehouse:
+    display_name: 仓库
+    table_name: warehouse
+    description: 餐饮及供应链物流存储网络中的物理库房与仓储节点
+    properties:
+      wh_code:
+        display_name: 仓库编码
+        description: 仓库编码
+        type: STRING
+        primary: true
+      wh_name:
+        display_name: 仓库名称
+        description: 仓库名称
+        type: STRING
+      factory_code:
+        display_name: 工厂编码
+        description: 仓库所属工厂编码
+        type: STRING
+      region:
+        display_name: 区域
+        description: 仓库所属区域
+        type: STRING
+      temp_type:
+        display_name: 仓库支持温层
+        description: 仓库支持温层：冷链、常温
+        type: STRING
+      city:
+        display_name: 城市
+        description: 仓库所属城市
+        type: STRING
+      max_storage_capacity:
+        display_name: 最大库容
+        description: 仓库最大可存储能力
+        type: DOUBLE
+  PurchaseOrder:
+    display_name: 采购订单
+    table_name: purchase_order
+    description: 已确认未收货的采购订单, 在途采购量
+    properties:
+      purchase_order_nr:
+        display_name: 采购订单编号
+        description: ''
+        type: STRING
+        primary: true
+      order_date:
+        display_name: 采购订单日期
+        description: 由采购部门发起采购订单日期
+        type: DATE
+      required_delivery_date:
+        display_name: 要求交货日期
+        description: ''
+        type: DATE
+      estimated_arrival_date:
+        display_name: 预计到达日期
+        description: 采购订单预计到达日期
+        type: DATE
+      ship_date:
+        display_name: 发货日期
+        description: 发货日期
+        type: DATE
+      total_order_qty:
+        display_name: 订单总量
+        description: 订单总量
+        type: DOUBLE
+      delivered_qty:
+        display_name: 交货量
+        description: 交货量
+        type: DOUBLE
+      undelivery_qty:
+        display_name: 未交货量
+        description: ''
+        type: DOUBLE
+      status:
+        display_name: 采购订单状态
+        description: ''
+        type: STRING
+      unit_code:
+        display_name: 采购单位
+        description: ''
+        type: STRING
+      unit_cost:
+        display_name: 单位成本（元）
+        description: ''
+        type: STRING
+      cancel_flag:
+        display_name: 是否取消标记
+        description: ''
+        type: BOOLEAN
+      close_flag:
+        display_name: 是否关闭标记
+        description: ''
+        type: BOOLEAN
+      sku_code:
+        display_name: SKU编码
+        description: ''
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: 采购订单所属仓库
+        type: STRING
+    links:
+      sku: SKU
+      warehouse: Warehouse
+      sku_in_warehouse: SKUInWarehouse
+  ReplenishmentOrder:
+    display_name: 调拨单
+    table_name: replenishment_order
+    description: 上游仓向下游仓调拨库存的调拨单
+    properties:
+      replenishment_order_nr:
+        display_name: 调拨单编号
+        description: ''
+        type: STRING
+        primary: true
+      undelivery_qty:
+        display_name: 未交货量
+        description: ''
+        type: DOUBLE
+    links:
+      sku_in_warehouse: SKUInWarehouse
+  SalesOrder:
+    display_name: 销售订单
+    table_name: sales_order
+    description: 实时销售订单
+    properties:
+      order_nr:
+        display_name: 订单编号
+        description: ''
+        type: STRING
+        primary: true
+      due_date:
+        display_name: 交付日期
+        description: ''
+        type: STRING
+      order_qty:
+        display_name: 订单总量
+        description: ''
+        type: DOUBLE
+      unit_code:
+        display_name: 销售单位
+        description: ''
+        type: STRING
+      unit_cost:
+        display_name: 单位成本（元）
+        description: ''
+        type: DOUBLE
+      delivery_qty:
+        display_name: 已交付量
+        description: ''
+        type: DOUBLE
+      undelivery_qty:
+        display_name: 未交付量
+        description: ''
+        type: DOUBLE
+      fulfill_qty:
+        display_name: 满足量
+        description: 满足量
+        type: DOUBLE
+      unfulfill_qty:
+        display_name: 缺货量
+        description: 缺货/未满足量
+        type: DOUBLE
+      sku_code:
+        display_name: SKU编码
+        description: ''
+        type: STRING
+      sku_name:
+        display_name: SKU名称
+        description: ''
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: ''
+        type: STRING
+    links:
+      sku: SKU
+      warehouse: Warehouse
+      sku_in_warehouse: SKUInWarehouse
+  SKUInWarehouse:
+    display_name: SKU在库状态
+    table_name: sku_in_warehouse
+    description: 表达特定的 SKU 在具体仓库中的进销存属性及流转量化指标
+    properties:
+      sku_in_wh_code:
+        display_name: SKU-仓库编码
+        description: SKU-仓库编码
+        type: STRING
+        primary: true
+      influencing_factor:
+        display_name: 影响因子
+        description: SKU的影响因子，越大影响越大
+        type: DOUBLE
+      onhand_inventory_qty:
+        display_name: 实时库存数量
+        description: SKU-仓库聚合的实时库存数量
+        type: DOUBLE
+      inventory_aging_days:
+        display_name: 库龄天数
+        description: 用于计算库存元天（IDD）等指标
+        type: INTEGER
+      inventory_unit_cost:
+        display_name: 单位库存成本（元）
+        description: 单位库存存储成本、单位库存金额等，用于计算库存指标
+        type: DECIMAL
+      average_inventory_qty:
+        display_name: 平均库存量
+        description: 评估周期内平均库存量
+        type: DOUBLE
+      average_daily_outbound_qty:
+        display_name: 日出库量
+        description: 评估周期内平均日出库量
+        type: DOUBLE
+      target_inventory_level:
+        display_name: 目标库存水位
+        description: 企业根据业务目标、服务水平要求和供应链策略，希望库存长期维持的理想库存水平，用于指导补货、库存控制和库存优化
+        type: DOUBLE
+      safety_stock:
+        display_name: 安全库存
+        description: 为了应对需求波动、供应不确定性而额外持有的库存缓冲，用于保障服务水平，降低缺货风险
+        type: DOUBLE
+      inventory_level:
+        display_name: 库存水位
+        description: 库存周转天数偏低/正常/偏高/异常高
+        type: STRING
+      supply_demand_matching:
+        display_name: 库存供需匹配
+        description: 是否有库存缺货
+        type: STRING
+      sku_code:
+        display_name: SKU编码
+        description: SKU编码
+        type: STRING
+      sku_name:
+        display_name: SKU名称
+        description: SKU名称
+        type: STRING
+      pc_code:
+        display_name: 品类编码
+        description: 品类编码
+        type: STRING
+      pc_name:
+        display_name: 品类名称
+        description: 品类名称
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: 仓库编码
+        type: STRING
+      wh_name:
+        display_name: 仓库名称
+        description: 仓库名称
+        type: STRING
+      undelivery_purchase_qty:
+        display_name: 未到货采购量
+        description: 发往该仓该SKU的实时未到货/在途采购量
+        type: DOUBLE
+      undelivery_replenishment_qty:
+        display_name: 未到货调拨量
+        description: 发往该仓该SKU的实时未到货调拨量
+        type: DOUBLE
+      undelivery_sales_qty:
+        display_name: 未交货销售订单量
+        description: 未交货销售订单量
+        type: DOUBLE
+      unfulfill_sales_qty:
+        display_name: 销售订单缺货量
+        description: 销售订单缺货量
+        type: DOUBLE
+      idd:
+        display_name: SKU库存元天
+        description: 用于衡量当前库存按库存金额加权后的平均持有天数，反映库存资金占用时间及库存老化程度
+        type: DOUBLE
+      inventory_turnover_days:
+        display_name: SKU库存周转天数
+        description: 用于衡量库存资金按当前出库速度可维持的天数，反映其库存周转效率和资金占用水平
+        type: DOUBLE
+    links:
+      sku: SKU
+      warehouse: Warehouse
+      product_category_in_warehouse: ProductCategoryInWarehouse
+      inventory_in_warehouse: InventoryInWarehouse
+  ProductCategoryInWarehouse:
+    display_name: 品类在库状态
+    table_name: product_category_in_warehouse
+    description: 产品品类在具体仓储物理空间下聚合的库存、周转和补货水位指标
+    properties:
+      pc_in_wh_code:
+        display_name: 品类-仓库编码
+        description: 品类-仓库编码
+        type: STRING
+        primary: true
+      onhand_inventory_qty:
+        display_name: 实时库存数量
+        description: 品类-仓库聚合的实时库存数量
+        type: DOUBLE
+      target_inventory_level:
+        display_name: 目标库存水位
+        description: 企业根据业务目标、服务水平要求和供应链策略，希望库存长期维持的理想库存水平，用于指导补货、库存控制和库存优化
+        type: DOUBLE
+      safety_stock:
+        display_name: 安全库存
+        description: 为了应对需求波动、供应不确定性而额外持有的库存缓冲，用于保障服务水平，降低缺货风险
+        type: DOUBLE
+      inventory_unit_cost:
+        display_name: 单位库存成本（元）
+        description: 单位库存存储成本、单位库存金额等，用于计算库存指标
+        type: DECIMAL
+      inventory_aging_days:
+        display_name: 库龄天数
+        description: 用于计算库存元天（IDD）等指标
+        type: INTEGER
+      average_daily_outbound_qty:
+        display_name: 日出库量
+        description: 评估周期内平均日出库量
+        type: DOUBLE
+      average_inventory_qty:
+        display_name: 平均库存量
+        description: 评估周期内平均库存量
+        type: DOUBLE
+      pc_code:
+        display_name: 品类编码
+        description: 品类编码
+        type: STRING
+      pc_name:
+        display_name: 品类名称
+        description: 品类名称
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: 仓库编码
+        type: STRING
+      wh_name:
+        display_name: 仓库名称
+        description: 仓库名称
+        type: STRING
+      undelivery_purchase_qty:
+        display_name: 未到货采购量
+        description: SKU品类下聚合的实时未到货/在途采购量
+        type: DOUBLE
+      undelivery_replenishment_qty:
+        display_name: 未到货调拨量
+        description: SKU品类下聚合的实时未到货调拨量
+        type: DOUBLE
+      undelivery_sales_qty:
+        display_name: 未交货销售订单量
+        description: SKU品类下聚合的未交货销售订单量
+        type: DOUBLE
+      unfulfill_sales_qty:
+        display_name: 销售订单缺货量
+        description: SKU品类下聚合的销售订单缺货量
+        type: DOUBLE
+    links:
+      product_category: ProductCategory
+      warehouse: Warehouse
+  InventoryInWarehouse:
+    display_name: 仓库库存总量
+    table_name: inventory_in_warehouse
+    description: 表述单个完整仓库尺度下的实时库存总量、在途总量及库内运转宏观数据
+    properties:
+      inventory_code:
+        display_name: 仓库库存编码
+        description: 仓库库存编码
+        type: STRING
+        primary: true
+      onhand_inventory_qty:
+        display_name: 实时库存数量
+        description: 仓库的实时库存总量
+        type: DOUBLE
+      target_inventory_level:
+        display_name: 目标库存水位
+        description: 企业根据业务目标、服务水平要求和供应链策略，希望库存长期维持的理想库存水平，用于指导补货、库存控制和库存优化
+        type: DOUBLE
+      safety_stock:
+        display_name: 安全库存
+        description: 为了应对需求波动、供应不确定性而额外持有的库存缓冲，用于保障服务水平，降低缺货风险
+        type: DOUBLE
+      wh_code:
+        display_name: 仓库编码
+        description: 仓库编码
+        type: STRING
+      wh_name:
+        display_name: 仓库名称
+        description: 仓库名称
+        type: STRING
+      undelivery_purchase_qty:
+        display_name: 未到货采购量
+        description: 仓库总实时未到货/在途采购量
+        type: DOUBLE
+      undelivery_replenishment_qty:
+        display_name: 未到货调拨量
+        description: 仓库总实时未到货调拨量
+        type: DOUBLE
+      undelivery_sales_qty:
+        display_name: 未交货销售订单量
+        description: 仓库总未交货销售订单量
+        type: DOUBLE
+      unfulfill_sales_qty:
+        display_name: 销售订单缺货量
+        description: 仓库总销售订单缺货量
+        type: DOUBLE
+      average_idd:
+        display_name: 仓库加权平均库存元天
+        description: 仓库下SKU的加权平均库存元天
+        type: DOUBLE
+      average_inventory_turnover_days:
+        display_name: 仓库加权平均库存周转天数
+        description: 仓库下SKU的加权平均库存周转天数
+        type: DOUBLE
+    links:
+      warehouse: Warehouse
+  InventoryInWHProblem:
+    display_name: 仓库库存业务问题
+    table_name: inventory_in_wh_problem
+    description: 用于定义仓库库存业务问题
+    properties:
+      problem_code:
+        display_name: 业务问题
+        description: 业务问题编码
+        type: STRING
+        primary: true
+      problem_type:
+        display_name: 业务问题类型
+        description: 业务问题类型
+        type: STRING
+      problem_description:
+        display_name: 业务问题描述
+        description: 业务问题描述
+        type: STRING
+      create_date:
+        display_name: 创建日期
+        description: ''
+        type: DATE
+      wh_code:
+        display_name: 仓库编码
+        description: 业务问题所属仓库编码
+        type: STRING
+    links:
+      wh: InventoryInWarehouse
+      sku_in_wh: SKUInWarehouse
+  InventoryInWHCause:
+    display_name: 仓库库存业务问题原因
+    table_name: inventory_in_wh_cause
+    description: 用于定义仓库库存业务问题的原因
+    properties:
+      cause_code:
+        display_name: 原因编码
+        description: 原因编码
+        type: STRING
+        primary: true
+      cause_type:
+        display_name: 原因类型
+        description: 原因类型
+        type: STRING
+      trace_info:
+        display_name: 追溯信息
+        description: 原因追溯的具体信息
+        type: STRING
+      problem_code:
+        display_name: 库存业务问题编码
+        description: 库存业务问题编码
+        type: STRING
+      problem_type:
+        display_name: 库存业务问题类型
+        description: 原因对应的库存业务问题类型
+        type: STRING
+      sku_code:
+        display_name: SKU编码
+        description: ''
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: ''
+        type: STRING
+    links:
+      problem: InventoryInWHProblem
+      sku_in_wh: SKUInWarehouse
+  ForecastSalesDemand:
+    display_name: 预测销售需求
+    table_name: forecast_sales_demand
+    description: 预测销售需求
+    properties:
+      order_nr:
+        display_name: 订单编号
+        description: ''
+        type: STRING
+        primary: true
+      forecast_date:
+        display_name: 需求预测日期
+        description: 需求预测日期
+        type: DATE
+      forecast_qty:
+        display_name: 预测需求量
+        description: ''
+        type: DOUBLE
+      unit_code:
+        display_name: 销售单位
+        description: ''
+        type: STRING
+      unit_cost:
+        display_name: 单位成本（元）
+        description: ''
+        type: DOUBLE
+      sku_code:
+        display_name: SKU编码
+        description: ''
+        type: STRING
+      sku_name:
+        display_name: SKU名称
+        description: ''
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: ''
+        type: STRING
+    links:
+      sku: SKU
+      warehouse: Warehouse
+  ForecastSalesTrace:
+    display_name: 需求预测追踪记录
+    table_name: forecast_sales_trace
+    description: 用于追踪需求预测量与实际需求量的偏差和评估指标值
+    properties:
+      trace_nr:
+        display_name: 需求预测追踪编码
+        description: 主键
+        type: STRING
+        primary: true
+      forecast_version:
+        display_name: 需求预测版本
+        description: ''
+        type: STRING
+      forecast_start_date:
+        display_name: 需求预测时间窗口开始日期
+        description: ''
+        type: DATE
+      forecast_end_date:
+        display_name: 需求预测时间窗口结束日期
+        description: ''
+        type: DATE
+      sales_day:
+        display_name: 需求预测样本日期
+        description: ''
+        type: DATE
+      actual_sales_qty:
+        display_name: 实际销售量
+        description: ''
+        type: DOUBLE
+      forecast_sales_qty:
+        display_name: 需求预测量
+        description: ''
+        type: DOUBLE
+      sku_code:
+        display_name: SKU编码
+        description: SKU编码
+        type: STRING
+      wh_code:
+        display_name: 仓库编码
+        description: 仓库编码
+        type: STRING
+      bias_qty:
+        display_name: 需求预测偏差值
+        description: 需求预测量 - 实际销售量
+        type: DOUBLE
+    links:
+      sku: SKU
+      warehouse: Warehouse
+  InventoryRisk:
+    display_name: 需求预测追踪记录
+    table_name: inventory_risk
+    description: 用于追踪需求预测量与实际需求量的偏差和评估指标值
+    properties:
+      risk_code:
+        display_name: 库存风险主键编码
+        description: ''
+        type: STRING
+        primary: true
+      risk_type:
+        display_name: 库存风险类型
+        description: ''
+        type: STRING
+      risk_level:
+        display_name: 库存风险等级
+        description: ''
+        type: STRING
+      risk_description:
+        display_name: 库存风险描述
+        description: ''
+        type: STRING
+      risk_source:
+        display_name: 风险源头
+        description: 库存风险来源，比如缺货/超储SKU
+        type: STRING
+      control_measures:
+        display_name: 管控措施
+        description: 风险管控对应措施，用于后续流程判定
+        type: STRING
+      create_date:
+        display_name: 创建日期
+        description: ''
+        type: DATE
+      wh_code:
+        display_name: 仓库编码
+        description: 库存风险来源仓库
+        type: STRING
+      wh_name:
+        display_name: 仓库名称
+        description: 库存风险来源仓库名称
+        type: STRING
+    links:
+      warehouse: Warehouse
+  InventoryOptimizationSolution:
+    display_name: 库存优化方案
+    table_name: inventory_optimization_solution
+    description: ''
+    properties:
+      create_date:
+        display_name: 创建日期
+        description: ''
+        type: DATE
+      solution_priority:
+        display_name: 方案优先级
+        description: 方案优先级
+        type: INTEGER
+      solution_info:
+        display_name: 优化方案具体信息
+        description: ''
+        type: STRING
+      solution_level:
+        display_name: 优化方案层级
+        description: 实时层/计划层
+        type: STRING
+      solution_type:
+        display_name: 优化方案类型
+        description: ''
+        type: STRING
+        primary: true
+      problem_code:
+        display_name: 问题编码
+        description: ''
+        type: STRING
+        primary: true
+rules:
+- rule_type: derived_property
+  name: 品类编码
+  upstream:
+  - SKU
+  logic: 'pc_code: product_category.pc_code'
+  description: 品类编码
+- rule_type: derived_property
+  name: 品类名称
+  upstream:
+  - SKU
+  logic: 'pc_name: product_category.pc_name'
+  description: 品类名称
+- rule_type: derived_property
+  name: SKU编码
+  upstream:
+  - PurchaseOrder
+  logic: 'sku_code: sku.sku_code'
+  description: ''
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - PurchaseOrder
+  logic: 'wh_code: warehouse.wh_code'
+  description: 采购订单所属仓库
+- rule_type: derived_property
+  name: SKU编码
+  upstream:
+  - SalesOrder
+  logic: 'sku_code: sku.sku_code'
+  description: ''
+- rule_type: derived_property
+  name: SKU名称
+  upstream:
+  - SalesOrder
+  logic: 'sku_name: sku.sku_name'
+  description: ''
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - SalesOrder
+  logic: 'wh_code: warehouse.wh_code'
+  description: ''
+- rule_type: derived_property
+  name: SKU编码
+  upstream:
+  - SKUInWarehouse
+  logic: 'sku_code: sku.sku_code'
+  description: SKU编码
+- rule_type: derived_property
+  name: SKU名称
+  upstream:
+  - SKUInWarehouse
+  logic: 'sku_name: sku.sku_name'
+  description: SKU名称
+- rule_type: derived_property
+  name: 品类编码
+  upstream:
+  - SKUInWarehouse
+  logic: 'pc_code: sku.product_category.pc_code'
+  description: 品类编码
+- rule_type: derived_property
+  name: 品类名称
+  upstream:
+  - SKUInWarehouse
+  logic: 'pc_name: sku.product_category.pc_name'
+  description: 品类名称
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - SKUInWarehouse
+  logic: 'wh_code: warehouse.wh_code'
+  description: 仓库编码
+- rule_type: derived_property
+  name: 仓库名称
+  upstream:
+  - SKUInWarehouse
+  logic: 'wh_name: warehouse.wh_name'
+  description: 仓库名称
+- rule_type: derived_property
+  name: 未到货采购量
+  upstream:
+  - SKUInWarehouse
+  logic: 'undelivery_purchase_qty: SUM(purchase_orders.undelivery_qty)'
+  description: 发往该仓该SKU的实时未到货/在途采购量
+- rule_type: derived_property
+  name: 未到货调拨量
+  upstream:
+  - SKUInWarehouse
+  logic: 'undelivery_replenishment_qty: SUM(replenishment_orders.undelivery_qty)'
+  description: 发往该仓该SKU的实时未到货调拨量
+- rule_type: derived_property
+  name: 未交货销售订单量
+  upstream:
+  - SKUInWarehouse
+  logic: 'undelivery_sales_qty: SUM(sales_orders.undelivery_qty)'
+  description: 未交货销售订单量
+- rule_type: derived_property
+  name: 销售订单缺货量
+  upstream:
+  - SKUInWarehouse
+  logic: 'unfulfill_sales_qty: SUM(sales_orders.unfulfill_qty)'
+  description: 销售订单缺货量
+- rule_type: derived_property
+  name: SKU库存元天
+  upstream:
+  - SKUInWarehouse
+  logic: 'idd: inventory_aging_days * onhand_inventory_qty * inventory_unit_cost'
+  description: 用于衡量当前库存按库存金额加权后的平均持有天数，反映库存资金占用时间及库存老化程度
+- rule_type: derived_property
+  name: SKU库存周转天数
+  upstream:
+  - SKUInWarehouse
+  logic: 'inventory_turnover_days: COALESCE(average_inventory_qty / average_daily_outbound_qty, 9999)'
+  description: 用于衡量库存资金按当前出库速度可维持的天数，反映其库存周转效率和资金占用水平
+- rule_type: derived_property
+  name: 品类编码
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'pc_code: product_category.pc_code'
+  description: 品类编码
+- rule_type: derived_property
+  name: 品类名称
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'pc_name: product_category.pc_name'
+  description: 品类名称
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'wh_code: warehouse.wh_code'
+  description: 仓库编码
+- rule_type: derived_property
+  name: 仓库名称
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'wh_name: warehouse.wh_name'
+  description: 仓库名称
+- rule_type: derived_property
+  name: 未到货采购量
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'undelivery_purchase_qty: SUM(sku_in_whs.undelivery_purchase_qty)'
+  description: SKU品类下聚合的实时未到货/在途采购量
+- rule_type: derived_property
+  name: 未到货调拨量
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'undelivery_replenishment_qty: SUM(sku_in_whs.undelivery_replenishment_qty)'
+  description: SKU品类下聚合的实时未到货调拨量
+- rule_type: derived_property
+  name: 未交货销售订单量
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'undelivery_sales_qty: SUM(sku_in_whs.undelivery_sales_qty)'
+  description: SKU品类下聚合的未交货销售订单量
+- rule_type: derived_property
+  name: 销售订单缺货量
+  upstream:
+  - ProductCategoryInWarehouse
+  logic: 'unfulfill_sales_qty: SUM(sku_in_whs.unfulfill_sales_qty)'
+  description: SKU品类下聚合的销售订单缺货量
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - InventoryInWarehouse
+  logic: 'wh_code: warehouse.wh_code'
+  description: 仓库编码
+- rule_type: derived_property
+  name: 仓库名称
+  upstream:
+  - InventoryInWarehouse
+  logic: 'wh_name: warehouse.wh_name'
+  description: 仓库名称
+- rule_type: derived_property
+  name: 未到货采购量
+  upstream:
+  - InventoryInWarehouse
+  logic: 'undelivery_purchase_qty: SUM(sku_in_whs.undelivery_purchase_qty)'
+  description: 仓库总实时未到货/在途采购量
+- rule_type: derived_property
+  name: 未到货调拨量
+  upstream:
+  - InventoryInWarehouse
+  logic: 'undelivery_replenishment_qty: SUM(sku_in_whs.undelivery_replenishment_qty)'
+  description: 仓库总实时未到货调拨量
+- rule_type: derived_property
+  name: 未交货销售订单量
+  upstream:
+  - InventoryInWarehouse
+  logic: 'undelivery_sales_qty: SUM(sku_in_whs.undelivery_sales_qty)'
+  description: 仓库总未交货销售订单量
+- rule_type: derived_property
+  name: 销售订单缺货量
+  upstream:
+  - InventoryInWarehouse
+  logic: 'unfulfill_sales_qty: SUM(sku_in_whs.unfulfill_sales_qty)'
+  description: 仓库总销售订单缺货量
+- rule_type: derived_property
+  name: 仓库加权平均库存元天
+  upstream:
+  - InventoryInWarehouse
+  logic: 'average_idd: SUM(sku_in_whs.idd * sku_in_whs.influencing_factor) / SUM(sku_in_whs.influencing_factor)'
+  description: 仓库下SKU的加权平均库存元天
+- rule_type: derived_property
+  name: 仓库加权平均库存周转天数
+  upstream:
+  - InventoryInWarehouse
+  logic: 'average_inventory_turnover_days: SUM(sku_in_whs.inventory_turnover_days * sku_in_whs.influencing_factor) / SUM(sku_in_whs.influencing_factor)'
+  description: 仓库下SKU的加权平均库存周转天数
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - InventoryInWHProblem
+  logic: 'wh_code: wh.wh_code'
+  description: 业务问题所属仓库编码
+- rule_type: derived_property
+  name: 库存业务问题编码
+  upstream:
+  - InventoryInWHCause
+  logic: 'problem_code: problem.problem_code'
+  description: 库存业务问题编码
+- rule_type: derived_property
+  name: 库存业务问题类型
+  upstream:
+  - InventoryInWHCause
+  logic: 'problem_type: problem.problem_type'
+  description: 原因对应的库存业务问题类型
+- rule_type: derived_property
+  name: SKU编码
+  upstream:
+  - InventoryInWHCause
+  logic: 'sku_code: sku_in_wh.sku_code'
+  description: ''
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - InventoryInWHCause
+  logic: 'wh_code: sku_in_wh.wh_code'
+  description: ''
+- rule_type: derived_property
+  name: SKU编码
+  upstream:
+  - ForecastSalesDemand
+  logic: 'sku_code: sku.sku_code'
+  description: ''
+- rule_type: derived_property
+  name: SKU名称
+  upstream:
+  - ForecastSalesDemand
+  logic: 'sku_name: sku.sku_code'
+  description: ''
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - ForecastSalesDemand
+  logic: 'wh_code: warehouse.wh_code'
+  description: ''
+- rule_type: derived_property
+  name: SKU编码
+  upstream:
+  - ForecastSalesTrace
+  logic: 'sku_code: sku.sku_code'
+  description: SKU编码
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - ForecastSalesTrace
+  logic: 'wh_code: warehouse.wh_code'
+  description: 仓库编码
+- rule_type: derived_property
+  name: 需求预测偏差值
+  upstream:
+  - ForecastSalesTrace
+  logic: 'bias_qty: forecast_sales_qty - actual_sales_qty'
+  description: 需求预测量 - 实际销售量
+- rule_type: derived_property
+  name: 仓库编码
+  upstream:
+  - InventoryRisk
+  logic: 'wh_code: warehouse.wh_code'
+  description: 库存风险来源仓库
+- rule_type: derived_property
+  name: 仓库名称
+  upstream:
+  - InventoryRisk
+  logic: 'wh_name: warehouse.wh_name'
+  description: 库存风险来源仓库名称
+- rule_type: trigger
+  name: 库存周转天数偏低预警
+  upstream:
+  - SKUInWarehouse
+  logic:
+    ALL:
+    - field: sku.abc_type
+      operator: in
+      value:
+      - A
+      - B
+      - C
+    - field: inventory_turnover_days
+      operator: '>='
+      value: 0
+    - field: inventory_turnover_days
+      operator: <=
+      value: 10
+  downstream: update_inventory_level
+  description: 针对A/B/C类SKU，当库存周转天数介于0至10天时触发，更新库存等级为'偏低'。
+- rule_type: trigger
+  name: 库存周转天数正常标记
+  upstream:
+  - SKUInWarehouse
+  logic:
+    ALL:
+    - field: sku.abc_type
+      operator: in
+      value:
+      - A
+      - B
+      - C
+    - field: inventory_turnover_days
+      operator: '>='
+      value: 11
+    - field: inventory_turnover_days
+      operator: <=
+      value: 30
+  downstream: update_inventory_level
+  description: 针对A/B/C类SKU，当库存周转天数介于11至30天时触发，更新库存等级为'正常'。
+- rule_type: trigger
+  name: 库存周转天数偏高预警
+  upstream:
+  - SKUInWarehouse
+  logic:
+    ALL:
+    - field: sku.abc_type
+      operator: in
+      value:
+      - A
+      - B
+      - C
+    - field: inventory_turnover_days
+      operator: '>='
+      value: 31
+    - field: inventory_turnover_days
+      operator: <=
+      value: 60
+  downstream: update_inventory_level
+  description: 针对A/B/C类SKU，当库存周转天数介于31至60天时触发，更新库存等级为'偏高'。
+- rule_type: trigger
+  name: 库存周转天数异常高预警
+  upstream:
+  - SKUInWarehouse
+  logic:
+    ALL:
+    - field: sku.abc_type
+      operator: in
+      value:
+      - A
+      - B
+      - C
+    - field: inventory_turnover_days
+      operator: '>='
+      value: 61
+  downstream: update_inventory_level
+  description: 针对A/B/C类SKU，当库存周转天数大于等于61天时触发，标记库存周转天数异常高。
+- rule_type: trigger
+  name: 供需匹配缺货预警
+  upstream:
+  - SKUInWarehouse
+  logic:
+    ALL:
+    - field: sku.abc_type
+      operator: in
+      value:
+      - A
+      - B
+      - C
+    - field: unfulfill_sales_qty
+      operator: '>'
+      value: 0
+  downstream: update_supply_demand_matching
+  description: 针对A/B/C类SKU，当未满足的销售数量大于0时触发，标记当前供需状态为缺货。
+- rule_type: trigger
+  name: 仓库库存超储极高风险(P1)
+  upstream:
+  - InventoryInWarehouse
+  logic:
+    ALL:
+    - field: average_inventory_turnover_days
+      operator: '>='
+      value: 61
+  downstream: add_risk_event
+  description: 当在仓平均库存周转天数达到或超过61天时，触发P1级别极高超储风险告警并实施专项管控。
+- rule_type: trigger
+  name: 仓库库存超储高风险(P2)
+  upstream:
+  - InventoryInWarehouse
+  logic:
+    ALL:
+    - field: average_inventory_turnover_days
+      operator: '>='
+      value: 51
+    - field: average_inventory_turnover_days
+      operator: <=
+      value: 60
+  downstream: add_risk_event
+  description: 当在仓平均库存周转天数介于51至60天时，触发P2级别超储高风险告警并实施专项管控。
+- rule_type: trigger
+  name: 仓库库存超储低风险(P3)
+  upstream:
+  - InventoryInWarehouse
+  logic:
+    ALL:
+    - field: average_inventory_turnover_days
+      operator: '>='
+      value: 30
+    - field: average_inventory_turnover_days
+      operator: <=
+      value: 50
+  downstream: add_risk_event
+  description: 当在仓平均库存周转天数介于30至50天时，触发P3级别超储低风险告警。
+- rule_type: trigger
+  name: 仓库库存缺货极高风险(P0)
+  upstream:
+  - InventoryInWarehouse
+  logic:
+    ALL:
+    - field: unfulfill_sales_qty
+      operator: '>'
+      value: 0
+  downstream: add_risk_event
+  description: 当在仓未满足的销售订单需求大于0时，触发最高级别(P0)的缺货风险告警并实施专项管控。
+- rule_type: trigger
+  name: 高危风险升级为业务问题
+  upstream:
+  - InventoryRisk
+  logic:
+    ALL:
+    - field: risk_level
+      operator: in
+      value:
+      - P0
+      - P1
+      - P2
+  downstream: create_problem_from_risk
+  description: 监控新产生的风险事件，若风险等级达到 P0/P1/P2，则自动升级并立项为仓库库存业务问题。
+- rule_type: trigger
+  name: 低危风险发送告警消息
+  upstream:
+  - InventoryRisk
+  logic:
+    ALL:
+    - field: risk_level
+      operator: ==
+      value: P3
+  downstream: send_risk_message
+  description: 监控新产生的风险事件，若风险等级为 P3，则不升级为业务问题，仅发送告警消息。
+- rule_type: trigger
+  name: 业务问题根因分析
+  upstream:
+  - InventoryInWHProblem
+  logic:
+    ALL:
+    - field: problem_code
+      operator: '!='
+      value: ''
+  downstream: analyze_root_cause
+  description: 监控新产生的仓库库存业务问题，一旦立项则触发根因分析算法，自动追溯采购、调拨及需求预测异常并生成根因记录。

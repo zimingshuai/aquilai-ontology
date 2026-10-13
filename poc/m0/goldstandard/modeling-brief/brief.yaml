@@ -1,0 +1,11 @@
+# 资料包清单（brief）
+domain: supplier-recon            # 供应商对账域
+scenario_name: 供应商月度对账与差异处理
+business_owner: 王财务
+target_engine: new                # 新建本体（非 fnb/mfg 增量）
+source_systems:
+  - SRM                           # 供应商关系管理（供应商主数据、合同）
+  - WMS                           # 交货记录
+  - FIM                           # 财务发票系统（发票金额、对账单）
+known_conflicts: []               # 无已知口径冲突
+notes: 财务部希望按月对账，差异超阈值自动进入复核流程

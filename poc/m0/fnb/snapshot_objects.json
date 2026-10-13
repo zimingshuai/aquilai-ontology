@@ -1,0 +1,1100 @@
+{
+  "ProductCategory": {
+    "display_name": "产品品类",
+    "table_name": "product_category",
+    "description": "餐饮食用品及供应链物料的标准品类层级与分类定义",
+    "properties": {
+      "pc_code": {
+        "display_name": "品类编码",
+        "description": "品类编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "pc_name": {
+        "display_name": "品类名称",
+        "description": "品类名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "description": {
+        "display_name": "品类描述",
+        "description": "品类描述",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "SKU": {
+    "display_name": "商品SKU",
+    "table_name": "sku",
+    "description": "餐饮与供应链场景下的物料单元，记录产品基础物理规格及型号信息",
+    "properties": {
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "SKU编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "sku_name": {
+        "display_name": "SKU名称",
+        "description": "SKU名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "abc_type": {
+        "display_name": "ABC分类",
+        "description": "按照SKU对库存金额的累计贡献进行排序，并根据累计贡献比例划分A/B/C等级",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_type": {
+        "display_name": "所属物料层级",
+        "description": "所属物料层级",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "base_uom": {
+        "display_name": "基础计量单位",
+        "description": "基础计量单位",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "purchase_uom": {
+        "display_name": "采购计量单位",
+        "description": "采购计量单位",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "sales_uom": {
+        "display_name": "销售计量单位",
+        "description": "销售计量单位",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "shelf_life_days": {
+        "display_name": "总货架寿命天数",
+        "description": "从商品生产日期到商品失效日期之间允许流通、存储和销售的最长时间，用于衡量商品整体可销售周期，是库存管理、保质期控制和供应链决策的重要基础指标。",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "min_receive_shelf_life": {
+        "display_name": "收货最小剩余货架期",
+        "description": "供应商送货到仓库或门店时，商品必须至少保留的可销售时间，用于保障收货商品具备足够的销售周期，降低临期和报损风险。",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "sled_days": {
+        "display_name": "最佳赏味期天数",
+        "description": "商品在规定储存条件下能够保持最佳口感、风味、品质状态的时间周期，用于指导食品质量管理、库存周转和临期运营策略。",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "storage_type": {
+        "display_name": "存储类型",
+        "description": "常温品/冷鲜品/冷冻品",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "storage_condition": {
+        "display_name": "存储条件",
+        "description": "常温/冷藏/冷冻",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "temp_control_req": {
+        "display_name": "温度控制要求",
+        "description": "温度控制要求（Temperature Control Requirement）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "allergen": {
+        "display_name": "过敏原",
+        "description": "标识物料是否包含过敏原，如小麦、坚果、乳制品等",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "organic_flag": {
+        "display_name": "有机标识",
+        "description": "标识该SKU是否为有机产品：Y/N",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "trace_code": {
+        "display_name": "追溯码",
+        "description": "用于批次追踪、供应链追溯的编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "status": {
+        "display_name": "SKU状态",
+        "description": "表示SKU当前状态，如正常、停用、冻结等",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "create_time": {
+        "display_name": "创建时间",
+        "description": "数据行创建时间",
+        "data_type": "TIMESTAMP",
+        "is_primary": false
+      },
+      "update_time": {
+        "display_name": "更新时间",
+        "description": "数据行更新时间",
+        "data_type": "TIMESTAMP",
+        "is_primary": false
+      },
+      "launch_date": {
+        "display_name": "上市日期",
+        "description": "SKU首次进入市场或供应链体系的日期",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "pc_code": {
+        "display_name": "品类编码",
+        "description": "品类编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "pc_name": {
+        "display_name": "品类名称",
+        "description": "品类名称",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "product_category": "ProductCategory"
+    }
+  },
+  "Warehouse": {
+    "display_name": "仓库",
+    "table_name": "warehouse",
+    "description": "餐饮及供应链物流存储网络中的物理库房与仓储节点",
+    "properties": {
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "仓库编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "wh_name": {
+        "display_name": "仓库名称",
+        "description": "仓库名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "factory_code": {
+        "display_name": "工厂编码",
+        "description": "仓库所属工厂编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "region": {
+        "display_name": "区域",
+        "description": "仓库所属区域",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "temp_type": {
+        "display_name": "仓库支持温层",
+        "description": "仓库支持温层：冷链、常温",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "city": {
+        "display_name": "城市",
+        "description": "仓库所属城市",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "max_storage_capacity": {
+        "display_name": "最大库容",
+        "description": "仓库最大可存储能力",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "PurchaseOrder": {
+    "display_name": "采购订单",
+    "table_name": "purchase_order",
+    "description": "已确认未收货的采购订单, 在途采购量",
+    "properties": {
+      "purchase_order_nr": {
+        "display_name": "采购订单编号",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "order_date": {
+        "display_name": "采购订单日期",
+        "description": "由采购部门发起采购订单日期",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "required_delivery_date": {
+        "display_name": "要求交货日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "estimated_arrival_date": {
+        "display_name": "预计到达日期",
+        "description": "采购订单预计到达日期",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "ship_date": {
+        "display_name": "发货日期",
+        "description": "发货日期",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "total_order_qty": {
+        "display_name": "订单总量",
+        "description": "订单总量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "delivered_qty": {
+        "display_name": "交货量",
+        "description": "交货量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_qty": {
+        "display_name": "未交货量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "status": {
+        "display_name": "采购订单状态",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "unit_code": {
+        "display_name": "采购单位",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "unit_cost": {
+        "display_name": "单位成本（元）",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "cancel_flag": {
+        "display_name": "是否取消标记",
+        "description": "",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "close_flag": {
+        "display_name": "是否关闭标记",
+        "description": "",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "采购订单所属仓库",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "sku": "SKU",
+      "warehouse": "Warehouse",
+      "sku_in_warehouse": "SKUInWarehouse"
+    }
+  },
+  "ReplenishmentOrder": {
+    "display_name": "调拨单",
+    "table_name": "replenishment_order",
+    "description": "上游仓向下游仓调拨库存的调拨单",
+    "properties": {
+      "replenishment_order_nr": {
+        "display_name": "调拨单编号",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "undelivery_qty": {
+        "display_name": "未交货量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "sku_in_warehouse": "SKUInWarehouse"
+    }
+  },
+  "SalesOrder": {
+    "display_name": "销售订单",
+    "table_name": "sales_order",
+    "description": "实时销售订单",
+    "properties": {
+      "order_nr": {
+        "display_name": "订单编号",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "due_date": {
+        "display_name": "交付日期",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "order_qty": {
+        "display_name": "订单总量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "unit_code": {
+        "display_name": "销售单位",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "unit_cost": {
+        "display_name": "单位成本（元）",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "delivery_qty": {
+        "display_name": "已交付量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_qty": {
+        "display_name": "未交付量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "fulfill_qty": {
+        "display_name": "满足量",
+        "description": "满足量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "unfulfill_qty": {
+        "display_name": "缺货量",
+        "description": "缺货/未满足量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "sku_name": {
+        "display_name": "SKU名称",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "sku": "SKU",
+      "warehouse": "Warehouse",
+      "sku_in_warehouse": "SKUInWarehouse"
+    }
+  },
+  "SKUInWarehouse": {
+    "display_name": "SKU在库状态",
+    "table_name": "sku_in_warehouse",
+    "description": "表达特定的 SKU 在具体仓库中的进销存属性及流转量化指标",
+    "properties": {
+      "sku_in_wh_code": {
+        "display_name": "SKU-仓库编码",
+        "description": "SKU-仓库编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "influencing_factor": {
+        "display_name": "影响因子",
+        "description": "SKU的影响因子，越大影响越大",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "onhand_inventory_qty": {
+        "display_name": "实时库存数量",
+        "description": "SKU-仓库聚合的实时库存数量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "inventory_aging_days": {
+        "display_name": "库龄天数",
+        "description": "用于计算库存元天（IDD）等指标",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "inventory_unit_cost": {
+        "display_name": "单位库存成本（元）",
+        "description": "单位库存存储成本、单位库存金额等，用于计算库存指标",
+        "data_type": "DECIMAL",
+        "is_primary": false
+      },
+      "average_inventory_qty": {
+        "display_name": "平均库存量",
+        "description": "评估周期内平均库存量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "average_daily_outbound_qty": {
+        "display_name": "日出库量",
+        "description": "评估周期内平均日出库量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "target_inventory_level": {
+        "display_name": "目标库存水位",
+        "description": "企业根据业务目标、服务水平要求和供应链策略，希望库存长期维持的理想库存水平，用于指导补货、库存控制和库存优化",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "safety_stock": {
+        "display_name": "安全库存",
+        "description": "为了应对需求波动、供应不确定性而额外持有的库存缓冲，用于保障服务水平，降低缺货风险",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "inventory_level": {
+        "display_name": "库存水位",
+        "description": "库存周转天数偏低/正常/偏高/异常高",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "supply_demand_matching": {
+        "display_name": "库存供需匹配",
+        "description": "是否有库存缺货",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "SKU编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "sku_name": {
+        "display_name": "SKU名称",
+        "description": "SKU名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "pc_code": {
+        "display_name": "品类编码",
+        "description": "品类编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "pc_name": {
+        "display_name": "品类名称",
+        "description": "品类名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "仓库编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_name": {
+        "display_name": "仓库名称",
+        "description": "仓库名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "undelivery_purchase_qty": {
+        "display_name": "未到货采购量",
+        "description": "发往该仓该SKU的实时未到货/在途采购量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_replenishment_qty": {
+        "display_name": "未到货调拨量",
+        "description": "发往该仓该SKU的实时未到货调拨量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_sales_qty": {
+        "display_name": "未交货销售订单量",
+        "description": "未交货销售订单量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "unfulfill_sales_qty": {
+        "display_name": "销售订单缺货量",
+        "description": "销售订单缺货量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "idd": {
+        "display_name": "SKU库存元天",
+        "description": "用于衡量当前库存按库存金额加权后的平均持有天数，反映库存资金占用时间及库存老化程度",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "inventory_turnover_days": {
+        "display_name": "SKU库存周转天数",
+        "description": "用于衡量库存资金按当前出库速度可维持的天数，反映其库存周转效率和资金占用水平",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "sku": "SKU",
+      "warehouse": "Warehouse",
+      "product_category_in_warehouse": "ProductCategoryInWarehouse",
+      "inventory_in_warehouse": "InventoryInWarehouse"
+    }
+  },
+  "ProductCategoryInWarehouse": {
+    "display_name": "品类在库状态",
+    "table_name": "product_category_in_warehouse",
+    "description": "产品品类在具体仓储物理空间下聚合的库存、周转和补货水位指标",
+    "properties": {
+      "pc_in_wh_code": {
+        "display_name": "品类-仓库编码",
+        "description": "品类-仓库编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "onhand_inventory_qty": {
+        "display_name": "实时库存数量",
+        "description": "品类-仓库聚合的实时库存数量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "target_inventory_level": {
+        "display_name": "目标库存水位",
+        "description": "企业根据业务目标、服务水平要求和供应链策略，希望库存长期维持的理想库存水平，用于指导补货、库存控制和库存优化",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "safety_stock": {
+        "display_name": "安全库存",
+        "description": "为了应对需求波动、供应不确定性而额外持有的库存缓冲，用于保障服务水平，降低缺货风险",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "inventory_unit_cost": {
+        "display_name": "单位库存成本（元）",
+        "description": "单位库存存储成本、单位库存金额等，用于计算库存指标",
+        "data_type": "DECIMAL",
+        "is_primary": false
+      },
+      "inventory_aging_days": {
+        "display_name": "库龄天数",
+        "description": "用于计算库存元天（IDD）等指标",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "average_daily_outbound_qty": {
+        "display_name": "日出库量",
+        "description": "评估周期内平均日出库量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "average_inventory_qty": {
+        "display_name": "平均库存量",
+        "description": "评估周期内平均库存量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "pc_code": {
+        "display_name": "品类编码",
+        "description": "品类编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "pc_name": {
+        "display_name": "品类名称",
+        "description": "品类名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "仓库编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_name": {
+        "display_name": "仓库名称",
+        "description": "仓库名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "undelivery_purchase_qty": {
+        "display_name": "未到货采购量",
+        "description": "SKU品类下聚合的实时未到货/在途采购量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_replenishment_qty": {
+        "display_name": "未到货调拨量",
+        "description": "SKU品类下聚合的实时未到货调拨量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_sales_qty": {
+        "display_name": "未交货销售订单量",
+        "description": "SKU品类下聚合的未交货销售订单量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "unfulfill_sales_qty": {
+        "display_name": "销售订单缺货量",
+        "description": "SKU品类下聚合的销售订单缺货量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "product_category": "ProductCategory",
+      "warehouse": "Warehouse"
+    }
+  },
+  "InventoryInWarehouse": {
+    "display_name": "仓库库存总量",
+    "table_name": "inventory_in_warehouse",
+    "description": "表述单个完整仓库尺度下的实时库存总量、在途总量及库内运转宏观数据",
+    "properties": {
+      "inventory_code": {
+        "display_name": "仓库库存编码",
+        "description": "仓库库存编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "onhand_inventory_qty": {
+        "display_name": "实时库存数量",
+        "description": "仓库的实时库存总量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "target_inventory_level": {
+        "display_name": "目标库存水位",
+        "description": "企业根据业务目标、服务水平要求和供应链策略，希望库存长期维持的理想库存水平，用于指导补货、库存控制和库存优化",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "safety_stock": {
+        "display_name": "安全库存",
+        "description": "为了应对需求波动、供应不确定性而额外持有的库存缓冲，用于保障服务水平，降低缺货风险",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "仓库编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_name": {
+        "display_name": "仓库名称",
+        "description": "仓库名称",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "undelivery_purchase_qty": {
+        "display_name": "未到货采购量",
+        "description": "仓库总实时未到货/在途采购量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_replenishment_qty": {
+        "display_name": "未到货调拨量",
+        "description": "仓库总实时未到货调拨量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "undelivery_sales_qty": {
+        "display_name": "未交货销售订单量",
+        "description": "仓库总未交货销售订单量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "unfulfill_sales_qty": {
+        "display_name": "销售订单缺货量",
+        "description": "仓库总销售订单缺货量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "average_idd": {
+        "display_name": "仓库加权平均库存元天",
+        "description": "仓库下SKU的加权平均库存元天",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "average_inventory_turnover_days": {
+        "display_name": "仓库加权平均库存周转天数",
+        "description": "仓库下SKU的加权平均库存周转天数",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "warehouse": "Warehouse"
+    }
+  },
+  "InventoryInWHProblem": {
+    "display_name": "仓库库存业务问题",
+    "table_name": "inventory_in_wh_problem",
+    "description": "用于定义仓库库存业务问题",
+    "properties": {
+      "problem_code": {
+        "display_name": "业务问题",
+        "description": "业务问题编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "problem_type": {
+        "display_name": "业务问题类型",
+        "description": "业务问题类型",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "problem_description": {
+        "display_name": "业务问题描述",
+        "description": "业务问题描述",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "create_date": {
+        "display_name": "创建日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "业务问题所属仓库编码",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "wh": "InventoryInWarehouse",
+      "sku_in_wh": "SKUInWarehouse"
+    }
+  },
+  "InventoryInWHCause": {
+    "display_name": "仓库库存业务问题原因",
+    "table_name": "inventory_in_wh_cause",
+    "description": "用于定义仓库库存业务问题的原因",
+    "properties": {
+      "cause_code": {
+        "display_name": "原因编码",
+        "description": "原因编码",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "cause_type": {
+        "display_name": "原因类型",
+        "description": "原因类型",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "trace_info": {
+        "display_name": "追溯信息",
+        "description": "原因追溯的具体信息",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "problem_code": {
+        "display_name": "库存业务问题编码",
+        "description": "库存业务问题编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "problem_type": {
+        "display_name": "库存业务问题类型",
+        "description": "原因对应的库存业务问题类型",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "problem": "InventoryInWHProblem",
+      "sku_in_wh": "SKUInWarehouse"
+    }
+  },
+  "ForecastSalesDemand": {
+    "display_name": "预测销售需求",
+    "table_name": "forecast_sales_demand",
+    "description": "预测销售需求",
+    "properties": {
+      "order_nr": {
+        "display_name": "订单编号",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "forecast_date": {
+        "display_name": "需求预测日期",
+        "description": "需求预测日期",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "forecast_qty": {
+        "display_name": "预测需求量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "unit_code": {
+        "display_name": "销售单位",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "unit_cost": {
+        "display_name": "单位成本（元）",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "sku_name": {
+        "display_name": "SKU名称",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "sku": "SKU",
+      "warehouse": "Warehouse"
+    }
+  },
+  "ForecastSalesTrace": {
+    "display_name": "需求预测追踪记录",
+    "table_name": "forecast_sales_trace",
+    "description": "用于追踪需求预测量与实际需求量的偏差和评估指标值",
+    "properties": {
+      "trace_nr": {
+        "display_name": "需求预测追踪编码",
+        "description": "主键",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "forecast_version": {
+        "display_name": "需求预测版本",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "forecast_start_date": {
+        "display_name": "需求预测时间窗口开始日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "forecast_end_date": {
+        "display_name": "需求预测时间窗口结束日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "sales_day": {
+        "display_name": "需求预测样本日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "actual_sales_qty": {
+        "display_name": "实际销售量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "forecast_sales_qty": {
+        "display_name": "需求预测量",
+        "description": "",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "sku_code": {
+        "display_name": "SKU编码",
+        "description": "SKU编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "仓库编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "bias_qty": {
+        "display_name": "需求预测偏差值",
+        "description": "需求预测量 - 实际销售量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "sku": "SKU",
+      "warehouse": "Warehouse"
+    }
+  },
+  "InventoryRisk": {
+    "display_name": "需求预测追踪记录",
+    "table_name": "inventory_risk",
+    "description": "用于追踪需求预测量与实际需求量的偏差和评估指标值",
+    "properties": {
+      "risk_code": {
+        "display_name": "库存风险主键编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "risk_type": {
+        "display_name": "库存风险类型",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "risk_level": {
+        "display_name": "库存风险等级",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "risk_description": {
+        "display_name": "库存风险描述",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "risk_source": {
+        "display_name": "风险源头",
+        "description": "库存风险来源，比如缺货/超储SKU",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "control_measures": {
+        "display_name": "管控措施",
+        "description": "风险管控对应措施，用于后续流程判定",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "create_date": {
+        "display_name": "创建日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "wh_code": {
+        "display_name": "仓库编码",
+        "description": "库存风险来源仓库",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "wh_name": {
+        "display_name": "仓库名称",
+        "description": "库存风险来源仓库名称",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "warehouse": "Warehouse"
+    }
+  },
+  "InventoryOptimizationSolution": {
+    "display_name": "库存优化方案",
+    "table_name": "inventory_optimization_solution",
+    "description": "",
+    "properties": {
+      "create_date": {
+        "display_name": "创建日期",
+        "description": "",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "solution_priority": {
+        "display_name": "方案优先级",
+        "description": "方案优先级",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "solution_info": {
+        "display_name": "优化方案具体信息",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "solution_level": {
+        "display_name": "优化方案层级",
+        "description": "实时层/计划层",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "solution_type": {
+        "display_name": "优化方案类型",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "problem_code": {
+        "display_name": "问题编码",
+        "description": "",
+        "data_type": "STRING",
+        "is_primary": true
+      }
+    },
+    "links": {}
+  }
+}
