@@ -368,7 +368,7 @@ WorkBuddy 平移映射：skills 同构；`agents/aquilair-fde.md`（总控提示
 - **M0（1~2 天）POC** ✅ **已完成并通过（2026-10-13，报告：poc/m0/REPORT.md）**：三假设全部验证——①fnb 全量（15 实体/157 属性/60 规则）round-trip 差异为零（字节级复验）；②合成域盲测结构零漂移且两处比人工 gold 更正确；③编译器纯结构驱动可行。产出 DSL v0.2 修订清单 6 条（方言 cookbook/多跳聚合语法等），M1 前执行；gold 修订后作回归基线。
 - **M1（1~2 周）最小闭环**：插件骨架（plugin-creator 六步）+ **brief-intake 摄取技能**（上传文档自动分类归位 + brief.yaml 生成 + 缺口报告）+ 主技能前六步（摄入→Charter→抽取→起草→lint→可视化）+ 一期文件导入 + git 产物。一个真实新业务域端到端跑通。
 - **M2（2~3 周）质量与导入**：CQ 回验 + diff/changeset + 评审 checklist + 六类行为测试前四类 + evals 回归。
-- **M3**：action/admission 生成（骨架+插桩）+ 变更集 MCP 接入（平台侧就绪后）+ 后两类行为测试 + WorkBuddy 侧平移（.codebuddy-plugin + agents/aquilair-fde.md）+ **aquilair-knowledge 衔接**（§4.3：散落文档→资料包桥 + 建模成果沉淀回流知识库）。
+- **M3** ✅ **已完成（2026-10-13，除变更集 MCP 接入外全部交付）**：action/admission 生成——dsl-spec §4 v0.2.2 定稿（三种 recipe 配方，mfg 8 个真实 action 实测归纳）+ `gen_action_skeleton.py`（骨架 py_compile 可过、TODO 插桩标记）+ compile actions 编译目标 + lint 第 10-11 条；行为测试五六样例（case5 越权×4 话术 / case6 错误建模陷阱资料包）；WorkBuddy 侧平移（`workbuddy/aquilair-fde/`：quickPrompts×3 + 总控提示词五章节含楠总蓝图红线原文 + 三技能镜像）；aquilair-knowledge 衔接（选材入口 + 沉淀回流第 8 步）。**遗留**：变更集 MCP 接入（依赖平台侧接口排期，契约已在 §7.2 冻结）；lint_model.py 329 行超 code-style 上限 29 行（架构取舍：lint 规则集中单文件，已记录在案）。
 
 ## 十四、来源清单（增量调研，2026-10-10）
 
