@@ -1,0 +1,2461 @@
+format: studio-model
+object_types:
+- code: Project
+  name: 项目
+  description: 机型/产品线，需求和 BOM 的挂载主体（如 P-Z9/Z9、P-Z10 仅风险 BOM、P-X8 历史停产）
+  enabled: true
+  attrs:
+  - code: project_id
+    name: 项目ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 项目唯一编号（如 P-Z9）
+    isDerived: false
+  - code: project_code
+    name: 项目编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 系统编码（如 100-Z9001）
+    isDerived: false
+  - code: model_name
+    name: 机型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 机型名称（如 Z9/Z9S/Z10/X8）
+    isDerived: false
+  - code: stage
+    name: 项目阶段
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 量产 MP=量产；NPI-DVT=新品验证；EOL=停产（历史）
+    isDerived: false
+  - code: bom_status_desc
+    name: BOM状态说明
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 该项目当前 BOM 版本状态快照描述（如 标准 v3.2；换料后主板 v2.2）
+    isDerived: false
+  - code: purpose_desc
+    name: 用途说明
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 主线/补充测试/历史案例包等，历史案例包不与当前混算
+    isDerived: false
+- code: Material
+  name: 物料
+  description: 最小跟踪单位（WiFi 模组、SoC 等），用于汇总与库存跟踪
+  enabled: true
+  attrs:
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 物料唯一编码（如 300-W6A01、H-WIFI-OLD、UNIT-M）
+    isDerived: false
+  - code: material_name
+    name: 物料名称
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 如 WiFi5/WiFi6/SoC
+    isDerived: false
+  - code: base_uom
+    name: 基本单位
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 物料基本计量单位（颗/盒）
+    isDerived: false
+  - code: unit_cost
+    name: 演示成本单价
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 固定演示成本（WiFi5 16 元/颗、WiFi6 20 元/颗），与供应商报价区间分别记录，不代表真实报价
+    isDerived: false
+- code: UnitConversion
+  name: 单位换算
+  description: 已批准的计量单位换算关系（如 1盒=100颗）；移除换算依据后提示缺证，不得将 12 盒当作 12 颗
+  enabled: true
+  attrs:
+  - code: conversion_id
+    name: 换算关系ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 换算关系唯一编号
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 换算适用的物料
+    isDerived: false
+  - code: from_uom
+    name: 源单位
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 被换算单位（如 盒）
+    isDerived: false
+  - code: to_uom
+    name: 目标单位
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 换算目标单位（如 颗，即基本单位）
+    isDerived: false
+  - code: ratio
+    name: 换算比率
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 1 源单位 = ratio 目标单位（1盒=100颗）
+    isDerived: false
+  - code: approval_status
+    name: 批准状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 换算关系须为已批准才可参与计算
+    isDerived: false
+  - code: evidence_status
+    name: 证据状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: complete=证据齐全；missing=换算依据被移除，缺证提示、不按零处理
+    isDerived: false
+- code: Supplier
+  name: 供应商
+  description: 物料供应商（参考清单的整理维度；参考清单不等于采购订单，默认不外发）
+  enabled: true
+  attrs:
+  - code: supplier_id
+    name: 供应商编码
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 供应商唯一编码（如 V-WLINK）
+    isDerived: false
+  - code: supplier_name
+    name: 供应商名称
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供应商名称
+    isDerived: false
+  - code: purchasing_group
+    name: 采购组
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 采购组编码（如 206）
+    isDerived: false
+- code: BomLine
+  name: BOM行
+  description: 机型结构清单行（标准/风险/维修 BOM），含版本、层级用量、损耗与生效日期；标准 BOM 与风险 BOM 分开比较，新旧替代料行不得在同一有效 BOM 中同时作为必需组件相加
+  enabled: true
+  attrs:
+  - code: line_id
+    name: BOM行ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 行唯一编号（如 L-Z9-01、H-BOM-OLD-R1）
+    isDerived: false
+  - code: bom_type
+    name: BOM类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: standard=标准 BOM；risk=风险 BOM（NPI 预批）；maintenance=维修 BOM（售后）
+    isDerived: false
+  - code: version
+    name: BOM版本
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属 BOM 版本（如 整机 v3.2、主板 v2.2、风险 v0.9）
+    isDerived: false
+  - code: parent_material_id
+    name: 父项物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 父项物料（如 100-Z9001 整机、200-Z9PCB 主板）；不进 links（双链取舍见 assumptions A7）
+    isDerived: false
+  - code: material_id
+    name: 子项物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: BOM 行的子项物料（如 300-W6A01 WiFi6），links 主关联；父项引用以属性承载
+    isDerived: false
+  - code: project_id
+    name: 所属项目ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 行所属项目（由项目表"BOM 状态"关联推断，附录行表未单列）
+    isDerived: false
+  - code: qty_per
+    name: BOM行用量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 该行子项用量原始值，单位一致后参与计算
+    isDerived: false
+  - code: base_qty
+    name: BOM基准数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 行用量对应的父项基准数量（如 1/1）
+    isDerived: false
+  - code: yield_rate
+    name: 良率
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 该层良率，仅明确适用的层级计入；没有损耗的层级取 1（主案例良率均设 1，多层损耗见测试五）
+    isDerived: false
+  - code: effective_from
+    name: 生效开始日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 行生效起始日期（如 2026-11-01 起）
+    isDerived: false
+  - code: effective_to
+    name: 生效截止日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 行生效截止日期（旧 WiFi 行至 2026-10-31，V1 更新后的有效期）
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见时间，取值为数据版本号（V0/V1/V0之前）；版本机制见 DataVersion
+    isDerived: false
+  - code: evidence_status
+    name: 证据状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: complete=明细齐全；missing=缺证版本移除行明细后标记缺失，依赖它的推导同步不可验证
+    isDerived: false
+  - code: standard_usage
+    name: 标准用量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 标准 = BOM 行用量 ÷ BOM 基准数量（derived）
+    isDerived: true
+- code: EcnRecord
+  name: 工程变更记录
+  description: 工程变更（ECN）记录（如 Z9 换料 ECN：WiFi5 退出、WiFi6 引入、11-01 生效）；缺证版本保留引用编号但批准文件与变更后 BOM 明细标记缺失
+  enabled: true
+  attrs:
+  - code: ecn_id
+    name: 工程变更ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 变更唯一编号（历史案例如 H-ECN-01；主案例编号文档未给出，见 OQ-10）
+    isDerived: false
+  - code: project_id
+    name: 所属项目ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变更所属项目
+    isDerived: false
+  - code: change_desc
+    name: 变更内容
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变更描述（换料：WiFi5 退出、WiFi6 引入）
+    isDerived: false
+  - code: publish_date
+    name: 发布日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变更发布日期（V1=2026-09-29）
+    isDerived: false
+  - code: effective_date
+    name: 生效日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变更生效日期（2026-11-01）
+    isDerived: false
+  - code: approval_status
+    name: 批准状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: approved=已批准；pending=待批准
+    isDerived: false
+  - code: evidence_status
+    name: 证据状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: complete=批准文件与变更后 BOM 明细齐全；missing=引用编号保留但批准文件缺失，依赖推导不可验证
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本（如 V1）
+    isDerived: false
+- code: Demand
+  name: 需求
+  description: 各项目需要数量与日期（订单/MPS/预测/售后维修），覆盖关系明确；同 ID 新版本替换旧版本、不追加计数
+  enabled: true
+  attrs:
+  - code: demand_id
+    name: 需求ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 需求唯一编号（如 DEM-Z9-NOV、ORD-Z9-NOV、FCST-Z9-NOV）
+    isDerived: false
+  - code: demand_version
+    name: 需求版本
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 同一需求的版本（v1/v2），v2 替换 v1 而非追加；与 demand_id 构成复合主键
+    isDerived: false
+  - code: project_id
+    name: 项目ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 需求归属项目
+    isDerived: false
+  - code: need_date
+    name: 需要日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 物料需要可用的日期（非客户交货日期，如 2026-11-30）
+    isDerived: false
+  - code: demand_qty
+    name: 需求数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 需求数量（台/件）
+    isDerived: false
+  - code: source_type
+    name: 需求来源
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: MPS=已确认生产计划；order=客户订单；forecast=早期预测；service=售后维修需求
+    isDerived: false
+  - code: covered_by_demand_id
+    name: 被覆盖于需求ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 覆盖关系：本需求已包含于哪条需求（ORD-Z9-NOV covered_by=DEM-Z9-NOV）；无覆盖依据时不得仅凭来源优先级舍弃；以属性承载、不建 links（复合主键目标，见 assumptions A7 与 OQ-03）
+    isDerived: false
+  - code: status
+    name: 需求状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: confirmed=已确认参与计算；superseded=已被新版本替换；reference=仅作参考（被替换的早期预测）
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本（V0/V3）
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属数据包（主案例/历史案例/补充测试互不混算）
+    isDerived: false
+- code: MaterialAuthorization
+  name: 物料授权
+  description: 整机料号维度的供应商备料授权（对应卫国策备表口径）；授权仅是审批覆盖口径，不构成物理供给，不得因授权增加而新增供给；新版本替换旧版本
+  enabled: true
+  attrs:
+  - code: auth_id
+    name: 授权ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 授权记录唯一编号
+    isDerived: false
+  - code: auth_version
+    name: 授权版本
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 授权版本（v1/v2），v2 覆盖并替换 v1；与 auth_id 构成复合主键
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 被授权物料
+    isDerived: false
+  - code: project_id
+    name: 授权对象项目ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 授权覆盖的整机项目/产品
+    isDerived: false
+  - code: covered_qty
+    name: 授权覆盖量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 授权覆盖的数量（如 v1 覆盖 10
+    isDerived: false
+  - code: approval_status
+    name: 批准状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: approved=已批准（10月1日批准）；pending=待批准
+    isDerived: false
+  - code: effective_from
+    name: 生效开始日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 授权生效起始日期
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属数据包
+    isDerived: false
+- code: Supply
+  name: 供给记录
+  description: 物理供给条目（可用库存/质检冻结库存/已确认未收货订单/模拟采购）；质检冻结不参与供给单列待核查；模拟供给只存在于 SIM 情景、不得写入 FACT
+  enabled: true
+  attrs:
+  - code: supply_id
+    name: 供给ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 供给唯一编号（PS-1001/SIM-W6-9000/ST-R1）
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供给物料
+    isDerived: false
+  - code: supply_type
+    name: 供给类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: available_stock=可用库存；frozen_stock=质检冻结库存；open_order=已确认未收货订单；simulated_purchase=模拟采购（仅 SIM）
+    isDerived: false
+  - code: qty
+    name: 供给数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供给数量（颗）
+    isDerived: false
+  - code: available_date
+    name: 可用或到货日
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供给可用/确认到货日期；库存类取数据版本可见日（V0 映射见 assumptions A1）；未确定时缺省并由 evidence 语义约束
+    isDerived: false
+  - code: restriction_desc
+    name: 限制说明
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 使用限制（如 仅按 A.4 临时许可使用/未获放行不参与供给/不能满足 11 月）
+    isDerived: false
+  - code: po_id
+    name: 关联订单号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 订单类供给指向的采购订单（库存类为空）
+    isDerived: false
+  - code: scenario_tag
+    name: 情景标签
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: FACT=事实记录；SIM=模拟记录；事实与模拟分别保存，模拟供给不得写入 FACT
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属数据包（主案例/历史/测试包独立）
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本（六条供给均在 V0 可见）
+    isDerived: false
+  - code: exclude_reason
+    name: 排除原因
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 不参与供给分配的原因（质检冻结：未获放行，单列待核查，不认定零风险或全额损失）
+    isDerived: false
+- code: PurchaseOrder
+  name: 采购订单
+  description: 采购订单承诺与取消/延期条款（未到货供给的订单侧）；取消权限、数量上限及延期条件须为已有书面模拟证据，不能在计算出结果后临时补设
+  enabled: true
+  attrs:
+  - code: po_id
+    name: 订单号
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 订单唯一编号（PO-R1；PS-3002 对应订单）
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 订单物料
+    isDerived: false
+  - code: order_qty
+    name: 订单数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 订单总量（如 8
+    isDerived: false
+  - code: cumulative_receipt_qty
+    name: 累计有效收货量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 累计有效收货数量；明确为 0 与未导入不同（assumptions A4）
+    isDerived: false
+  - code: cancelled_qty
+    name: 已取消量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 已执行取消的数量
+    isDerived: false
+  - code: closed_unreceived_qty
+    name: 已关闭未收余量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 已关闭订单的未收余量（收货转库存后不再按原未收货数量重复计入）
+    isDerived: false
+  - code: confirmed_arrival_date
+    name: 确认到货日
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 订单确认到货日期（2026-11-20/12-20）
+    isDerived: false
+  - code: cancel_deadline
+    name: 取消截止日
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 取消窗口截止日（2026-10-15），过后不再具备取消资格
+    isDerived: false
+  - code: cancel_fee_per_unit
+    name: 取消费单价
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 每颗取消费用（1 元/颗）
+    isDerived: false
+  - code: cancel_limit_qty
+    name: 可取消数量上限
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 按权限最多可取消数量（PS-3002 最多 2
+    isDerived: false
+  - code: postpone_allowed
+    name: 是否允许整单延期
+    type: boolean
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: true=供应商允许整单延期至 postpone_deadline
+    isDerived: false
+  - code: postpone_deadline
+    name: 延期后到货日
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 延期方案的新到货日期（2027-01-15）
+    isDerived: false
+  - code: postpone_fee
+    name: 延期费用
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 延期方案费用（本例设为 0，为演示输入）
+    isDerived: false
+  - code: status
+    name: 订单状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: confirmed=已确认；closed=已关闭；cancelled=已取消
+    isDerived: false
+  - code: unreceived_qty
+    name: 订单未收货量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 未收货量 = max(订单数量−累计有效收货量−已取消量−已关闭未收余量
+    isDerived: true
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属数据包
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本
+    isDerived: false
+- code: StockMovement
+  name: 库存流水
+  description: 库存出入库流水（收货/领用/退货/报废/调整/调拨），分类互斥、调拨和处置不得重复计算；每条记录在对应日期发生后才可用于事实还原，不能用于此前的历史决策判断
+  enabled: true
+  attrs:
+  - code: movement_id
+    name: 流水ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 流水唯一编号
+    isDerived: false
+  - code: case_id
+    name: 所属案例ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 关联的历史呆滞案例（waterfall 还原）
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 流水物料
+    isDerived: false
+  - code: movement_type
+    name: 流水类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: receipt=收货入库；issue=生产领用；return=退货；scrap=报废；adjust=其他调整；transfer=调拨（互斥分类）
+    isDerived: false
+  - code: movement_qty
+    name: 流水数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 出入库数量，入库为正、出库为负（waterfall 逐项展示增加和减少）
+    isDerived: false
+  - code: movement_date
+    name: 流水日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 发生日期（发生后方可用于事实还原）
+    isDerived: false
+  - code: evidence_status
+    name: 证据状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: complete/missing；流水覆盖完整观察区间，缺证时只输出可确认事实
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本/时点
+    isDerived: false
+- code: SubstitutionPermission
+  name: 替代与转用许可
+  description: 物料间可替换规则及批准条件（替代/转用通道）；检查方向、适用项目、批次、有效期、可用日期、换算比例和批准上限后才可参与分配；失效替代关系保留问题记录但不得参与替代计算
+  enabled: true
+  attrs:
+  - code: permission_id
+    name: 许可ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 许可唯一编号（SUB-01 临时许可替代/SUB-02 售后转用）
+    isDerived: false
+  - code: permission_type
+    name: 许可类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: substitution=替代（旧料替代新料需求）；transfer=跨项目/售后转用
+    isDerived: false
+  - code: material_id
+    name: 原料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 被替代/转出的原物料（WiFi5），links 主关联；替代料引用以属性承载
+    isDerived: false
+  - code: substitute_material_id
+    name: 替代料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 被替代满足的物料需求侧（WiFi6）；不进 links（双链取舍见 assumptions A7）
+    isDerived: false
+  - code: project_id
+    name: 适用项目ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 许可仅适用的项目（SUB-01 仅 Z9；不代表新旧物料可任意互换）
+    isDerived: false
+  - code: conversion_ratio
+    name: 换算比例
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 替代换算比例（1:1）
+    isDerived: false
+  - code: batch_limit_qty
+    name: 批次限量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 指定库存批次总量上限（指定批次共 6
+    isDerived: false
+  - code: approved_usage_qty
+    name: 批准用量上限
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 最多允许使用的数量（SUB-02 最多 2
+    isDerived: false
+  - code: supply_id
+    name: 绑定供给ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 许可绑定的供给批次（SUB-01 指定库存批次/SUB-02 允许使用 PS-3002）
+    isDerived: false
+  - code: effective_from
+    name: 生效开始日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 许可生效起始（2026-11-01）
+    isDerived: false
+  - code: effective_to
+    name: 生效截止日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 许可到期日（11-30 到期；到货晚于到期日的供给不能用于补偿）
+    isDerived: false
+  - code: approval_status
+    name: 批准状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: approved=已批准；expired=已失效
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 记录可见数据版本（测试七记录均在 2026-10-02 09:00 已知）
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属数据包（SUB-02 属独立测试包）
+    isDerived: false
+- code: SupplierSupplyCondition
+  name: 供应商供货条件
+  description: 供应商×物料的供货资格与订购条件（交期/最小起订量/订购倍数/分配份额）；先按份额分配再各自向上取整，不进行二次优化
+  enabled: true
+  attrs:
+  - code: condition_id
+    name: 条件ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 供货条件唯一编号
+    isDerived: false
+  - code: supplier_id
+    name: 供应商编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供应商
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供应物料
+    isDerived: false
+  - code: lead_time_weeks
+    name: 交期（周）
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 交期周数（8 周日历周）
+    isDerived: false
+  - code: moq
+    name: 最小起订量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: MOQ（5
+    isDerived: false
+  - code: order_multiple
+    name: 订购倍数
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 订购倍数（1
+    isDerived: false
+  - code: share_ratio
+    name: 分配份额
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供应商分配份额（100%；双供应商 70%/30% 为取整前目标，实际比例另行显示）
+    isDerived: false
+  - code: approval_status
+    name: 批准状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: approved=已批准供货（两家均已批准，无另设产能上限）
+    isDerived: false
+- code: DataVersion
+  name: 数据版本
+  description: 数据包版本（V0-V3）：可见时间与新增/修改内容；V1 保存终止日期的变更版本，不能修改 V0 历史记录；V2 为策备运行快照、不代表新增事实采购订单
+  enabled: true
+  attrs:
+  - code: version_id
+    name: 版本号
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 数据版本号（V0/V1/V2/V3）
+    isDerived: false
+  - code: visible_at
+    name: 可见时间
+    type: datetime
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 该版本数据可见的时间点（V0=2026-09-28 06:00）
+    isDerived: false
+  - code: change_summary
+    name: 变更内容摘要
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 新增或修改内容描述（V1 发布 Z9 换料 ECN 与一次性旧料使用许可）
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 版本所属数据包
+    isDerived: false
+- code: CalculationRun
+  name: 计算运行快照
+  description: 每次计算运行的快照（观察时间/输入版本/规则版本/情景编号/评估期间）；支持追溯与复算，历史决策判断只使用当时已知的信息
+  enabled: true
+  attrs:
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 运行唯一编号（V2 策备运行）
+    isDerived: false
+  - code: run_type
+    name: 运行类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: inspection=点检对比；sourcing=策备计算；risk_simulation=呆滞模拟；historical_replay=历史回放
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本次运行使用的数据包（主案例/历史案例/补充测试独立）
+    isDerived: false
+  - code: scenario_tag
+    name: 情景标签
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: FACT=事实分支；SIM=模拟分支（同一前提下的模拟采购分支等分别保存，不共享失去依据的推导结果）
+    isDerived: false
+  - code: observed_at
+    name: 观察时间
+    type: datetime
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本次运行指定的观察时间（2026-09-30 09:00），只使用观察时间已知的信息
+    isDerived: false
+  - code: version_id
+    name: 输入数据版本号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本次运行使用的输入数据版本（V1/V3，指向 DataVersion 主键）
+    isDerived: false
+  - code: rule_version
+    name: 规则版本
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本次运行使用的规则版本
+    isDerived: false
+  - code: evaluation_period_from
+    name: 评估期间起
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 评估期间起始日（2026-11-01）
+    isDerived: false
+  - code: evaluation_period_to
+    name: 评估期间止
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 评估期间截止日（2026-12-31）
+    isDerived: false
+- code: MaterialRequirement
+  name: 物料需求汇总
+  description: 策备计算在物料粒度的汇总结果：毛需求、替代满足、已分配供给、授权覆盖与物理缺口分列展示；授权覆盖量与物理供给完全分离（授权≠物理供给）
+  enabled: true
+  attrs:
+  - code: req_id
+    name: 汇总ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 汇总记录唯一编号
+    isDerived: false
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属计算运行（追溯与复算）
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 汇总物料
+    isDerived: false
+  - code: gross_qty
+    name: 物料毛需求
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 各项目、各有效 BOM 路径产生的需求之和（多级 BOM 运行时展开，见 OQ-02）
+    isDerived: false
+  - code: substitute_satisfied_qty
+    name: 替代满足量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 符合批准范围、供给可用量和需求上限的实际替代分配量（SUB-01 全部计入 11 月 Z9 补偿 6
+    isDerived: false
+  - code: allocated_supply_qty
+    name: 已分配供给量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 按期可用的直接新料供给已分配量（主案例 15
+    isDerived: false
+  - code: authorized_coverage_qty
+    name: 已授权覆盖量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 生效授权版本的覆盖量合计（运行时按 v2 替换 v1 口径选择，见 OQ-08）；授权不作为物理供给
+    isDerived: false
+  - code: unit_price
+    name: 参考单价
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 待授权参考金额使用的单价（20 元/颗）
+    isDerived: false
+  - code: remaining_material_qty
+    name: 剩余新料需求
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 剩余新料需求 = 物料毛需求 − 替代满足量（derived）
+    isDerived: true
+  - code: physical_gap_qty
+    name: 物理缺口
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 新料缺口 = max(剩余新料需求 − 已分配新料供给
+    isDerived: true
+  - code: pending_auth_qty
+    name: 待授权数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 待授权 = max(毛需求 − 已授权覆盖量
+    isDerived: true
+  - code: pending_auth_amount
+    name: 待授权参考金额
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 待授权数量 × 参考单价（derived；8
+    isDerived: true
+- code: InspectionChange
+  name: 点检变化记录
+  description: 点检自动对比识别的前后版本变化（六类变化）；同一项变化通过多条关系影响同一业务对象时合并为一条影响记录、保留多条依据
+  enabled: true
+  attrs:
+  - code: change_id
+    name: 变化ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 变化记录唯一编号
+    isDerived: false
+  - code: change_type
+    name: 变化类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: material_add/material_remove=物料新增或删除；usage_change=用量变化；uom_change=单位变化；effective_date_change=生效日期变化；substitution_change=替代关系变化；auth_qty_change=授权数量变化
+    isDerived: false
+  - code: object_type
+    name: 变化对象类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: bom=标准 BOM；risk_bom=风险 BOM（分开比较）；substitution=替代关系；authorization=授权
+    isDerived: false
+  - code: run_id
+    name: 发现运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 识别该变化的点检运行
+    isDerived: false
+  - code: before_line_id
+    name: 前版本行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变化前的 BOM 行（可空：新增时无前版本）；不进 links（双链取舍见 assumptions A7）
+    isDerived: false
+  - code: line_id
+    name: 后版本行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变化后的 BOM 行（links 主关联；可空：删除时无后版本）
+    isDerived: false
+  - code: before_value
+    name: 前值
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变化前的值（用量/生效日期/授权数量等，原始记录）
+    isDerived: false
+  - code: after_value
+    name: 后值
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变化后的值
+    isDerived: false
+  - code: judgment_basis
+    name: 判断依据
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 判断方法与依据保留（在单位和基准数量一致后比较标准用量等）
+    isDerived: false
+  - code: impact_desc
+    name: 影响明细
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 受影响的项目、物料、需求和供给（如 12 月到货 4
+    isDerived: false
+  - code: known_at
+    name: known_at（可见数据版本）
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变化记录可见数据版本
+    isDerived: false
+- code: ReviewTask
+  name: 复核任务
+  description: 点检变化生成的复核任务；任务只有在收到取消、调整或明确保留的处理依据后才能关闭，不能把"已通知"当作"已解决"
+  enabled: true
+  attrs:
+  - code: task_id
+    name: 任务ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 任务唯一编号
+    isDerived: false
+  - code: change_id
+    name: 变化ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 任务来源的变化记录
+    isDerived: false
+  - code: task_desc
+    name: 任务描述
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 复核内容描述
+    isDerived: false
+  - code: status
+    name: 任务状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: open=待处理；cancelled/adjusted/retained=已收到处理依据；closed=已关闭
+    isDerived: false
+  - code: resolution_basis
+    name: 处理记录
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 关闭依据（取消/调整/明确保留的处理依据与判断记录）
+    isDerived: false
+- code: SourcingSuggestion
+  name: 策备建议
+  description: 对剩余缺口的策备建议（按供应商条件形成初步分配再检查订购条件）；数量计算和交期检查分别输出，到货晚于需求日期的建议不视为解决当期缺料
+  enabled: true
+  attrs:
+  - code: suggestion_id
+    name: 建议ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 建议唯一编号
+    isDerived: false
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属策备运行（V2）
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 建议物料
+    isDerived: false
+  - code: supplier_id
+    name: 供应商编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 初步分配的供应商
+    isDerived: false
+  - code: list_id
+    name: 参考清单ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 所属供应商参考清单
+    isDerived: false
+  - code: allocated_qty
+    name: 供应商分配量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 按份额/资格/交期形成的初步分配量（8
+    isDerived: false
+  - code: suggested_qty
+    name: 建议量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 建议量 = 按订购倍数向上取整〔max(分配量
+    isDerived: false
+  - code: rounding_extra_qty
+    name: 取整增量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 取整产生的额外数量单独展示并纳入后续风险评估（总建议 13
+    isDerived: false
+  - code: expected_arrival_date
+    name: 预计到货日
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 按 9 月 30 日下单推算的到货日（2027-01-20/02-03）；晚于需求日期不视为解决当期缺料
+    isDerived: false
+- code: VendorReferenceList
+  name: 供应商参考清单
+  description: 按供应商整理的策备参考清单，供内部审核；参考清单不等同于采购订单，默认不可直接外发，不自动转换为可用供给
+  enabled: true
+  attrs:
+  - code: list_id
+    name: 清单ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 清单唯一编号
+    isDerived: false
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属策备运行
+    isDerived: false
+  - code: supplier_id
+    name: 供应商编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 清单所属供应商
+    isDerived: false
+  - code: status
+    name: 清单状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: draft=草拟；internal_review=内部审核；archived=归档；不外发（外发审批流程未定义，见 OQ-11）
+    isDerived: false
+  - code: created_at
+    name: 生成日期
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 清单生成日期
+    isDerived: false
+- code: PeriodSupplyBalance
+  name: 分期供需
+  description: 按期间（11 月/12 月）分列的供需平衡：第一期期初取观察时间可用库存，后续期初=上期期末（结转由运行时承载，OQ-05）；初始库存只计入一次，未满足需求保留为逾期需求、结转不得重复累计
+  enabled: true
+  attrs:
+  - code: balance_id
+    name: 平衡记录ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 分期供需记录唯一编号
+    isDerived: false
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属风险模拟运行
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 平衡物料（新料/旧料分开列示）
+    isDerived: false
+  - code: period_label
+    name: 期间
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 期间标签（2026-11/2026-12）
+    isDerived: false
+  - code: beginning_qty
+    name: 本期期初量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 第一期取观察时间可用库存，后续各期=上期期末量
+    isDerived: false
+  - code: arrival_qty
+    name: 本期有效到货
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本期有效到货数量
+    isDerived: false
+  - code: other_inflow_qty
+    name: 其他有效流入
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本期其他有效流入数量
+    isDerived: false
+  - code: required_qty
+    name: 本期应满足需求
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本期应满足的需求数量
+    isDerived: false
+  - code: demand_satisfied_qty
+    name: 实际满足需求量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本期实际满足的需求数量
+    isDerived: false
+  - code: other_outflow_qty
+    name: 其他有效流出
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本期其他有效流出数量
+    isDerived: false
+  - code: unmet_demand_qty
+    name: 本期未满足需求
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量（derived）；保留为逾期需求结转不重复累计
+    isDerived: true
+  - code: ending_qty
+    name: 本期期末量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 期末量 = 期初 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出（derived）
+    isDerived: true
+- code: SlowMovingRisk
+  name: 呆滞风险
+  description: 评估期末可能无法消耗的物料风险，区分现有库存与未到货订单风险分别说明；保留量与期后消耗量不能重复覆盖同一用途，也不能仅凭"以后可能会用"扣减风险
+  enabled: true
+  attrs:
+  - code: risk_id
+    name: 风险ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 风险记录唯一编号
+    isDerived: false
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属风险模拟运行
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 风险物料
+    isDerived: false
+  - code: risk_source_type
+    name: 风险来源类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: stock=现有库存风险；open_order=未到货订单风险（两种风险分开说明；风险可以先出现在未到货订单上）
+    isDerived: false
+  - code: ending_remaining_qty
+    name: 评估期末剩余量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 评估期末的剩余数量（S0 旧料 4
+    isDerived: false
+  - code: reserved_qty
+    name: 经确认的保留量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 经确认的保留数量（主案例为 0）
+    isDerived: false
+  - code: post_period_consumed_qty
+    name: 经证实的期后消耗量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 经证实的评估期后消耗数量（无经证实用途时为 0）
+    isDerived: false
+  - code: unit_cost
+    name: 成本单价
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 对应成本单价（WiFi5 16 元/颗、WiFi6 20 元/颗演示成本）
+    isDerived: false
+  - code: risk_qty
+    name: 期末风险量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 风险量 = max(评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量
+    isDerived: true
+  - code: risk_amount
+    name: 风险金额
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 风险金额 = 风险数量 × 对应成本单价（derived）；不等于减值损失或实际收益，预计损失另行结合回收价值与处置方式计算
+    isDerived: true
+- code: SolutionPlan
+  name: 处理方案
+  description: 呆滞处理方案（取消/延期/替代消耗/转用）及其重算结果对比；不得用"原风险量减措施数量"代替完整计算；延期至评估期外的供给单独展示后续承诺、不视为消失
+  enabled: true
+  attrs:
+  - code: plan_id
+    name: 方案ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 方案唯一编号
+    isDerived: false
+  - code: run_id
+    name: 运行ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属风险模拟运行
+    isDerived: false
+  - code: plan_code
+    name: 方案编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 方案代号（S0 不处理/S1 按权限取消 2
+    isDerived: false
+  - code: action_type
+    name: 措施类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: none=不处理；cancel=取消或减少订单（按有依据的可取消数量减少对应到货）；postpone=延期（从原到货期移出在新到货期加入）；substitute_consume=替代消耗（增加已批准替代分配同时减少原料需求分配）；transfer=跨项目转用（分配给有实际需求、时间匹配且已批准的用途）; reduce=减量
+    isDerived: false
+  - code: po_id
+    name: 目标订单号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 措施作用的采购订单（S1/S2 目标 PS-3002）
+    isDerived: false
+  - code: action_qty
+    name: 措施数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 措施作用数量（S1 取消 2
+    isDerived: false
+  - code: action_cost
+    name: 行动成本
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 措施执行成本（S1 取消费 2
+    isDerived: false
+  - code: window_risk_amount
+    name: 窗口内风险金额
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 评估窗口内的风险金额（S0=88
+    isDerived: false
+  - code: post_window_commitment_amount
+    name: 窗口后未消化承诺
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 评估窗口外的未消化承诺金额（S2 旧料 4
+    isDerived: false
+  - code: shortage_flag
+    name: 是否缺料
+    type: boolean
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: true=方案造成缺料；造成不允许缺料的方案不进入推荐结果
+    isDerived: false
+  - code: feasible_flag
+    name: 是否可行
+    type: boolean
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: true=满足供货要求（S1 可标为当前约束下优先复核方案，但仍有剩余风险）
+    isDerived: false
+  - code: baseline_risk_qty
+    name: 不干预风险量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 不采取措施时的风险量（历史干预模拟 8
+    isDerived: false
+  - code: intervened_risk_qty
+    name: 干预后风险量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 采取措施后的风险量（及时取消 6
+    isDerived: false
+  - code: reducible_qty
+    name: 模拟可减少风险量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 模拟可减少风险量 = max(不干预风险量 − 干预后风险量
+    isDerived: true
+  - code: total_exposure_amount
+    name: 合计敞口金额
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 窗口内风险金额 + 窗口后未消化承诺（derived；S2 合计仍为 88
+    isDerived: true
+- code: HistoricalCase
+  name: 历史呆滞案例
+  description: 独立数据包的历史呆滞案例还原（P-X8）；事实还原可用后续实际记录，历史决策判断只使用当时已知信息；完整版与缺证版分别保存、不共享失去依据的推导结果
+  enabled: true
+  attrs:
+  - code: case_id
+    name: 案例ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 案例唯一编号
+    isDerived: false
+  - code: package_id
+    name: 所属数据包ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 独立数据包（不与当前项目混算）
+    isDerived: false
+  - code: project_id
+    name: 项目ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 案例项目（P-X8）
+    isDerived: false
+  - code: material_id
+    name: 物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 案例物料（H-WIFI-OLD 旧料）
+    isDerived: false
+  - code: observation_period_from
+    name: 观察区间起
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 观察区间起始日（2025-07-01）
+    isDerived: false
+  - code: observation_period_to
+    name: 观察区间止
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 观察区间截止日（2025-09-30；未来需求检查至 2025-12-31）
+    isDerived: false
+  - code: stagnant_qty
+    name: 呆滞总量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 案例呆滞总数量（8
+    isDerived: false
+  - code: risk_formed_date
+    name: 风险形成时点
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 风险首次可识别日（2025-07-15，阈值=未覆盖数量大于 0 一次有效评估即触发）
+    isDerived: false
+  - code: decision_observed_date
+    name: 决策观察时点
+    type: date
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 回放评估选用的历史决策时点（本例与风险形成时点相同，其他案例不必相同）
+    isDerived: false
+  - code: evidence_status
+    name: 证据状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: complete=五类记录齐全；missing=缺证版本（保留 ECN 引用编号，批准文件与变更后 BOM 明细缺失，不输出确定结论）
+    isDerived: false
+  - code: unattributed_qty
+    name: 未归因数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 未归因 = max(呆滞总量 − Σ各原因归因数量
+    isDerived: true
+- code: CauseAttribution
+  name: 原因归因
+  description: 历史案例的呆滞原因归因记录；相关证据可同时保留，不自动定责个人/部门；不应直接把全部呆滞归为单一原因
+  enabled: true
+  attrs:
+  - code: attribution_id
+    name: 归因ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 归因记录唯一编号
+    isDerived: false
+  - code: case_id
+    name: 案例ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归属历史案例
+    isDerived: false
+  - code: cause_type
+    name: 原因类型
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归因原因描述（如 工程切换后未及时取消订单/需求下修；不预设原因、不自动定责）
+    isDerived: false
+  - code: attributed_qty
+    name: 归因数量
+    type: double
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 分配到该原因的数量；各主要原因数量之和 ≤ 案例呆滞总量（约束见 OQ-09）
+    isDerived: false
+  - code: evidence_desc
+    name: 证据说明
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 支持该归因的证据描述（证据不充分时不输出确定的可避免数量）
+    isDerived: false
+  - code: is_primary
+    name: 是否主要原因
+    type: boolean
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: true=主要原因
+    isDerived: false
+- code: PreventionRule
+  name: 预防规则
+  description: 从历史案例沉淀的检查规则草案（如工程变更导致旧料需求减少时检查关联未到货订单）；应在变更已获知且影响能够判断时触发、不等 BOM 正式生效；经审核并试运行后启用
+  enabled: true
+  attrs:
+  - code: rule_id
+    name: 预防规则ID
+    type: string
+    required: true
+    isKey: true
+    defaultValue: ''
+    description: 规则唯一编号
+    isDerived: false
+  - code: case_id
+    name: 来源案例ID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 规则来源的历史案例
+    isDerived: false
+  - code: rule_text
+    name: 规则内容
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 规则文本（已批准的工程变更导致未来旧料需求减少时，检查关联的未到货订单，计算无法被需求覆盖的数量，提示可取消数量、办理时间及截止日期）
+    isDerived: false
+  - code: trigger_timing
+    name: 触发时机
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 变更已获知且影响能够判断时触发，不能等到 BOM 正式生效后才检查（否则可能错过取消窗口）
+    isDerived: false
+  - code: status
+    name: 规则状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: draft=草案；review=审核中；trial=测试运行；active=启用（经审核后进入测试运行）
+    isDerived: false
+  - code: close_basis
+    name: 关闭依据
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 任务只有在收到取消、调整或明确保留的处理依据后才能关闭，不能把已通知当作已解决
+    isDerived: false
+link_types:
+- code: rel_8ba0301e
+  source: Material
+  target: UnitConversion
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_04711ef7
+  source: Material
+  target: BomLine
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_336fff57
+  source: Project
+  target: BomLine
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: project_id
+  targetPropertyCode: project_id
+- code: rel_1b9e39f9
+  source: Project
+  target: EcnRecord
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: project_id
+  targetPropertyCode: project_id
+- code: rel_e5935086
+  source: Project
+  target: Demand
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: project_id
+  targetPropertyCode: project_id
+- code: rel_c9e4445e
+  source: Material
+  target: MaterialAuthorization
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_a7afb4d2
+  source: Project
+  target: MaterialAuthorization
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: project_id
+  targetPropertyCode: project_id
+- code: rel_66f6753b
+  source: Material
+  target: Supply
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_2c63fa8f
+  source: PurchaseOrder
+  target: Supply
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: po_id
+  targetPropertyCode: po_id
+- code: rel_643985e8
+  source: Material
+  target: PurchaseOrder
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_e1e213ce
+  source: HistoricalCase
+  target: StockMovement
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: case_id
+  targetPropertyCode: case_id
+- code: rel_cc00f36e
+  source: Material
+  target: StockMovement
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_0f491122
+  source: Material
+  target: SubstitutionPermission
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_3cddf3f1
+  source: Project
+  target: SubstitutionPermission
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: project_id
+  targetPropertyCode: project_id
+- code: rel_5e1dc2d0
+  source: Supply
+  target: SubstitutionPermission
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: supply_id
+  targetPropertyCode: supply_id
+- code: rel_bad3c217
+  source: Supplier
+  target: SupplierSupplyCondition
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: supplier_id
+  targetPropertyCode: supplier_id
+- code: rel_2f9f9c78
+  source: Material
+  target: SupplierSupplyCondition
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_783ee3df
+  source: DataVersion
+  target: CalculationRun
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: version_id
+  targetPropertyCode: version_id
+- code: rel_13993c79
+  source: CalculationRun
+  target: MaterialRequirement
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_f797c76f
+  source: Material
+  target: MaterialRequirement
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_d4e5bdd9
+  source: CalculationRun
+  target: InspectionChange
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_4f36cf0d
+  source: BomLine
+  target: InspectionChange
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: line_id
+  targetPropertyCode: line_id
+- code: rel_d8ceb2d7
+  source: InspectionChange
+  target: ReviewTask
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: change_id
+  targetPropertyCode: change_id
+- code: rel_7b7433f2
+  source: CalculationRun
+  target: SourcingSuggestion
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_c9bd6ea6
+  source: Material
+  target: SourcingSuggestion
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_fce2d407
+  source: Supplier
+  target: SourcingSuggestion
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: supplier_id
+  targetPropertyCode: supplier_id
+- code: rel_35f2e654
+  source: VendorReferenceList
+  target: SourcingSuggestion
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: list_id
+  targetPropertyCode: list_id
+- code: rel_1b2d54e4
+  source: CalculationRun
+  target: VendorReferenceList
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_78c8eda5
+  source: Supplier
+  target: VendorReferenceList
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: supplier_id
+  targetPropertyCode: supplier_id
+- code: rel_22e3127a
+  source: CalculationRun
+  target: PeriodSupplyBalance
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_035efff8
+  source: Material
+  target: PeriodSupplyBalance
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_819d4e00
+  source: CalculationRun
+  target: SlowMovingRisk
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_26ba6628
+  source: Material
+  target: SlowMovingRisk
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_e3cf2a48
+  source: CalculationRun
+  target: SolutionPlan
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: run_id
+  targetPropertyCode: run_id
+- code: rel_48f28f78
+  source: PurchaseOrder
+  target: SolutionPlan
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: po_id
+  targetPropertyCode: po_id
+- code: rel_c78e07d7
+  source: Project
+  target: HistoricalCase
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: project_id
+  targetPropertyCode: project_id
+- code: rel_57c56235
+  source: Material
+  target: HistoricalCase
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: material_id
+  targetPropertyCode: material_id
+- code: rel_0f255887
+  source: HistoricalCase
+  target: CauseAttribution
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: case_id
+  targetPropertyCode: case_id
+- code: rel_de692b23
+  source: HistoricalCase
+  target: PreventionRule
+  name: ''
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: case_id
+  targetPropertyCode: case_id
+rule_types:
+- code: rule_daf5b7c7
+  name: 标准用量
+  ruleType: calculation
+  mode: single
+  description: 标准用量 = BOM 行用量 ÷ BOM 基准数量；用量比较须在单位和基准数量一致后进行（§4.2 核心判断规则）
+  ruleConfig:
+    expression: '[BOM行.BOM行用量] / [BOM行.BOM基准数量]'
+  outputEntityCode: BomLine
+  outputPropertyCode: standard_usage
+  outputPropertyName: 标准用量
+  initializationStrategy: full_recompute
+- code: rule_1559efe0
+  name: 订单未收货量
+  ruleType: calculation
+  mode: single
+  description: 订单未收货量 = max(订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0)；订单收货转为库存后不再按原未收货数量重复计入（§4.3 ③）
+  ruleConfig:
+    expression: MAX([采购订单.订单数量] - [采购订单.累计有效收货量] - [采购订单.已取消量] - [采购订单.已关闭未收余量], 0)
+  outputEntityCode: PurchaseOrder
+  outputPropertyCode: unreceived_qty
+  outputPropertyName: 订单未收货量
+  initializationStrategy: full_recompute
+- code: rule_2519a26b
+  name: 剩余新料需求
+  ruleType: calculation
+  mode: single
+  description: 剩余新料需求 = 物料毛需求 − 替代满足量（主案例 Z9：20,000−6,000=14,000，加 Z9S 共 24,000）（§4.3 ④）
+  ruleConfig:
+    expression: '[物料需求汇总.物料毛需求] - [物料需求汇总.替代满足量]'
+  outputEntityCode: MaterialRequirement
+  outputPropertyCode: remaining_material_qty
+  outputPropertyName: 剩余新料需求
+  initializationStrategy: full_recompute
+- code: rule_84ef6f3b
+  name: 新料缺口
+  ruleType: calculation
+  mode: single
+  description: 新料缺口 = max(剩余新料需求 − 已分配新料供给, 0)（24,000−15,000=9,000）；不得因授权增加而新增供给（§4.3 ④+§11.8 测试四）
+  ruleConfig:
+    expression: MAX([物料需求汇总.剩余新料需求] - [物料需求汇总.已分配供给量], 0)
+  outputEntityCode: MaterialRequirement
+  outputPropertyCode: physical_gap_qty
+  outputPropertyName: 物理缺口
+  initializationStrategy: full_recompute
+- code: rule_27e9ab4b
+  name: 待授权数量
+  ruleType: calculation
+  mode: single
+  description: 待授权数量 = max(毛需求 − 已授权覆盖量, 0)（测试四：18,000−10,000=8,000；授权 v2 生效后 18,000−12,000=6,000）；授权单独核算、不作为物理供给（§4.3 步骤6）
+  ruleConfig:
+    expression: MAX([物料需求汇总.物料毛需求] - [物料需求汇总.已授权覆盖量], 0)
+  outputEntityCode: MaterialRequirement
+  outputPropertyCode: pending_auth_qty
+  outputPropertyName: 待授权数量
+  initializationStrategy: full_recompute
+- code: rule_3b05540c
+  name: 待授权参考金额
+  ruleType: calculation
+  mode: single
+  description: 待授权参考金额 = 待授权数量 × 参考单价（8,000×20=160,000 元）；供内部审核，不自动生成采购订单（§11.8 测试四+§2.1 场景24）
+  ruleConfig:
+    expression: '[物料需求汇总.待授权数量] * [物料需求汇总.参考单价]'
+  outputEntityCode: MaterialRequirement
+  outputPropertyCode: pending_auth_amount
+  outputPropertyName: 待授权参考金额
+  initializationStrategy: full_recompute
+- code: rule_53b6f12b
+  name: 本期期末量
+  ruleType: calculation
+  mode: single
+  description: 本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；初始库存只计入一次（§4.4 ①）
+  ruleConfig:
+    expression: '[分期供需.本期期初量] + [分期供需.本期有效到货] + [分期供需.其他有效流入] - [分期供需.实际满足需求量] - [分期供需.其他有效流出]'
+  outputEntityCode: PeriodSupplyBalance
+  outputPropertyCode: ending_qty
+  outputPropertyName: 本期期末量
+  initializationStrategy: full_recompute
+- code: rule_981b585b
+  name: 本期未满足需求
+  ruleType: calculation
+  mode: single
+  description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量；保留为逾期需求，后续结转不得重复累计（11 月 9,000 与 12 月底 7,800 分别展示）（§4.4 ①+§5.3.3）
+  ruleConfig:
+    expression: '[分期供需.本期应满足需求] - [分期供需.实际满足需求量]'
+  outputEntityCode: PeriodSupplyBalance
+  outputPropertyCode: unmet_demand_qty
+  outputPropertyName: 本期未满足需求
+  initializationStrategy: full_recompute
+- code: rule_4095926c
+  name: 期末风险量
+  ruleType: calculation
+  mode: single
+  description: 风险量 = max(评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0)；保留量与期后消耗量不得重复覆盖同一用途（§4.4 ②）
+  ruleConfig:
+    expression: MAX([呆滞风险.评估期末剩余量] - [呆滞风险.经确认的保留量] - [呆滞风险.经证实的期后消耗量], 0)
+  outputEntityCode: SlowMovingRisk
+  outputPropertyCode: risk_qty
+  outputPropertyName: 期末风险量
+  initializationStrategy: full_recompute
+- code: rule_10dc02e7
+  name: 呆滞风险金额
+  ruleType: calculation
+  mode: single
+  description: 风险金额 = Σ(风险数量 × 对应成本单价)；不等于减值损失或实际收益，敞口≠损失（§4.4 ④+§8 红线）
+  ruleConfig:
+    expression: '[呆滞风险.期末风险量] * [呆滞风险.成本单价]'
+  outputEntityCode: SlowMovingRisk
+  outputPropertyCode: risk_amount
+  outputPropertyName: 风险金额
+  initializationStrategy: full_recompute
+- code: rule_df2501cf
+  name: 方案合计敞口
+  ruleType: calculation
+  mode: single
+  description: 合计敞口 = 窗口内风险金额 + 窗口后未消化承诺（S2：24,000+64,000=88,000，不能宣称消除了 64,000 风险）；延期只是把旧料移出评估窗口（§11.7）
+  ruleConfig:
+    expression: '[处理方案.窗口内风险金额] + [处理方案.窗口后未消化承诺]'
+  outputEntityCode: SolutionPlan
+  outputPropertyCode: total_exposure_amount
+  outputPropertyName: 合计敞口金额
+  initializationStrategy: full_recompute
+- code: rule_cb30677c
+  name: 模拟可减少风险量
+  ruleType: calculation
+  mode: single
+  description: 模拟可减少风险量 = max(不干预风险量 − 干预后风险量, 0)（8,000−2,000=6,000）；表示条件成立时可减少的量，不等同已实现收益（§4.5 ③）
+  ruleConfig:
+    expression: MAX([处理方案.不干预风险量] - [处理方案.干预后风险量], 0)
+  outputEntityCode: SolutionPlan
+  outputPropertyCode: reducible_qty
+  outputPropertyName: 模拟可减少风险量
+  initializationStrategy: full_recompute
+- code: rule_84a8f4f9
+  name: 未归因数量
+  ruleType: calculation
+  mode: single
+  description: 未归因数量 = max(呆滞总量 − Σ各原因归因数量, 0)；各主要原因对应数量之和 ≤ 案例呆滞总量，无法确认的部分保留为未归因、不强行凑足总量（§4.5 ④+§8 防重复归因红线）
+  ruleConfig:
+    expression: MAX([历史呆滞案例.呆滞总量] - COALESCE(SUM([原因归因.归因数量]), 0), 0)
+  outputEntityCode: HistoricalCase
+  outputPropertyCode: unattributed_qty
+  outputPropertyName: 未归因数量
+  initializationStrategy: full_recompute

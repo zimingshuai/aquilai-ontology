@@ -1,0 +1,229 @@
+{
+  "rules": [
+    {
+      "rule_type": "derived_property",
+      "name": "标准用量",
+      "upstream": [
+        "BomLine"
+      ],
+      "logic": "standard_usage: qty_per / base_qty",
+      "downstream": "Computed Property",
+      "description": "标准用量 = BOM 行用量 ÷ BOM 基准数量；用量比较须在单位和基准数量一致后进行（§4.2 核心判断规则）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "订单未收货量",
+      "upstream": [
+        "PurchaseOrder"
+      ],
+      "logic": "unreceived_qty: MAX(order_qty - cumulative_receipt_qty - cancelled_qty - closed_unreceived_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "订单未收货量 = max(订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0)；订单收货转为库存后不再按原未收货数量重复计入（§4.3 ③）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "剩余新料需求",
+      "upstream": [
+        "MaterialRequirement"
+      ],
+      "logic": "remaining_material_qty: gross_qty - substitute_satisfied_qty",
+      "downstream": "Computed Property",
+      "description": "剩余新料需求 = 物料毛需求 − 替代满足量（主案例 Z9：20,000−6,000=14,000，加 Z9S 共 24,000）（§4.3 ④）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "新料缺口",
+      "upstream": [
+        "MaterialRequirement"
+      ],
+      "logic": "physical_gap_qty: MAX(remaining_material_qty - allocated_supply_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "新料缺口 = max(剩余新料需求 − 已分配新料供给, 0)（24,000−15,000=9,000）；不得因授权增加而新增供给（§4.3 ④+§11.8 测试四）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "待授权数量",
+      "upstream": [
+        "MaterialRequirement"
+      ],
+      "logic": "pending_auth_qty: MAX(gross_qty - authorized_coverage_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "待授权数量 = max(毛需求 − 已授权覆盖量, 0)（测试四：18,000−10,000=8,000；授权 v2 生效后 18,000−12,000=6,000）；授权单独核算、不作为物理供给（§4.3 步骤6）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "待授权参考金额",
+      "upstream": [
+        "MaterialRequirement"
+      ],
+      "logic": "pending_auth_amount: pending_auth_qty * unit_price",
+      "downstream": "Computed Property",
+      "description": "待授权参考金额 = 待授权数量 × 参考单价（8,000×20=160,000 元）；供内部审核，不自动生成采购订单（§11.8 测试四+§2.1 场景24）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "本期期末量",
+      "upstream": [
+        "PeriodSupplyBalance"
+      ],
+      "logic": "ending_qty: beginning_qty + arrival_qty + other_inflow_qty - demand_satisfied_qty - other_outflow_qty",
+      "downstream": "Computed Property",
+      "description": "本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；初始库存只计入一次（§4.4 ①）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "本期未满足需求",
+      "upstream": [
+        "PeriodSupplyBalance"
+      ],
+      "logic": "unmet_demand_qty: required_qty - demand_satisfied_qty",
+      "downstream": "Computed Property",
+      "description": "本期未满足需求 = 本期应满足需求 − 实际满足需求量；保留为逾期需求，后续结转不得重复累计（11 月 9,000 与 12 月底 7,800 分别展示）（§4.4 ①+§5.3.3）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "期末风险量",
+      "upstream": [
+        "SlowMovingRisk"
+      ],
+      "logic": "risk_qty: MAX(ending_remaining_qty - reserved_qty - post_period_consumed_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "风险量 = max(评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0)；保留量与期后消耗量不得重复覆盖同一用途（§4.4 ②）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "呆滞风险金额",
+      "upstream": [
+        "SlowMovingRisk"
+      ],
+      "logic": "risk_amount: risk_qty * unit_cost",
+      "downstream": "Computed Property",
+      "description": "风险金额 = Σ(风险数量 × 对应成本单价)；不等于减值损失或实际收益，敞口≠损失（§4.4 ④+§8 红线）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "方案合计敞口",
+      "upstream": [
+        "SolutionPlan"
+      ],
+      "logic": "total_exposure_amount: window_risk_amount + post_window_commitment_amount",
+      "downstream": "Computed Property",
+      "description": "合计敞口 = 窗口内风险金额 + 窗口后未消化承诺（S2：24,000+64,000=88,000，不能宣称消除了 64,000 风险）；延期只是把旧料移出评估窗口（§11.7）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "模拟可减少风险量",
+      "upstream": [
+        "SolutionPlan"
+      ],
+      "logic": "reducible_qty: MAX(baseline_risk_qty - intervened_risk_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "模拟可减少风险量 = max(不干预风险量 − 干预后风险量, 0)（8,000−2,000=6,000）；表示条件成立时可减少的量，不等同已实现收益（§4.5 ③）"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "未归因数量",
+      "upstream": [
+        "HistoricalCase"
+      ],
+      "logic": "unattributed_qty: MAX(stagnant_qty - COALESCE(SUM(cause_attributions.attributed_qty), 0), 0)",
+      "downstream": "Computed Property",
+      "description": "未归因数量 = max(呆滞总量 − Σ各原因归因数量, 0)；各主要原因对应数量之和 ≤ 案例呆滞总量，无法确认的部分保留为未归因、不强行凑足总量（§4.5 ④+§8 防重复归因红线）"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "呆滞风险触发复核",
+      "upstream": [
+        "SlowMovingRisk"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "risk_qty",
+            "operator": ">",
+            "value": 0
+          }
+        ]
+      },
+      "downstream": "create_risk_review_task",
+      "description": "风险阈值为未覆盖数量大于 0，一次有效评估即可触发；风险首次可识别日即形成（§11.6 预期结果）；后续形成风险复核任务"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "工程变更预防检查触发",
+      "upstream": [
+        "EcnRecord"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "approval_status",
+            "operator": "==",
+            "value": "approved"
+          },
+          {
+            "field": "evidence_status",
+            "operator": "==",
+            "value": "complete"
+          }
+        ]
+      },
+      "downstream": "check_uncovered_open_orders",
+      "description": "已批准的工程变更导致未来旧料需求减少时，检查关联的未到货订单，计算无法被需求覆盖的数量并提示可取消数量、办理时间及截止日期；应在变更已获知且影响能够判断时触发、不等 BOM 生效（§5.4.7）；\"旧料需求减少\"的判定由运行时计算（OQ-02 派生）"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "授权数量变化重核算",
+      "upstream": [
+        "InspectionChange"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "change_type",
+            "operator": "==",
+            "value": "auth_qty_change"
+          }
+        ]
+      },
+      "downstream": "recompute_pending_authorization",
+      "description": "同一授权对象及口径下比较前后数量，识别授权数量变化后重新核算相关待授权需求或策备建议（A_schema/inspection-rules.csv#授权数量变化）"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "替代关系变化复核分配方案",
+      "upstream": [
+        "InspectionChange"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "change_type",
+            "operator": "==",
+            "value": "substitution_change"
+          }
+        ]
+      },
+      "downstream": "review_allocation_validity",
+      "description": "比较方向、范围、比例、有效期及批准状态，检查原分配方案是否仍然有效；失效替代关系保留问题记录，但不得参与替代计算（§4.2 异常处理+A_schema/inspection-rules.csv）"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "冻结供给排除待核查",
+      "upstream": [
+        "Supply"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "supply_type",
+            "operator": "==",
+            "value": "frozen_stock"
+          }
+        ]
+      },
+      "downstream": "exclude_from_allocation_and_flag",
+      "description": "质检冻结库存未获放行不参与供给分配，单列待核查数量（1,000 颗/20,000 元），不认定为零风险或全额损失（§11.3 PS-1002）"
+    }
+  ]
+}
