@@ -9,6 +9,9 @@
 - `rules.json`：规则注册表，对应本体引擎 `get_meta_rules` 返回结构
   （rules 列表：rule_type / name / upstream / logic / downstream / description；
   derived_property 的 downstream 固定回填 "Computed Property"）。
+- `actions.json`：动作注册表，对应本体引擎 `get_meta_actions` 返回结构
+  （actions 列表：action_name / description / parameters / supports_sandbox / body=骨架源码字符串；body 自各 body_ref 骨架文件读取，业务逻辑由人工插桩后回填编译；
+  sandbox_execution 为引擎统一的沙箱执行约定）。
 
 ## 编译剥离说明（dsl-spec §6）
 
@@ -18,11 +21,11 @@ name 与人审用的 description）。编译内置白名单自查，产物出现
 
 ## 导入流程
 
-1. 人工审核本目录两份 JSON（共 26 个实体、18 条规则）与 DSL 的一致性；
+1. 人工审核本目录 JSON 产物（共 26 个实体、19 条规则、6 个动作）与 DSL 的一致性；
 2. 审核通过后由平台侧按 `get_meta_objects` / `get_meta_rules` 的注册格式执行注册；
 3. 注册结果以引擎快照为准回流（增量建模的 base_version 依据）。
 
 ## Studio 模板产物（studio-model.yaml）
-- 由同一 DSL 按 dsl-spec §8 编译：实体->object_types、links->link_types（1:n，外键=目标主键同名属性）、  derived_property->rule_types（calculation，表达式中文名引用）；code 用 rel_/rule_+md5 稳定 hash，  重复编译字节一致（幂等）。
+- 由同一 DSL 按 dsl-spec §8 编译：实体->object_types、links->link_types（1:n，外键字段取显式 fk，简写取目标主键同名属性）、  derived_property->rule_types（calculation，表达式中文名引用）；code 用 rel_/rule_+md5 稳定 hash，  重复编译字节一致（幂等）。
 - 规模：object_types 26 个 / link_types 39 条 / rule_types 13 条。
-- **5 条 trigger/admission 规则不进模板**（模板仅承载 calculation，需引擎侧配置）：呆滞风险触发复核、工程变更预防检查触发、授权数量变化重核算、替代关系变化复核分配方案、冻结供给排除待核查
+- **6 条 trigger/admission 规则不进模板**（模板仅承载 calculation，需引擎侧配置）：呆滞风险触发复核、工程变更预防检查触发、授权数量变化重核算、替代关系变化复核分配方案、冻结供给排除待核查、归因不得超案例总量

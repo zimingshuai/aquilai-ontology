@@ -224,6 +224,31 @@
       },
       "downstream": "exclude_from_allocation_and_flag",
       "description": "质检冻结库存未获放行不参与供给分配，单列待核查数量（1,000 颗/20,000 元），不认定为零风险或全额损失（§11.3 PS-1002）"
+    },
+    {
+      "rule_type": "admission",
+      "name": "归因不得超案例总量",
+      "upstream": [
+        "record_cause_attribution"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "check": "instance",
+            "entity": "HistoricalCase",
+            "lookup": {
+              "case_id": "@param:historical_case_id"
+            },
+            "field": "unattributed_qty",
+            "operator": ">=",
+            "value": {
+              "param": "attribution_qty"
+            }
+          }
+        ]
+      },
+      "downstream": "Action 准入拦截: record_cause_attribution",
+      "description": "写前拦截——新归因数量不得超出案例未归因量（未归因 = max(呆滞总量 − Σ归因, 0)，即\"各主要原因数量之和 ≤ 案例呆滞总量\"红线）；拦截时动作拒绝执行并提示补充依据或调整数量（OQ-09 裁决，2026-10-14）"
     }
   ]
 }
