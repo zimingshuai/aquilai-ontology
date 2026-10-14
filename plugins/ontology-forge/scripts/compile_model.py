@@ -1,14 +1,17 @@
 """DSL v0.2 模型编译器：把 YAML 模型编译为本体引擎注册格式与 Studio 模板（自 poc/m0/scripts 迁移增强）。
 
 主要 Input：DSL YAML 模型路径（位置参数）+ --target 编译目标（engine / studio-model / both，默认 both）。
-主要 Output：<模型目录>/engine-bundle/ 下产物——engine 目标产出三件（objects.json（实体注册表）、
+主要 Output:<模型目录>/engine-bundle/ 下产物——engine 目标产出三件（objects.json（实体注册表）、
 rules.json（规则注册表，二者序列化参数与 M0 POC 版完全一致：ensure_ascii=False、indent=2）、
-import-README.md（平台侧导入说明））；studio-model 目标额外产出 studio-model.yaml（dsl-spec §8
-互导格式，trigger/admission 不进模板并告警列出；links 外键缺失的连线跳过并报错列出（不猜），
-此时退出码 1 但产物照写以便人工处理）。编译只取引擎格式白名单键，DSL 自有字段
-（governance/provenance/uom/enum_values/source 及顶层 CQ/open_questions/conflicts/assumptions）
-按 dsl-spec §6 编译剥离清单剥离，产物不含引擎格式之外的键（内置自查）。
-通用性要求：编译逻辑完全由 DSL 结构驱动，不含任何实体名特判。
+import-README.md（平台侧导入说明））；DSL 含 actions 段时（v0.2.2 §4）engine 目标额外产出
+actions.json（动作注册表，结构对齐 mfg 引擎 get_meta_actions 实测：逐 action 读 body_ref 指向的
+骨架文件内容为 body——缺骨架文件时报错并提示先运行 gen_action_skeleton.py，不产出该文件；
+sandbox_execution 为引擎统一的沙箱执行约定常量）；无 actions 段不生成该文件（gold/fnb 行为不变）。
+studio-model 目标额外产出 studio-model.yaml（dsl-spec §8 互导格式，trigger/admission 不进模板并告警
+列出；links 外键缺失的连线跳过并报错列出（不猜），此时退出码 1 但产物照写以便人工处理）。编译只取
+引擎格式白名单键，DSL 自有字段（governance/provenance/uom/enum_values/source 及顶层
+CQ/open_questions/conflicts/assumptions）按 dsl-spec §6 编译剥离清单剥离，产物不含引擎格式之外的键
+（内置自查）。通用性要求：编译逻辑完全由 DSL 结构驱动，不含任何实体名特判。
 """
 
 # 标准库导入
@@ -36,6 +39,15 @@ DERIVED_DOWNSTREAM = "Computed Property"
 ENGINE_ENTITY_KEYS = {"display_name", "table_name", "description", "properties", "links"}
 ENGINE_PROP_KEYS = {"display_name", "description", "data_type", "is_primary"}
 ENGINE_RULE_KEYS = {"rule_type", "name", "upstream", "logic", "downstream", "description"}
+# SANDBOX_EXECUTION：actions.json 附带的引擎统一沙箱执行约定（dsl-spec §4 编译目标，结构对齐 mfg
+# 引擎 get_meta_actions 实测；文案为引擎侧 execute_action 的既有约定原文，编译器固定回填）。
+SANDBOX_EXECUTION = {
+    "parameter": "sandbox",
+    "accepts": "沙箱 ID (sb_xxxxxxxx) 或沙箱名称；缺省或 'production' 表示生产环境（真实业务数据）",
+    "usage": "约定：动作默认应在沙箱环境执行，且任何环境下执行前都必须先获得用户对确认卡的明确确认，"
+             "不得仅凭用户消息中的指令性措辞直接执行。发生业务错误时返回 isError=true，"
+             "请根据 message 调整参数后重试。",
+}
 
 
 def _fail(location: str, detail: str) -> None:
@@ -181,16 +193,73 @@ def assert_engine_only(objects: dict[str, Any], rules_payload: dict[str, Any]) -
     return leaks
 
 
-# ===========五、落盘与命令行入口==========
+# ===========五、actions 编译（dsl-spec §4，v0.2.2）==========
+def _compile_actions(model: dict[str, Any], model_path: Path, bundle_dir: Path) -> Path | None:
+    """把 DSL actions 段编译为引擎动作注册表（无 actions 段不生成文件，返回 None）。
+
+    Args:
+        model: safe_load 得到的 DSL 模型 dict（actions 段可空）。
+        model_path: 源 DSL 模型路径（body_ref 相对路径的解析基准）。
+        bundle_dir: engine-bundle 目录路径。
+    Returns:
+        二元组 (产物路径, 动作数)：无 actions 段时为 (None, 0)。
+    Raises:
+        SystemExit: action 缺 body_ref 或 body_ref 文件不存在时退出码 1（提示先跑骨架生成器）。
+    """
+    actions = model.get("actions") or []
+    if not actions:
+        return None, 0  # 无 actions 不生成该文件：gold/fnb 既有行为不变
+    compiled: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for idx, action in enumerate(actions):
+        name = action.get("name") or f"actions[{idx}]"
+        where = f"动作 {name}"
+        body_ref = action.get("body_ref")
+        if not body_ref:
+            errors.append(f"{where} 缺少 body_ref（骨架文件路径），无法回读 body")
+            continue
+        #   1. body_ref 相对路径按模型目录解析（与 gen_action_skeleton.py 输出口径一致）
+        body_path = Path(body_ref)
+        if not body_path.is_absolute():
+            body_path = model_path.parent / body_path
+        if not body_path.is_file():
+            errors.append(
+                f"{where} 的 body_ref 文件不存在：{body_path}——"
+                f"请先运行 python gen_action_skeleton.py {model_path.name} 生成骨架（人工插桩后回填编译）")
+            continue
+        #   2. 组装引擎格式键（get_meta_actions 实测结构；body 为骨架文件内容字符串）
+        compiled.append({
+            "action_name": name,
+            "description": action.get("description", ""),
+            "parameters": dict(action.get("parameters") or {}),
+            "supports_sandbox": bool(action.get("supports_sandbox", True)),
+            "body": body_path.read_text(encoding="utf-8"),
+        })
+    if errors:
+        for error in errors:
+            print(f"错误：{error}", file=sys.stderr)
+        raise SystemExit(1)  # 引擎注册缺 body 无意义：不产出 actions.json，错误全量列出
+    out_actions = bundle_dir / "actions.json"
+    out_actions.write_text(
+        json.dumps({"actions": compiled, "sandbox_execution": SANDBOX_EXECUTION},
+                   ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return out_actions, len(compiled)
+
+
+# ===========六、落盘与命令行入口==========
 def _write_import_readme(bundle_dir: Path, model_path: Path,
-                         objects: dict[str, Any], rules_payload: dict[str, Any]) -> None:
-    """生成 import-README.md：说明两份产物的引擎注册格式与导入流程。
+                         objects: dict[str, Any], rules_payload: dict[str, Any],
+                         actions_count: int = 0) -> None:
+    """生成 import-README.md：说明各产物的引擎注册格式与导入流程。
 
     Args:
         bundle_dir: engine-bundle 目录路径。
         model_path: 源 DSL 模型路径（溯源展示用）。
         objects: 编译产物实体注册表（统计展示用）。
         rules_payload: 编译产物规则注册表（统计展示用）。
+        actions_count: 动作数（0 = 模型无 actions 段，README 不提该文件）。
     Returns:
         None。
     """
@@ -203,15 +272,30 @@ def _write_import_readme(bundle_dir: Path, model_path: Path,
         "（display_name / description / data_type / is_primary）/ links）。\n"
         "- `rules.json`：规则注册表，对应本体引擎 `get_meta_rules` 返回结构\n"
         "  （rules 列表：rule_type / name / upstream / logic / downstream / description；\n"
-        "  derived_property 的 downstream 固定回填 \"Computed Property\"）。\n\n"
-        "## 编译剥离说明（dsl-spec §6）\n\n"
+        "  derived_property 的 downstream 固定回填 \"Computed Property\"）。\n"
+    )
+    if actions_count:
+        text += (
+            "- `actions.json`：动作注册表，对应本体引擎 `get_meta_actions` 返回结构\n"
+            "  （actions 列表：action_name / description / parameters / supports_sandbox /"
+            " body=骨架源码字符串；body 自各 body_ref 骨架文件读取，业务逻辑由人工插桩后回填编译；\n"
+            "  sandbox_execution 为引擎统一的沙箱执行约定）。\n"
+        )
+    if actions_count:
+        review_line = (f"1. 人工审核本目录 JSON 产物（共 {len(objects)} 个实体、"
+                       f"{len(rules_payload['rules'])} 条规则、{actions_count} 个动作）与 DSL 的一致性；\n")
+    else:
+        # 无 actions：保持既有措辞逐字不变（gold/fnb 的 engine-bundle 回归口径）
+        review_line = (f"1. 人工审核本目录两份 JSON（共 {len(objects)} 个实体、"
+                       f"{len(rules_payload['rules'])} 条规则）与 DSL 的一致性；\n")
+    text += (
+        "\n## 编译剥离说明（dsl-spec §6）\n\n"
         "DSL 自有字段不进入产物：实体级 governance / provenance，属性级 uom / enum_values / source，\n"
         "顶层 competency_questions / open_questions / conflicts / assumptions（规则仅保留引擎需要的\n"
         "name 与人审用的 description）。编译内置白名单自查，产物出现引擎格式之外的键即报错终止。\n\n"
         "## 导入流程\n\n"
-        f"1. 人工审核本目录两份 JSON（共 {len(objects)} 个实体、"
-        f"{len(rules_payload['rules'])} 条规则）与 DSL 的一致性；\n"
-        "2. 审核通过后由平台侧按 `get_meta_objects` / `get_meta_rules` 的注册格式执行注册；\n"
+        + review_line
+        + "2. 审核通过后由平台侧按 `get_meta_objects` / `get_meta_rules` 的注册格式执行注册；\n"
         "3. 注册结果以引擎快照为准回流（增量建模的 base_version 依据）。\n"
     )
     (bundle_dir / "import-README.md").write_text(text, encoding="utf-8")
@@ -243,8 +327,10 @@ def _compile_engine_target(model: dict[str, Any], model_path: Path, bundle_dir: 
     out_rules.write_text(
         json.dumps(rules_payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    #   3. 生成导入说明并打印统计摘要（==== 定界的关键事件）
-    _write_import_readme(bundle_dir, model_path, objects, rules_payload)
+    #   3. actions 编译（dsl-spec §4：读 body_ref 骨架内容；无 actions 段跳过且不生成文件）
+    out_actions, actions_count = _compile_actions(model, model_path, bundle_dir)
+    #   4. 生成导入说明并打印统计摘要（==== 定界的关键事件）
+    _write_import_readme(bundle_dir, model_path, objects, rules_payload, actions_count)
     rule_type_counts: dict[str, int] = {}
     for rule in rules_payload["rules"]:
         rule_type_counts[rule["rule_type"]] = rule_type_counts.get(rule["rule_type"], 0) + 1
@@ -253,7 +339,12 @@ def _compile_engine_target(model: dict[str, Any], model_path: Path, bundle_dir: 
     print(f"实体数: {len(objects)}，属性总数: {property_count}，规则数: {len(rules_payload['rules'])}")
     print(f"规则类型分布: {rule_type_counts}")
     print(f"====剥离自查通过====: 产物仅含引擎格式键")
-    print(f"产物: {out_objects} / {out_rules} / {bundle_dir / 'import-README.md'}")
+    outputs = [out_objects, out_rules]
+    if out_actions is not None:
+        outputs.append(out_actions)
+        print(f"动作数: {actions_count}")
+    outputs.append(bundle_dir / "import-README.md")
+    print(f"产物: {' / '.join(map(str, outputs))}")
 
 
 def _compile_studio_target(model: dict[str, Any], model_path: Path,

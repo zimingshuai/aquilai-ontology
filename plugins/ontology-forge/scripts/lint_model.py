@@ -2,7 +2,9 @@
 
 主要 Input：DSL YAML 模型文件路径（命令行位置参数）。
 主要 Output：stdout 中文 lint 报告 + 退出码（0=通过；1=存在 error；2=文件/解析失败）。
-实现 dsl-spec.md §7 全部 8 条确定性检查，外加 v0.2 §3 的 upstream 单元素约束；
+实现 dsl-spec.md §7 全部 8 条确定性检查，外加 v0.2 §3 的 upstream 单元素约束与
+v0.2.2 §4 的动作准入检查（第 10-11 条：admission 的 upstream action 必须在 actions 段声明、
+@param:{param: 名} 参数引用必须存在于对应 action 的 parameters）；
 error 影响退出码，warning 仅提示。逻辑完全由 DSL 结构驱动，不含实体名特判。
 """
 
@@ -22,6 +24,8 @@ ALLOWED_TYPES = {"STRING", "INTEGER", "DOUBLE", "DECIMAL", "BOOLEAN", "DATE", "T
 ALLOWED_OPERATORS = {"==", "!=", ">", ">=", "<", "<=", "in"}
 # FUNC_WHITELIST：§3.1 表达式函数白名单。
 FUNC_WHITELIST = {"SUM", "COALESCE", "MAX"}
+# PARAM_REF_RE：admission logic 中 "@param:参数名" 引用的匹配正则（lint 规则 11）。
+PARAM_REF_RE = re.compile(r"@param:([A-Za-z_]\w*)")
 # KNOWN_RULE_TYPES：DSL 三种规则类型。
 KNOWN_RULE_TYPES = {"derived_property", "trigger", "admission"}
 # PASCAL_RE / SNAKE_RE：实体 PascalCase、字段 snake_case 的命名风格正则。
@@ -404,6 +408,11 @@ def _check_rules(model: dict, entities: dict, plural_index: dict,
         None。
     """
     derived_targets: set[tuple[str, str]] = set()  # (upstream 实体, 衍生目标字段) 集合
+    # actions_index：DSL actions 段索引（动作名 -> 动作定义，admission 的 lint 10/11 对照用）。
+    actions_index: dict[str, dict] = {
+        str(a.get("name")): a for a in (model.get("actions") or [])
+        if isinstance(a, dict) and isinstance(a.get("name"), str)
+    }
     for idx, rule in enumerate(model.get("rules") or []):
         if not isinstance(rule, dict):
             report.err("lint1 schema", f"rules[{idx}]", "规则不是映射结构")
@@ -430,7 +439,9 @@ def _check_rules(model: dict, entities: dict, plural_index: dict,
         if rule_type in ("trigger", "admission") and not rule.get("downstream"):
             report.err("lint6 downstream", where, f"{rule_type} 规则缺少 downstream")
         if rule_type == "admission":
-            continue  # 一期不含 admission 场景：upstream 为 action 名，条件结构走 §3.3 另述
+            # v0.2.2 §4：admission 依附动作（upstream 为 action 名而非实体），走规则 10/11 专项检查
+            _check_admission(rule, actions_index, where, report)
+            continue
         entity_upstreams = [u for u in upstreams if u in entities]
         if rule_type == "derived_property":
             target, expr = _derived_target(rule.get("logic"))
@@ -458,7 +469,59 @@ def _check_rules(model: dict, entities: dict, plural_index: dict,
                            "属性标记 derived=true 但没有以它为目标的 derived_property 规则")
 
 
-# ===========六、主流程与命令行入口==========
+# ===========六、动作准入检查（lint 规则 10/11，dsl-spec §4）==========
+def _collect_param_refs(node: Any, refs: list[str]) -> None:
+    """递归收集 admission logic 中的参数引用（两种形态）。
+
+    Args:
+        node: logic 任意子节点（str / dict / list / 标量）。
+        refs: 收集列表（原地追加）：字符串 "@param:名" 与 {param: 名} dict 引用的参数名。
+    Returns:
+        None。
+    """
+    if isinstance(node, str):
+        refs.extend(match.group(1) for match in PARAM_REF_RE.finditer(node))
+    # {param: <参数名>} 为引擎 value 位置的参数引用形态（键集合恰为 param），其余容器递归展开
+    elif isinstance(node, dict) and set(node) == {"param"} and isinstance(node.get("param"), str):
+        refs.append(node["param"])
+    elif isinstance(node, (dict, list)):
+        for value in (node.values() if isinstance(node, dict) else node):
+            _collect_param_refs(value, refs)
+
+
+def _check_admission(rule: dict, actions_index: dict[str, dict],
+                     where: str, report: Report) -> None:
+    """lint 规则 10/11：admission 的 upstream action 声明与参数引用合法性。
+
+    Args:
+        rule: admission 规则 dict（upstream 为 action 名列表）。
+        actions_index: DSL actions 段索引（动作名 -> 动作定义）。
+        where: 报告定位串。
+        report: 问题收集器。
+    Returns:
+        None。
+    """
+    upstreams = [u for u in (rule.get("upstream") or []) if isinstance(u, str)]
+    #   1. 规则 10：upstream 引用的动作名必须在 DSL actions 段声明
+    for act in [u for u in upstreams if u not in actions_index]:
+        report.err("lint10 action声明", where, f"upstream 引用的动作 {act!r} 未在 DSL actions 中声明")
+    #   2. 规则 11：logic 中 @param:名 / {param: 名} 引用必须存在于对应动作的 parameters
+    #    （动作未声明的情形已由规则 10 报告，无从对照 parameters，跳过避免重复计数）
+    known_params: set[str] = set()
+    for act in (valid_actions := [u for u in upstreams if u in actions_index]):
+        if isinstance(params := actions_index[act].get("parameters"), dict):
+            known_params |= set(params)
+    if not valid_actions:
+        return
+    refs: list[str] = []
+    _collect_param_refs(rule.get("logic"), refs)
+    for ref in dict.fromkeys(refs):  # 去重保序
+        if ref not in known_params:
+            report.err("lint11 参数引用", where,
+                       f"参数引用 {ref!r} 不存在于 upstream 动作（{'/'.join(valid_actions)}）的 parameters")
+
+
+# ===========七、主流程与命令行入口==========
 def lint_model(model: dict, report: Report) -> None:
     """执行全部 lint 检查（入口聚合）。Args: model DSL 模型 dict；report 问题收集器。Returns: None。"""
     _check_schema(model, report)

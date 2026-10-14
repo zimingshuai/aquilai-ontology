@@ -1,0 +1,142 @@
+# gold-actions —— case7 动作编译目标 fixture：gold model.yaml 全量复制 + actions 段（v0.2.2 §4）
+# + 1 条 admission 规则；原 5 条 rules（3 derived + 2 trigger）保持不变。
+# 用途：gen_action_skeleton 骨架生成 / compile_model actions.json / lint 第 10-11 条的机械断言基准。
+ontology: supplier-recon
+version: 0.1.0-draft.1
+base_version: null
+governance:
+  owner: 王财务
+  maturity: experimental
+
+entities:
+  Supplier:
+    display_name: 供应商
+    table_name: supplier
+    description: SRM 系统管理的供应商主数据，含结算方式与冻结状态
+    properties:
+      supplier_code: { display_name: 供应商编码, description: SRM 系统供应商唯一编码, type: STRING, primary: true, source: "A_schema/data_dictionary.md#supplier" }
+      supplier_name: { display_name: 供应商名称, description: 供应商营业执照全称, type: STRING }
+      settlement_type: { display_name: 结算方式, description: 与供应商约定的付款周期, type: STRING, enum_values: [月结30天, 月结60天, 货到付款] }
+      frozen_flag: { display_name: 冻结标记, description: true=冻结（停止对账与付款）；false=正常, type: BOOLEAN }
+      create_time: { display_name: 创建时间, description: 供应商主数据创建时间, type: TIMESTAMP }
+      update_time: { display_name: 更新时间, description: 供应商主数据最近更新时间, type: TIMESTAMP }
+      total_delivery_amount: { display_name: 供应商交货总额, description: 该供应商所有合同下全部交货记录的交货金额合计（元，含税）；由规则「供应商交货总额」衍生, type: DECIMAL, uom: 元 }
+    provenance: { doc: "A_schema/supplier_ddl.sql + data_dictionary.md", reviewed: true }
+
+  PurchaseContract:
+    display_name: 采购合同
+    table_name: purchase_contract
+    description: 与供应商签署的采购合同，记录金额与履约状态
+    properties:
+      contract_nr: { display_name: 采购合同号, description: SRM 合同唯一编号, type: STRING, primary: true }
+      contract_amount: { display_name: 合同总金额, description: 合同含税总金额（元）, type: DECIMAL, uom: 元 }
+      sign_date: { display_name: 签约日期, description: 合同签署日期, type: DATE }
+      status: { display_name: 合同状态, description: 生效=正常履约；终止=到期或提前终止；作废=签署后取消, type: STRING, enum_values: [生效, 终止, 作废] }
+      supplier_code: { display_name: 签约供应商, description: 合同签约方的供应商编码, type: STRING }
+    links:
+      supplier: Supplier          # 字段 supplier_code 的引用（默认别名 = 目标表名 snake_case）
+    provenance: { doc: "A_schema/supplier_ddl.sql", reviewed: true }
+
+  DeliveryRecord:
+    display_name: 交货记录
+    table_name: delivery_record
+    description: WMS 记录的每次交货明细，挂在采购合同下
+    properties:
+      delivery_nr: { display_name: 交货单号, description: WMS 交货单唯一编号, type: STRING, primary: true }
+      delivery_qty: { display_name: 交货数量, description: 本次交货件数, type: DOUBLE, uom: 件 }
+      delivery_amount: { display_name: 交货金额, description: 本次交货金额（元，含税）, type: DECIMAL, uom: 元 }
+      delivery_date: { display_name: 交货日期, description: 实际到货日期, type: DATE }
+      contract_nr: { display_name: 关联合同, description: 本次交货所属采购合同, type: STRING }
+    links:
+      purchase_contract: PurchaseContract   # 字段 contract_nr 的引用
+    provenance: { doc: "A_schema/supplier_ddl.sql", reviewed: true }
+
+  ReconciliationStatement:
+    display_name: 对账单
+    table_name: reconciliation_statement
+    description: FIM 财务系统按供应商按月生成的对账单，记录发票与对账金额
+    properties:
+      recon_nr: { display_name: 对账单号, description: FIM 对账单唯一编号, type: STRING, primary: true }
+      recon_period: { display_name: 对账期间, description: 对账月份，格式 yyyy-MM, type: STRING }
+      invoice_amount: { display_name: 发票金额, description: 供应商本期开具发票总额（元）, type: DECIMAL, uom: 元 }
+      reconciled_amount: { display_name: 已对账金额, description: 双方核对一致确认的金额（元）, type: DECIMAL, uom: 元 }
+      status: { display_name: 对账状态, description: open=对账中；confirmed=双方确认；disputed=存在争议, type: STRING, enum_values: [open, confirmed, disputed] }
+      create_time: { display_name: 创建时间, description: 对账单创建时间, type: TIMESTAMP }
+      supplier_code: { display_name: 对账供应商, description: 本对账单对应的供应商, type: STRING }
+      recon_diff_amount: { display_name: 对账差异金额, description: 发票金额 − 已对账金额（元）；由规则「对账差异金额」衍生, type: DECIMAL, uom: 元 }
+      recon_diff_rate: { display_name: 对账差异率, description: 差异金额 ÷ 发票金额（比率）；由规则「对账差异率」衍生, type: DECIMAL, uom: 比率 }
+    links:
+      supplier: Supplier          # 字段 supplier_code 的引用
+    provenance: { doc: "A_schema/supplier_ddl.sql", reviewed: true }
+
+rules:
+  - rule_type: derived_property
+    name: 对账差异金额
+    upstream: [ReconciliationStatement]
+    logic: "recon_diff_amount: invoice_amount - COALESCE(reconciled_amount, 0)"
+    description: 发票金额 − 已对账金额（元）；无已对账金额按 0 处理；负值=多对账，保留不取绝对值
+  - rule_type: derived_property
+    name: 对账差异率
+    upstream: [ReconciliationStatement]
+    logic: "recon_diff_rate: COALESCE(recon_diff_amount / invoice_amount, 9999)"
+    description: 差异金额 ÷ 发票金额（比率）；发票金额为 0 或缺失时记 9999（异常大，保证触发复核）
+  - rule_type: derived_property
+    name: 供应商交货总额
+    upstream: [Supplier]
+    logic: "total_delivery_amount: SUM(purchase_contracts.delivery_records.delivery_amount)"
+    description: 该供应商所有合同下全部交货记录的交货金额合计（元，含税）
+  - rule_type: trigger
+    name: 对账差异复核触发
+    upstream: [ReconciliationStatement]
+    logic:
+      ALL:
+        - { field: recon_diff_amount, operator: ">", value: 2000 }
+        - { field: recon_diff_rate, operator: ">", value: 0.05 }
+    downstream: mark_recon_review
+    description: 差异金额超 2000 元且差异率超 5% 的对账单自动标记需复核
+  - rule_type: trigger
+    name: 供应商冻结提醒
+    upstream: [Supplier]
+    logic:
+      ALL:
+        - { field: frozen_flag, operator: "==", value: true }
+    downstream: mark_supplier_frozen
+    description: 供应商冻结时触发提醒，对账单不再自动推进
+  - rule_type: admission
+    name: 禁止冻结已注销供应商
+    upstream: [freeze_supplier]
+    logic:
+      ALL:
+        - { check: instance, entity: Supplier, lookup: { supplier_code: "@param:supplier_code" }, field: status, operator: "!=", value: 已注销 }
+    downstream: "Action 准入拦截: freeze_supplier"
+    description: 防冻结已注销供应商——目标供应商状态为已注销时拦截 freeze_supplier 动作
+
+actions:
+  - name: freeze_supplier
+    description: 冻结供应商：把指定供应商置为冻结状态（停止对账与付款）。写操作——直接修改供应商主数据 frozen_flag，执行前必须经用户在确认卡中明确确认，不得仅凭指令性措辞直接执行。
+    parameters:
+      supplier_code: str
+    supports_sandbox: true
+    recipe: modify_instance
+    recipe_config:
+      target_entity: Supplier
+      lookup: { supplier_code: "@param:supplier_code" }
+      set_fields: { frozen_flag: true }
+    body_ref: engine-bundle/actions/freeze_supplier.py
+
+competency_questions:
+  - { id: cq-001, q: 哪些对账单的差异金额超阈值且差异率超阈值（需要复核）？, covered_by: [ReconciliationStatement.recon_diff_amount, ReconciliationStatement.recon_diff_rate] }
+  - { id: cq-002, q: 哪些供应商处于冻结状态？, covered_by: [Supplier.frozen_flag] }
+  - { id: cq-003, q: 某供应商本期发票金额、已对账金额、差异金额分别是多少？, covered_by: [ReconciliationStatement.invoice_amount, ReconciliationStatement.reconciled_amount, ReconciliationStatement.recon_diff_amount] }
+  - { id: cq-004, q: 某供应商名下所有交货记录的金额合计是多少？, covered_by: [Supplier.total_delivery_amount] }
+
+open_questions:
+  - q: "差异率口径中「发票金额为 0」的除零行为：引擎方言未定义除零语义，COALESCE 兜底是否覆盖除零异常，待引擎侧验证"
+    status: pending
+    refs: ["B_scenarios/rules.md#对账差异率"]
+  - q: "供应商交货总额使用了两跳反向嵌套聚合 SUM(别名1.别名2.字段)，超出已实测的一跳聚合先例（SUM(sales_orders.unfulfill_qty)），方言支持性待引擎侧验证"
+    status: pending
+    refs: ["B_scenarios/rules.md#供应商交货总额"]
+
+conflicts: []
+assumptions: []

@@ -1,14 +1,15 @@
 """建模行为回归体系：机械断言自动化入口。
 
 用途：对 evals/ontology-modeling 下的行为测试样例执行可机器判定的断言
-     （lint/check_cq/compile 幂等/diff 变更集/版本冲突拒绝），防止
-     技能与脚本改动导致工具链行为退化。
+     （lint/check_cq/compile 幂等/diff 变更集/版本冲突拒绝/动作骨架与 actions.json），
+     防止技能与脚本改动导致工具链行为退化。
 主要 Input：无命令行参数；样例路径与插件脚本路径按相对位置解析。
 主要 Output：stdout 中文断言结果表（PASS/FAIL/SKIP）+ 汇总退出码
      （0=全部通过或跳过，1=存在 FAIL）。
 """
 
 import hashlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -152,7 +153,71 @@ def build_case4(results: list) -> None:
     assert_case(results, "case4", "base_version 不匹配拒绝", reject_mismatch)
 
 
-# ===========五、主流程==========
+# ===========五、case7：动作编译目标（骨架生成 + actions.json + lint 10/11）==========
+def build_case7(results: list) -> None:
+    """case7 断言：骨架 py_compile、actions.json 结构、lint 第 10/11 条、gold 编译回归。"""
+    gen_script = SCRIPTS_DIR / "gen_action_skeleton.py"
+    fixture_dir = EVAL_ROOT / "case7-actions"
+    gold_actions = fixture_dir / "gold-actions.yaml"
+    if not (gen_script.exists() and gold_actions.exists()):
+        results.append(("case7", "前置就绪检测", "SKIP（gen_action_skeleton 或 case7 fixture 未就绪）"))
+        return
+
+    def lint_gold_actions():
+        proc = run_cmd([SCRIPTS_DIR / "lint_model.py", gold_actions])
+        assert proc.returncode == 0, f"lint 退出码 {proc.returncode}: {proc.stdout[-300:]}"
+
+    def skeleton_py_compile():
+        proc = run_cmd([gen_script, gold_actions])
+        assert proc.returncode == 0, f"骨架生成退出码 {proc.returncode}: {proc.stderr[-300:]}"
+        skeletons = sorted((gold_actions.parent / "engine-bundle" / "actions").glob("*.py"))
+        assert skeletons, "未生成任何骨架文件"
+        # 骨架与生成器自身全部 py_compile（语法合法，不依赖引擎环境；run_cmd 自动前置 python）
+        for py_file in [gen_script] + skeletons:
+            proc = run_cmd(["-m", "py_compile", py_file])
+            assert proc.returncode == 0, f"py_compile 失败 {py_file.name}: {proc.stderr[-200:]}"
+        body = skeletons[0].read_text(encoding="utf-8")
+        assert "TODO(人工插桩)" in body, "骨架缺少 TODO(人工插桩) 插桩标记"
+        assert "def freeze_supplier(" in body and "@action" in body, "骨架缺 @action 装饰器或函数定义"
+
+    def actions_json_shape():
+        proc = run_cmd([SCRIPTS_DIR / "compile_model.py", gold_actions, "--target", "engine"])
+        assert proc.returncode == 0, f"compile 退出码 {proc.returncode}: {proc.stderr[-300:]}"
+        payload = json.loads((gold_actions.parent / "engine-bundle" / "actions.json").read_text(encoding="utf-8"))
+        assert len(payload["actions"]) == 1, f"actions 数应为 1，实际 {len(payload['actions'])}"
+        entry = payload["actions"][0]
+        assert entry["action_name"] == "freeze_supplier"
+        assert set(entry) == {"action_name", "description", "parameters", "supports_sandbox", "body"}, \
+            f"action 键集不符: {sorted(entry)}"
+        assert "@action" in entry["body"] and "def freeze_supplier" in entry["body"], "body 非骨架源码"
+        assert payload["sandbox_execution"]["parameter"] == "sandbox", "sandbox_execution 结构缺失"
+
+    def gold_engine_regression():
+        # gold 编译回归：both 重编译全部产物与既有 engine-bundle 字节级一致（无 actions 不产 actions.json）
+        bundle = GOLD_PATH.parent / "engine-bundle"
+        before = {p.name: file_sha256(p) for p in sorted(bundle.glob("*")) if p.is_file()}
+        proc = run_cmd([SCRIPTS_DIR / "compile_model.py", GOLD_PATH])
+        assert proc.returncode == 0, f"gold 编译退出码 {proc.returncode}: {proc.stderr[-200:]}"
+        after = {p.name: file_sha256(p) for p in sorted(bundle.glob("*")) if p.is_file()}
+        diff = {k for k in set(before) | set(after) if before.get(k) != after.get(k)}
+        assert before == after, f"gold 产物回归破坏，差异文件: {sorted(diff)}"
+
+    def lint_bad_fixture(bad_name: str, expect_tag: str):
+        proc = run_cmd([SCRIPTS_DIR / "lint_model.py", fixture_dir / bad_name])
+        combined = proc.stdout or ""
+        assert proc.returncode == 1, f"{bad_name} 应报 error 退出 1，实际 {proc.returncode}"
+        assert expect_tag in combined, f"{bad_name} 输出缺 {expect_tag}: {combined[-300:]}"
+        assert "error 1 处" in combined, f"{bad_name} 应精确 1 处 error: {combined[-200:]}"
+
+    assert_case(results, "case7", "lint gold-actions 0 错误", lint_gold_actions)
+    assert_case(results, "case7", "骨架生成 py_compile 通过", skeleton_py_compile)
+    assert_case(results, "case7", "actions.json 结构对齐", actions_json_shape)
+    assert_case(results, "case7", "gold 编译产物回归不变", gold_engine_regression)
+    assert_case(results, "case7", "坏fixture 报 lint10", lambda: lint_bad_fixture("bad-action-ref.yaml", "lint10"))
+    assert_case(results, "case7", "坏fixture 报 lint11", lambda: lint_bad_fixture("bad-param-ref.yaml", "lint11"))
+
+
+# ===========六、主流程==========
 def main() -> int:
     """执行全部机械断言并输出结果表。
 
@@ -164,6 +229,7 @@ def main() -> int:
     build_case1(results)
     build_case2(results)
     build_case4(results)
+    build_case7(results)
     print("\n====evals 回归结果====")
     for case, name, status in results:
         print(f"[{case}] {name}: {status}")
