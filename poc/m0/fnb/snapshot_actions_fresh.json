@@ -1,0 +1,58 @@
+{
+  "actions": [
+    {
+      "action_name": "add_risk_event",
+      "description": "根据仓库维度的指标判断触发，新增库存风险事件记录 (Create Action)",
+      "parameters": {
+        "wh": "InventoryInWarehouse",
+        "risk_type": "str",
+        "risk_level": "str",
+        "risk_description": "str",
+        "control_measures": "str"
+      },
+      "body": "@action\ndef add_risk_event(\n    wh: InventoryInWarehouse,\n    risk_type: str,\n    risk_level: str,\n    risk_description: str,\n    control_measures: str,\n) -> OntologyEdits:\n    \"\"\"\n    根据仓库维度的指标判断触发，新增库存风险事件记录 (Create Action)\n    \"\"\"\n    edits = OntologyEdits()\n    risk = InventoryRisk()\n    # 自动生成主键与创建时间\n    risk.risk_code = f\"RISK_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:4]}\"\n    risk.create_date = datetime.date.today()\n\n    # 从触发规则的对象(InventoryInWarehouse)中提取关联维度信息\n    risk.wh_code = wh.wh_code\n    risk.wh_name = wh.wh_name\n\n    # 填充由规则引擎下发的结果参数\n    risk.risk_type = risk_type\n    risk.risk_level = risk_level\n    risk.risk_description = risk_description\n    risk.control_measures = control_measures\n    risk.risk_source = \"Rule Engine Generated\"\n\n    # 由于是新增记录，将其添加到 creations 收集器中\n    edits.create(risk)\n    return edits\n"
+    },
+    {
+      "action_name": "analyze_root_cause",
+      "description": "根因分析 Action。在 InventoryInWHProblem 被创建后触发。\n由于目前的 SDK 尚不支持直接关联查询，我们在 Action 中可以直接通过 DuckDB 或外部 Pandas 获取数据。\n此处保留业务提供的分析逻辑框架，并转换为 OntologyEdits。",
+      "parameters": {
+        "problem": "InventoryInWHProblem"
+      },
+      "body": "@action\ndef analyze_root_cause(problem: InventoryInWHProblem) -> OntologyEdits:\n    \"\"\"\n    根因分析 Action。在 InventoryInWHProblem 被创建后触发。\n    由于目前的 SDK 尚不支持直接关联查询，我们在 Action 中可以直接通过 DuckDB 或外部 Pandas 获取数据。\n    此处保留业务提供的分析逻辑框架，并转换为 OntologyEdits。\n    \"\"\"\n    edits = OntologyEdits()\n\n    import json\n    import os\n\n    import duckdb\n\n    # 建立独立的 DuckDB 只读连接以查询关联数据（为了不破坏主框架的封装）\n    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))\n    db_path = os.path.join(base_dir, \"data\", \"ontology.duckdb\")\n    if not os.path.exists(db_path):\n        return edits\n\n    try:\n        conn = duckdb.connect(db_path, read_only=True)\n        # 查询该仓库下的所有 SKUInWarehouse\n        wh_pk = problem.wh\n        if not wh_pk:\n            # 如果没有传入仓库外键，通过问题编码尝试去找\n            pass\n\n        skus_df = conn.execute(\n            f\"SELECT * FROM sku_in_warehouse WHERE warehouse = '{wh_pk}'\"\n        ).df()\n\n        # 针对每个 SKU 进行根因追溯\n        for _, sku in skus_df.iterrows():\n            cause_type = None\n            trace_info = \"\"\n\n            if \"缺货\" in str(problem.problem_type):\n                # 缺货问题逻辑\n                unfulfill_sales_qty = float(sku.get(\"unfulfill_sales_qty\", 0) or 0)\n                undeliv_purch = float(sku.get(\"undelivery_purchase_qty\", 0) or 0)\n                undeliv_repl = float(sku.get(\"undelivery_replenishment_qty\", 0) or 0)\n\n                total_undelivery = undeliv_purch + undeliv_repl\n\n                if total_undelivery > 0:\n                    unfulfill_sales_qty = max(\n                        0.0, unfulfill_sales_qty - total_undelivery\n                    )\n                    if undeliv_purch > 0:\n                        cause_type = \"采购单未到货\"\n                        trace_info = json.dumps(\n                            {\"未到货采购量\": undeliv_purch}, ensure_ascii=False\n                        )\n                    elif undeliv_repl > 0:\n                        cause_type = \"调拨单未到货\"\n                        trace_info = json.dumps(\n                            {\"未到货调拨量\": undeliv_repl}, ensure_ascii=False\n                        )\n\n                if unfulfill_sales_qty > 0 and cause_type is None:\n                    # 追溯需求预测\n                    # 简化：通过 DuckDB 聚合查 forecast_bias_qty\n                    # 这里假设我们查询到了 bias_qty\n                    bias_qty = -10  # Mock: 需求预测总量 < 实际需求总量\n                    if bias_qty < 0:\n                        cause_type = \"需求波动，需求预测偏低\"\n                        trace_info = json.dumps(\n                            {\"预测偏差量\": bias_qty}, ensure_ascii=False\n                        )\n                    else:\n                        cause_type = \"潜在原因\"\n                        trace_info = \"1. 补货单计划量与下发量不一致等...\"\n\n            elif \"超储\" in str(problem.problem_type):\n                # 超储问题逻辑\n                # 简化：通过 DuckDB 聚合查 forecast_bias_qty\n                bias_qty = 20  # Mock: 需求预测总量 > 实际需求总量\n                if bias_qty > 0:\n                    cause_type = \"需求波动，需求预测偏高\"\n                    trace_info = json.dumps(\n                        {\"预测偏差量\": bias_qty}, ensure_ascii=False\n                    )\n                else:\n                    cause_type = \"潜在原因\"\n                    trace_info = \"\"\n\n            if cause_type:\n                cause = InventoryInWHCause()\n                cause.cause_code = f\"CAUSE_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:4]}\"\n                cause.cause_type = cause_type\n                cause.trace_info = trace_info\n                cause.problem = problem.problem_code\n                cause.sku_in_wh = sku.get(\"sku_code\")\n\n                edits.create(cause)\n\n    except Exception as e:\n        print(f\"Error in root cause analysis: {e}\")\n    finally:\n        try:\n            conn.close()\n        except:\n            pass\n\n    return edits\n"
+    },
+    {
+      "action_name": "create_problem_from_risk",
+      "description": "根据 InventoryRisk 触发，创建对应的 InventoryInWHProblem。\n只负责将风险升级为问题，判断逻辑交由规则引擎处理。",
+      "parameters": {
+        "risk": "InventoryRisk"
+      },
+      "body": "@action\ndef create_problem_from_risk(risk: InventoryRisk) -> OntologyEdits:\n    \"\"\"\n    根据 InventoryRisk 触发，创建对应的 InventoryInWHProblem。\n    只负责将风险升级为问题，判断逻辑交由规则引擎处理。\n    \"\"\"\n    edits = OntologyEdits()\n    problem = InventoryInWHProblem()\n    problem.problem_code = f\"PROB_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:4]}\"\n    problem.problem_type = risk.risk_type\n    problem.problem_description = risk.risk_description\n    # 将问题挂载到与风险相同的仓库上\n    problem.wh = getattr(risk, \"warehouse\", None)\n    edits.create(problem)\n    return edits\n"
+    },
+    {
+      "action_name": "send_risk_message",
+      "description": "针对低优先级风险发送通知消息。",
+      "parameters": {
+        "risk": "InventoryRisk"
+      },
+      "body": "@action\ndef send_risk_message(risk: InventoryRisk) -> OntologyEdits:\n    \"\"\"\n    针对低优先级风险发送通知消息。\n    \"\"\"\n    edits = OntologyEdits()\n    print(f\"MSG: 发现低风险事件 {risk.risk_code}，仅发送告警消息，不升级为问题。\")\n    return edits\n"
+    },
+    {
+      "action_name": "update_inventory_level",
+      "description": "修改 SKU在仓 的库存水位",
+      "parameters": {
+        "sku_in_wh": "SKUInWarehouse",
+        "inventory_level": "str"
+      },
+      "body": "@action\ndef update_inventory_level(\n    sku_in_wh: SKUInWarehouse, inventory_level: str\n) -> OntologyEdits:\n    \"\"\"\n    修改 SKU在仓 的库存水位\n    \"\"\"\n    edits = OntologyEdits()\n    sku_in_wh.inventory_level = inventory_level\n    edits.modify(sku_in_wh)\n    return edits\n"
+    },
+    {
+      "action_name": "update_supply_demand_matching",
+      "description": "修改 SKU在仓 的供需匹配状态（是否缺货等）",
+      "parameters": {
+        "sku_in_wh": "SKUInWarehouse",
+        "supply_demand_matching": "str"
+      },
+      "body": "@action\ndef update_supply_demand_matching(\n    sku_in_wh: SKUInWarehouse, supply_demand_matching: str\n) -> OntologyEdits:\n    \"\"\"\n    修改 SKU在仓 的供需匹配状态（是否缺货等）\n    \"\"\"\n    edits = OntologyEdits()\n    sku_in_wh.supply_demand_matching = supply_demand_matching\n    edits.modify(sku_in_wh)\n    return edits\n"
+    }
+  ]
+}

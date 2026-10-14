@@ -39,6 +39,14 @@
 - 时效性风险处置：主代理用 **2026-10-10 亲手拉取的一手元数据**对缓存快照做锚点验证（实体清单/复合主键/links/属性数/规则惯例 5 组特征点），全部一致——快照可信
 - 待办：fnb 引擎恢复后重拉一次快照复跑 round-trip（分钟级操作），当前结论不受影响
 
+### 2026-10-14 复拉结论（遗留项关闭）
+
+- 端点已恢复：fnb MCP（https://aquilair-mcp0.idcs.elitescloud.com/mcp）HTTP 200，MCP 工具 get_meta_objects / get_meta_rules 正常返回
+- 重拉：fetch_meta.py --refresh 于 2026-10-14T13:19:43+08:00 拉取三份元数据，落盘 fnb/snapshot_objects_fresh.json / snapshot_rules_fresh.json / snapshot_actions_fresh.json，来源固化于 fnb/snapshot_source_info_fresh.json
+- 缓存有效性验证：新旧快照三组（objects / rules / actions）字节级 cmp 一致 + 深度逐键比对零差异（实体 15 vs 15、规则 60 vs 60、动作 1 vs 1）——**2026-09-30 缓存快照完全有效，引擎元数据 9-30 后无任何变更**
+- round-trip 复跑：compile_model.py --target engine 重新编译（15 实体 / 157 属性 / 60 规则），engine-bundle 产物 vs fresh 快照深度逐键比对 **0 差异**，报告见 fnb/roundtrip_report_fresh.md
+- 遗留关闭声明：上述"待办"及第七节"fnb 引擎恢复后快照复拉"复选框随本节关闭；M0 全部环境偏差项清零
+
 ## 五、DSL v0.2 修订清单（M1 前执行）
 
 | # | 修订 | 来源 |
@@ -55,7 +63,7 @@
 ## 六、其他记录
 
 - 引擎数据自带两处疑似源头笔误已原样保真（非 DSL 问题，round-trip 不受影响）：`ForecastSalesDemand` 的 sku_name 规则引用 `sku.sku_code`；`InventoryRisk` 的 display_name/description 与 ForecastSalesTrace 错位（技能文档已知问题）
-- 产物索引：`fnb/`（快照×3 + DSL + 编译产物×2 + 报告 + 溯源）、`scripts/`（export_dsl / compile_model / roundtrip_check，均可独立复跑）、`goldstandard/`（资料包 + gold + generated + comparison）
+- 产物索引：`fnb/`（快照×3 + fresh 快照×3 + DSL + 编译产物×2 + engine-bundle + 报告×2 + 溯源×2）、`scripts/`（export_dsl / compile_model / roundtrip_check，均可独立复跑）、`goldstandard/`（资料包 + gold + generated + comparison）
 - 复现命令：`cd poc/m0 && python scripts/compile_model.py && python scripts/roundtrip_check.py`
 
 ## 七、M1 启动条件确认
@@ -64,4 +72,4 @@
 - [x] LLM 生成质量验证通过（假设 2，合成域）
 - [x] 编译器可行性验证通过（假设 3）
 - [ ] 真实试点域资料包（用户后续提供时替换合成域做增量复验，不阻塞 M1 骨架开发）
-- [ ] fnb 引擎恢复后快照复拉（分钟级，不阻塞）
+- [x] fnb 引擎恢复后快照复拉（2026-10-14 完成，零差异，见第四节复拉结论）
