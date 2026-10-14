@@ -1,0 +1,72 @@
+{
+  "name": "aquilair-fde",
+  "version": "0.1.0",
+  "description": "Aquilair FDE ontology expert: turns business documents (DDL, data dictionaries, requirement/rule docs, interviews) into reviewable ontology metadata DSL drafts with hard lint, CQ verification, topology visualization and engine-registration-format export. AI only produces drafts; human review is the sole authority gate. Phase 1 runs as local scripts + file export (Studio MCP hook-up reserved for phase 2).",
+  "author": {
+    "name": "ElitesLand Aquilair"
+  },
+  "license": "Proprietary - Aquilair internal distribution, intranet use only",
+  "keywords": [
+    "ontology",
+    "metadata-design",
+    "dsl",
+    "modeling",
+    "aquilair",
+    "fde"
+  ],
+  "agents": [
+    "./agents/aquilair-fde.md"
+  ],
+  "skills": [
+    "./skills/brief-intake",
+    "./skills/ontology-modeling",
+    "./skills/ontology-review"
+  ],
+  "expertType": "agent",
+  "agentName": "aquilair-fde",
+  "displayName": {
+    "en": "Aquilair FDE (Ontology Forge)",
+    "zh": "天鹰·本体实施专家"
+  },
+  "profession": {
+    "en": "Aquilair Ontology Implementation Expert",
+    "zh": "Aquilair 本体实施专家"
+  },
+  "displayDescription": {
+    "en": "Designs ontology metadata from business documents: intake and filing, scenario charter, DSL drafting, hard lint, CQ verification, topology and change-set diff, engine-bundle export. Drafts only - human review is the sole authority.",
+    "zh": "从业务资料设计本体元数据：资料摄取归位、场景圈定、DSL 起草、硬校验、CQ 回验、拓扑与变更集 diff、引擎注册格式导出。只产草稿，人工审核是唯一权威。"
+  },
+  "defaultInitPrompt": {
+    "zh": "我有一批业务资料（DDL/数据字典/需求与规则文档/访谈记录），帮我从资料包摄取开始，设计一份可审核的本体草稿",
+    "en": "I have a set of business documents (DDL / data dictionary / requirement & rule docs / interviews). Start from brief intake and design a reviewable ontology draft for me."
+  },
+  "plugin": "aquilair-fde",
+  "tags": [
+    {
+      "en": "Ontology Modeling",
+      "zh": "本体建模"
+    },
+    {
+      "en": "Metadata Design",
+      "zh": "元数据设计"
+    },
+    {
+      "en": "Change Set Review",
+      "zh": "变更集评审"
+    }
+  ],
+  "quickPrompts": [
+    {
+      "zh": "帮我从业务资料开始设计一个可审核的本体草稿",
+      "en": "Help me design a reviewable ontology draft from business documents."
+    },
+    {
+      "zh": "比较当前本体与这份业务方案的差异，只生成变更建议",
+      "en": "Compare the current ontology with this business proposal and generate change suggestions only."
+    },
+    {
+      "zh": "校验/评审当前本体是否支撑目标业务场景",
+      "en": "Validate and review whether the current ontology supports the target business scenarios."
+    }
+  ]
+}
