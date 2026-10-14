@@ -4,7 +4,7 @@ description: 本体建模主技能——十步流水线编排核心（M1 版覆�
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-<!-- 镜像自 ZCode 侧 plugins/ontology-forge，修改请改源侧后重新平移。 -->
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.1），修改请改源侧后重新平移。
 
 # 本体建模主技能（ontology-modeling）
 
@@ -12,7 +12,7 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 
 ## 二、脚本定位与产物根目录（先读，避免摩擦）
 
-- **脚本定位**：4 个脚本随插件分发于**插件根的 `scripts/` 目录**，按插件根绝对路径调用（WorkBuddy 镜像不含 `scripts/`——脚本位于 ZCode 侧源仓库 `plugins/ontology-forge/scripts/`，从源仓库获取，见插件根 README）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
+- **脚本定位**：4 个脚本随插件分发于**插件根的 `scripts/` 目录**。优先以插件根的绝对路径调用（本机源仓库为 `D:\documents\elitesland-workspace\aquilair-ontology\plugins\ontology-forge\scripts\`；安装缓存路径以运行环境为准——技能目录的上级即插件根）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
 - **产物根目录**：`models/<domain>/` 相对**当前会话工作区**落位。会话工作区不是专门的本体仓库时，先向用户确认产物根目录（团队协作场景应落到统一仓库），不要静默散落到默认工作区。
 
 ## 三、流水线（M1 版七步，强制顺序）

@@ -4,7 +4,7 @@ description: 本体评审技能——按 checklist 对本体 DSL（或 studio-mo
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-<!-- 镜像自 ZCode 侧 plugins/ontology-forge，修改请改源侧后重新平移。 -->
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.1），修改请改源侧后重新平移。
 
 # 本体评审（ontology-review）
 
