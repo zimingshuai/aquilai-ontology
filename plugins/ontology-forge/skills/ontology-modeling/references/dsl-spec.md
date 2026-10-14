@@ -18,7 +18,12 @@ rules: [ ... ]                # 规则（见 §3），可空
 actions: [ ... ]              # 动作（见 §4），一期不含，保留槽位
 competency_questions: [ ... ] # 能力问题（见 §5）
 open_questions: [ ... ]       # 待确认问题（禁止脑补，人审前必须清零或标记接受）
-conflicts: [ ... ]            # 口径冲突记录（保留双方定义与来源）
+conflicts:                    # 口径冲突记录（v0.3 固化 schema，结构漂移=不合规）
+  - topic: <string>           #   冲突主题（术语/口径名）
+    side_a: { claim: <定义>, source: <来源文档#位置> }
+    side_b: { claim: <定义>, source: <来源文档#位置> }
+    status: pending|resolved  #   人审裁决前一律 pending
+    impact: <string>          #   可选，受影响的规则/实体
 assumptions: [ ... ]          # 生成假设清单
 ```
 
