@@ -119,15 +119,35 @@ entities:
   downstream: "Action 准入拦截: <action_name>"
 ```
 
-## 4. actions（动作，一期不含，槽位保留）
+## 4. actions（动作，v0.2.2：M3 按引擎 8 个真实 action 实测定稿）
+
+action body 是可执行 Python 源码（无法声明式生成）——DSL 声明**元数据 + 骨架配方（recipe）**，编译器生成 body 骨架，业务逻辑人工插桩（`# TODO` 标记处）。
 
 ```yaml
-- name: <action_name>          # snake_case
-  description: <string>
-  parameters: { <参数名>: "str"|"float" }   # 引擎类型标注为字符串
-  supports_sandbox: <bool>
-  body_ref: <path>             # Python body 模板（无法声明式生成，人工插桩）
+actions:
+  - name: <action_name>            # snake_case
+    description: <中文描述，强制三要素：业务语义 + 写操作风险声明 + 确认卡要求>
+    parameters: { <参数名>: "str"|"float" }   # 引擎类型标注为字符串；可选参数加 `?` 后缀（如 "float?"）
+    supports_sandbox: <bool>       # 写操作默认 true
+    recipe: modify_instance|state_transition|create_records   # 骨架配方（三选一）
+    recipe_config: { ... }         # 配方参数，见下
+    body_ref: <path>               # 生成后的骨架文件路径（人工插桩后此文件回填编译）
 ```
+
+**三种配方（引擎 8 个真实 action 归纳）与 recipe_config**：
+
+1. `modify_instance`（单实例字段修改：disable_strategy / modify_plan / modify_material_in_plant_stock 型）：
+   `{target_entity, lookup: {主键字段: "@param:参数名"}, set_fields: {字段: "@param:参数名"|常量}, status_guard: {field, expect}}`
+2. `state_transition`（状态机迁移+级联：confirm_solution / execute_solution 型）：
+   `{target_entity, lookup, from_status, to_status, cascade: [{entity, via, from, to}]}`
+3. `create_records`（计算生成记录：evaluate_solution / run_supply_demand_allocation 型）：
+   `{target_entity, input_entities: [<查询的输入实体>], output_fields: [<生成字段>]}`——骨架只给查询输入 + `# TODO 业务计算` 区 + edits.create 样例
+
+**body 骨架的统一模式（生成器必须遵循，全部来自实测）**：`@action` 装饰器；签名含隐式 `store: OntologyStore | None = None`；docstring = description 原文；`edits = OntologyEdits(); store = store or OntologyStore()` 开头；主键定位 `store.query_instances("<Entity>")` + `next(...)`；存在性/状态前置校验 `raise ValueError(中文消息)`；实例重建排除 property 属性（`if not isinstance(getattr(type(obj), k, None), property): setattr(...)`）；变更走 `edits.modify/modify/create`；返回 `edits`。主键生成模式（create 类）：`f"前缀-{参数}-{时间戳%-Y%m%d%H%M%S%f[:-3]}-{uuid4().hex[:4]}"`。
+
+**编译目标**：`engine-bundle/actions.json`——结构对齐 mfg 引擎 get_meta_actions 实测：`{actions: [{action_name, description, parameters, supports_sandbox, body: <body_ref 文件内容字符串>}], sandbox_execution: {parameter: "sandbox", accepts: ..., usage: ...}}`。
+
+**lint 新增（第 10-11 条）**：admission 规则的 upstream 引用的 action 必须在 actions 中声明；admission 的 `@param:` 引用必须对应 action parameters 的参数名。
 
 ## 5. competency_questions（能力问题）
 

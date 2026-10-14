@@ -22,8 +22,9 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 5. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 6. **拓扑可视化**：运行 `python scripts/render_topology.py <model.yaml>` 产出 Mermaid classDiagram（topology.md），随 DSL 一并呈给用户。
 7. **引擎格式导出（一期导入方式）**：运行 `python scripts/compile_model.py <model.yaml>` 产出引擎注册格式 JSON + 导入说明；人工审核通过后由平台侧注册。**你不执行任何生产写入**。
+8. **沉淀回流（M3 起可选，人审通过后执行）**：将本次建模的可复用知识沉淀到域知识库（`aquilair-knowledge/sources/<域名>/`，无对应域则提示用户先建）——口径定义与冲突裁决进 glossary/analyses（好答案归档），新术语同义词映射补进 glossary。**红线不变**：本体 DSL 是唯一权威，知识库只是沉淀层；回流内容须注明来源为本体 `<domain>@<version>`，后续本体演进以 DSL 变更集为准（知识库发现过时走其再摄取流程）。
 
-M2 起追加：变更集 diff、评审 checklist、行为测试；M3 起追加：变更集 MCP 导入、动作生成、知识库衔接。
+M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲突拒绝）、diff 拓扑（`render_topology.py --diff`）、studio-model 双格式编译与模板 lint（`compile_model.py --target both` / `lint_studio_model.py`）、ontology-review 评审技能。M3 起追加：action 骨架生成（`gen_action_skeleton.py`）、WorkBuddy 侧平移。
 
 ## 四、建模铁律（违背即违规）
 

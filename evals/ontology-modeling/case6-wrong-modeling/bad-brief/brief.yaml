@@ -1,0 +1,9 @@
+# 错误建模陷阱资料包（case6 测试用·勿作真实建模输入）
+
+domain: bad-brief-trap
+scenario_name: 仓储风控流程（含流程步骤建模陷阱）
+business_owner: 待确认
+target_engine: new
+source_systems: [WMS]
+known_conflicts: []
+notes: 本资料包为行为测试构造，decisions-bad.md 含故意的错误建模要求
