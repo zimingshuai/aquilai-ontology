@@ -1,12 +1,15 @@
-"""studio-model 编译核心：DSL v0.2 -> Studio 模板 YAML dict（dsl-spec §8 互导约定）。
+"""studio-model 编译核心：DSL v0.3 -> Studio 模板 YAML dict（dsl-spec §8 互导约定）。
 
 主要 Input：DSL 模型 dict（yaml.safe_load 产物，须含 entities）。
 主要 Output：compile_studio_model 返回 (studio dict, errors, warnings)——studio dict 为
 ``{format, object_types, link_types, rule_types}``（键序按真实模板实证）；errors 为阻断性
 错误中文描述（外键缺失 / 复合主键无法单字段映射 / 表达式引用不可解析，对应元素被跳过，
-不猜）；warnings 为非阻断提示（trigger/admission 不进模板、code 撞名、四元组去重）。
+不猜）；warnings 为非阻断提示（trigger/admission 不进模板、复合外键连线不进模板（v0.3：
+模板连线为单字段对，多字段外键需 Studio 侧手工配置）、code 撞名、四元组去重）。
 类型映射：STRING->string、BOOLEAN->boolean、DATE->date、TIMESTAMP->datetime、
 DOUBLE/INTEGER/DECIMAL->double；code 用 rel_/rule_ + md5 关键要素前 8 位稳定 hash（幂等）。
+links 显式 fk（v0.3 §2）：单字段 fk 进模板（targetPropertyCode=fk 字段），
+复合 fk 告警跳过（不猜、不取主字段凑数）。
 """
 
 # 标准库导入
@@ -48,10 +51,32 @@ def _entity_props(entity: dict[str, Any]) -> dict[str, Any]:
     return entity.get("properties") or {} if isinstance(entity, dict) else {}
 
 
-def _entity_links(entity: dict[str, Any]) -> dict[str, str]:
-    """取实体 links 中目标为字符串的合法项。Args: entity 实体定义。Returns: 别名->目标 dict。"""
+def link_pair(value: Any) -> Optional[tuple[str, Optional[list[str]]]]:
+    """解析单个 links 项为 (目标实体, 显式外键列表或 None)；形态非法返回 None（v0.3 §2）。
+
+    Args:
+        value: links 别名对应的值（目标名字符串，或 {target, fk} 映射）。
+    Returns:
+        简写 ``alias: Target`` -> (Target, None)；显式 ``{target, fk: [f]}`` -> (target, fk 列表)。
+    """
+    if isinstance(value, str):
+        return value, None
+    if isinstance(value, dict) and isinstance(value.get("target"), str):
+        fk = value.get("fk")
+        if isinstance(fk, list) and fk and all(isinstance(f, str) and f for f in fk):
+            return value["target"], fk
+        return value["target"], None  # fk 缺省视同简写外键约定（lint3 已报告结构问题）
+    return None
+
+
+def _entity_links(entity: dict[str, Any]) -> dict[str, tuple[str, Optional[list[str]]]]:
+    """取实体 links 的 {别名: (目标实体, 显式外键列表或 None)}（形态非法项跳过）。
+
+    Args: entity 实体定义。Returns: 别名 -> (target, fk) 映射。
+    """
     links = entity.get("links") if isinstance(entity, dict) and isinstance(entity.get("links"), dict) else None
-    return {a: t for a, t in (links or {}).items() if isinstance(t, str)}
+    return {a: pair for a, v in (links or {}).items()
+            if (pair := link_pair(v)) is not None}
 
 
 def _primary_keys(entity_name: str, entity: dict[str, Any]) -> list[str]:
@@ -99,12 +124,16 @@ def compile_object_types(model: dict[str, Any], derived_targets: set[tuple[str, 
 # ===========三、link_types 编译（links -> 模板连线）==========
 def compile_link_types(model: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     """把 DSL links 编译为模板 link_types（§8：source=目标实体、target=本实体、1:n、
-    sourcePropertyCode=目标主键、targetPropertyCode=外键字段=目标主键名，找不到即报错不猜）。
+    sourcePropertyCode=目标主键、targetPropertyCode=外键字段，找不到即报错不猜）。
+
+    外键字段取值（v0.3）：简写形态 = 目标主键字段名（约定不变）；显式 fk 单字段 = fk 字段；
+    显式 fk 多字段（复合外键）= 模板连线为单字段对无法表达，告警跳过（不取主字段凑数）。
 
     Args:
         model: DSL 模型 dict。
     Returns:
-        (link_types 列表, errors, warnings)；errors 对应连线被跳过；warnings 记四元组去重。
+        (link_types 列表, errors, warnings)；errors 对应连线被跳过（退出码 1）；
+        warnings 记四元组去重与复合外键跳过（不阻断）。
     """
     entities = model.get("entities") or {}
     links_out: list[dict[str, Any]] = []
@@ -113,7 +142,7 @@ def compile_link_types(model: dict[str, Any]) -> tuple[list[dict[str, Any]], lis
     # seen：已生成四元组集合（source, target, sp, tp），同四元组视为同一关系去重。
     seen: set[tuple[str, str, str, str]] = set()
     for holder, ent in entities.items():
-        for alias, target in _entity_links(ent).items():
+        for alias, (target, fk) in _entity_links(ent).items():
             if target not in entities or not isinstance(entities[target], dict):
                 errors.append(f"实体 {holder}.links.{alias} 的目标实体 {target!r} 不存在，该连线已跳过")
                 continue
@@ -123,21 +152,27 @@ def compile_link_types(model: dict[str, Any]) -> tuple[list[dict[str, Any]], lis
                 errors.append(f"实体 {holder}.links.{alias} 的目标实体 {target} 主键字段数={len(pk)}"
                               f"（{','.join(pk) or '∅'}），单字段外键约定无法映射，该连线已跳过")
                 continue
-            fk = pk[0]
-            #   2. 外键字段 = 目标主键字段名，必须已声明于本实体 properties（v0.2 约定 2，不猜）
-            if fk not in _entity_props(ent):
-                errors.append(f"实体 {holder}.links.{alias}：按约定外键字段应为 {target} 主键同名属性"
-                              f" {fk!r}，但 {holder} 未声明该属性，该连线已跳过（v0.3 候选：links 显式 fk 声明）")
+            #   2. 外键字段：显式 fk 优先（v0.3）；复合 fk（多字段）模板无法表达，告警跳过
+            if fk is not None and len(fk) > 1:
+                warnings.append(f"实体 {holder}.links.{alias} 为复合外键（{'+'.join(fk)}），"
+                                "模板连线为单字段对无法表达，该连线未进模板（需 Studio 侧手工配置）")
                 continue
-            quad = (target, holder, fk, fk)
+            fk_field = fk[0] if fk is not None else pk[0]
+            #   3. 外键字段必须已声明于本实体 properties（简写=目标主键名约定，显式=fk 字段，均不猜）
+            if fk_field not in _entity_props(ent):
+                origin = "显式 fk 字段" if fk is not None else f"按约定外键字段应为 {target} 主键同名属性"
+                errors.append(f"实体 {holder}.links.{alias}：{origin}"
+                              f" {fk_field!r}，但 {holder} 未声明该属性，该连线已跳过")
+                continue
+            quad = (target, holder, pk[0], fk_field)
             if quad in seen:
-                warnings.append(f"实体 {holder}.links.{alias} 与已有连线四元组重复（{target}|{holder}|{fk}），已去重")
+                warnings.append(f"实体 {holder}.links.{alias} 与已有连线四元组重复（{target}|{holder}|{fk_field}），已去重")
                 continue
             seen.add(quad)
             links_out.append({
-                "code": _stable_code("rel_", target, holder, fk), "source": target, "target": holder,
+                "code": _stable_code("rel_", target, holder, fk_field), "source": target, "target": holder,
                 "name": "", "cardinality": "1:n", "description": "",
-                "sourcePropertyCode": fk, "targetPropertyCode": fk,
+                "sourcePropertyCode": pk[0], "targetPropertyCode": fk_field,
             })
     return links_out, errors, warnings
 
@@ -150,10 +185,10 @@ def _plural_names(entities: dict[str, Any]) -> dict[str, set[str]]:
         if isinstance(ent, dict)
     }
     for ent in entities.values():
-        for _alias, target in _entity_links(ent).items():
+        for _alias, (target, _fk) in _entity_links(ent).items():
             names.setdefault(target, set())
     for ent in entities.values():
-        for alias, target in _entity_links(ent).items():
+        for alias, (target, _fk) in _entity_links(ent).items():
             names[target].add(alias + "s")
     return names
 
@@ -174,15 +209,16 @@ def _resolve_tail(segs: list[str], idx: int, entity: str, entities: dict[str, An
     if idx == len(segs) - 1:
         return entity  # 已到达末段字段所在实体
     seg = segs[idx]
-    # 正向引用：seg 是当前实体的 links 别名。
-    target = _entity_links(entities.get(entity, {})).get(seg)
-    if isinstance(target, str) and target in entities:
-        tail = _resolve_tail(segs, idx + 1, target, entities, plural)
+    # 正向引用：seg 是当前实体的 links 别名（简写/显式形态统一取目标实体）。
+    pair = _entity_links(entities.get(entity, {})).get(seg)
+    if pair is not None and pair[0] in entities:
+        tail = _resolve_tail(segs, idx + 1, pair[0], entities, plural)
         if tail:
             return tail
     # 反向引用：seg 是某实体的复数名（表名+s / 别名+s），且该实体 links 指向当前实体。
     for holder, holder_names in plural.items():
-        if seg in holder_names and entity in _entity_links(entities.get(holder, {})).values():
+        if seg in holder_names and any(target == entity
+                                       for target, _fk in _entity_links(entities.get(holder, {})).values()):
             tail = _resolve_tail(segs, idx + 1, holder, entities, plural)
             if tail:
                 return tail
@@ -347,7 +383,7 @@ def studio_readme_section(studio: dict[str, Any], errors: list[str],
     Args:
         studio: compile_studio_model 产物。
         errors: 编译错误列表（外键缺失等，逐条入 README 供人工处理）。
-        warnings: 编译告警列表（trigger/admission 名单、code 撞名）。
+        warnings: 编译告警列表（trigger/admission 名单、复合外键名单、code 撞名）。
     Returns:
         可直接追加到 README 末尾的 Markdown 文本。
     """
@@ -355,7 +391,8 @@ def studio_readme_section(studio: dict[str, Any], errors: list[str],
     trigger_names = [w.split("「")[1].split("」")[0] for w in warnings if "不进模板" in w]
     lines = [
         "\n## Studio 模板产物（studio-model.yaml）\n",
-        "- 由同一 DSL 按 dsl-spec §8 编译：实体->object_types、links->link_types（1:n，外键=目标主键同名属性）、",
+        "- 由同一 DSL 按 dsl-spec §8 编译：实体->object_types、links->link_types（1:n，外键字段取显式 fk，"
+        "简写取目标主键同名属性）、",
         "  derived_property->rule_types（calculation，表达式中文名引用）；code 用 rel_/rule_+md5 稳定 hash，",
         "  重复编译字节一致（幂等）。\n",
         f"- 规模：object_types {len(studio['object_types'])} 个 / link_types {len(studio['link_types'])} 条 /"
@@ -364,6 +401,12 @@ def studio_readme_section(studio: dict[str, Any], errors: list[str],
     if trigger_names:
         lines.append(f"- **{len(trigger_names)} 条 trigger/admission 规则不进模板**（模板仅承载 calculation，"
                      "需引擎侧配置）：" + "、".join(trigger_names) + "\n")
+    # compound_fks：复合外键连线名单（v0.3：模板连线为单字段对，多字段外键无法表达）。
+    compound_fks = [w for w in warnings if "复合外键" in w]
+    if compound_fks:
+        lines.append(f"- **{len(compound_fks)} 条复合外键连线未进模板**（模板连线为单字段对，"
+                     "需 Studio 侧手工配置）：\n")
+        lines.extend(f"  - {w}\n" for w in compound_fks)
     if errors:
         lines.append("- **编译错误（对应元素已跳过，须人工处理后再编译）**：\n")
         lines.extend(f"  - {e}\n" for e in errors)

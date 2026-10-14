@@ -14,6 +14,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+# 第三方依赖导入
+import yaml
+
 # eval_root：本脚本所在目录（evals/ontology-modeling）。
 EVAL_ROOT = Path(__file__).resolve().parent
 # repo_root：仓库根（脚本向上三级）。
@@ -217,7 +220,74 @@ def build_case7(results: list) -> None:
     assert_case(results, "case7", "坏fixture 报 lint11", lambda: lint_bad_fixture("bad-param-ref.yaml", "lint11"))
 
 
-# ===========六、主流程==========
+# ===========六、case8：v0.3 显式 fk / 规则名唯一 / 受控词表==========
+def build_case8(results: list) -> None:
+    """case8 断言：显式 fk lint 与编译、lint12 重复名、复合 fk 告警跳过、lint9 xgimi 退出码。"""
+    fixture_dir = EVAL_ROOT / "case8-v03"
+    fixture_ok = fixture_dir / "fixture-ok.yaml"
+    fixture_bad = fixture_dir / "fixture-bad.yaml"
+    xgimi_path = REPO_ROOT / "models" / "xgimi" / "model.yaml"
+    if not (fixture_ok.exists() and fixture_bad.exists()):
+        results.append(("case8", "前置就绪检测", "SKIP（case8-v03 fixture 未就绪）"))
+        return
+
+    def lint_ok():
+        proc = run_cmd([SCRIPTS_DIR / "lint_model.py", fixture_ok])
+        assert proc.returncode == 0, f"lint 退出码 {proc.returncode}: {proc.stdout[-300:]}"
+
+    def lint_bad():
+        proc = run_cmd([SCRIPTS_DIR / "lint_model.py", fixture_bad])
+        out = proc.stdout or ""
+        assert proc.returncode == 1, f"应报 error 退出 1，实际 {proc.returncode}"
+        assert "lint3" in out and "ghost_code" in out, f"缺 rule3 fk error: {out[-300:]}"
+        assert out.count("lint12") == 2, f"lint12 应恰 2 处，实际 {out.count('lint12')}: {out[-300:]}"
+        assert "error 3 处" in out, f"应恰 3 处 error（lint3×1+lint12×2）: {out[-200:]}"
+
+    def compile_both_matches_case7():
+        proc = run_cmd([SCRIPTS_DIR / "compile_model.py", fixture_ok, "--target", "both"])
+        assert proc.returncode == 0, f"compile 退出码 {proc.returncode}: {proc.stderr[-300:]}"
+        # c8/c7：case8 与 case7 的引擎实体注册表——显式 fk 不影响引擎格式，应深度一致
+        c8 = json.loads((fixture_dir / "engine-bundle" / "objects.json").read_text(encoding="utf-8"))
+        c7 = json.loads((EVAL_ROOT / "case7-actions" / "engine-bundle" / "objects.json")
+                        .read_text(encoding="utf-8"))
+        assert c8 == c7, "引擎 links 产物与 case7 版不一致（显式形态不应影响引擎格式）"
+        studio = yaml.safe_load((fixture_dir / "engine-bundle" / "studio-model.yaml")
+                                .read_text(encoding="utf-8"))
+        link = next(lt for lt in studio["link_types"]
+                    if lt["source"] == "Supplier" and lt["target"] == "ReconciliationStatement")
+        assert link["targetPropertyCode"] == "supplier_code", f"tp 应为 supplier_code: {link}"
+
+    def compound_fk_skipped_with_warning():
+        # 内存态最小模型：复合 fk 连线应进 warnings 且不进 link_types（v0.3 模板单字段对限制）；
+        # 延迟导入 studio_model 避免顶层 path 副作用影响其他用例
+        if str(SCRIPTS_DIR) not in sys.path:
+            sys.path.insert(0, str(SCRIPTS_DIR))
+        import studio_model
+        model = {"entities": {
+            "A": {"display_name": "甲", "table_name": "a", "description": "",
+                  "properties": {"a_id": {"display_name": "id", "type": "STRING", "primary": True},
+                                  "x1": {"display_name": "x1", "type": "STRING"},
+                                  "x2": {"display_name": "x2", "type": "STRING"}},
+                  "links": {"self_ref": {"target": "A", "fk": ["x1", "x2"]}}}},
+            "rules": []}
+        studio, errors, warnings = studio_model.compile_studio_model(model)
+        assert not errors, f"复合 fk 应告警不应 error: {errors}"
+        assert any("复合外键" in w for w in warnings), f"缺复合外键告警: {warnings}"
+        assert not studio["link_types"], f"复合 fk 连线不应进 link_types: {studio['link_types']}"
+
+    def lint_xgimi_exit0():
+        proc = run_cmd([SCRIPTS_DIR / "lint_model.py", xgimi_path])
+        # lint9 如实断言：xgimi 复验版全用建议名则 0 warning 也是正确结果，故只断言退出码
+        assert proc.returncode == 0, f"xgimi lint 退出码 {proc.returncode}: {proc.stdout[-300:]}"
+
+    assert_case(results, "case8", "lint 显式 fk 0 错误", lint_ok)
+    assert_case(results, "case8", "lint 坏例报 lint3+lint12", lint_bad)
+    assert_case(results, "case8", "编译 both 引擎产物与 case7 一致", compile_both_matches_case7)
+    assert_case(results, "case8", "复合 fk 连线告警跳过", compound_fk_skipped_with_warning)
+    assert_case(results, "case8", "lint xgimi 退出码 0", lint_xgimi_exit0)
+
+
+# ===========七、主流程==========
 def main() -> int:
     """执行全部机械断言并输出结果表。
 
@@ -230,6 +300,7 @@ def main() -> int:
     build_case2(results)
     build_case4(results)
     build_case7(results)
+    build_case8(results)
     print("\n====evals 回归结果====")
     for case, name, status in results:
         print(f"[{case}] {name}: {status}")

@@ -1,4 +1,4 @@
-"""DSL v0.2 模型编译器：把 YAML 模型编译为本体引擎注册格式与 Studio 模板（自 poc/m0/scripts 迁移增强）。
+"""DSL v0.3 模型编译器：把 YAML 模型编译为本体引擎注册格式与 Studio 模板（自 poc/m0/scripts 迁移增强）。
 
 主要 Input：DSL YAML 模型路径（位置参数）+ --target 编译目标（engine / studio-model / both，默认 both）。
 主要 Output:<模型目录>/engine-bundle/ 下产物——engine 目标产出三件（objects.json（实体注册表）、
@@ -7,9 +7,13 @@ import-README.md（平台侧导入说明））；DSL 含 actions 段时（v0.2.2
 actions.json（动作注册表，结构对齐 mfg 引擎 get_meta_actions 实测：逐 action 读 body_ref 指向的
 骨架文件内容为 body——缺骨架文件时报错并提示先运行 gen_action_skeleton.py，不产出该文件；
 sandbox_execution 为引擎统一的沙箱执行约定常量）；无 actions 段不生成该文件（gold/fnb 行为不变）。
-studio-model 目标额外产出 studio-model.yaml（dsl-spec §8 互导格式，trigger/admission 不进模板并告警
-列出；links 外键缺失的连线跳过并报错列出（不猜），此时退出码 1 但产物照写以便人工处理）。编译只取
-引擎格式白名单键，DSL 自有字段（governance/provenance/uom/enum_values/source 及顶层
+links 显式 fk 形态（v0.3 §2）：engine 目标编译为 别名->目标实体名 对（引擎不存 fk 字段名，
+显式形态不影响引擎产物格式）；studio-model 目标单字段 fk 进模板（targetPropertyCode=fk 字段），
+复合 fk（多字段）模板单字段连线无法表达——告警跳过该连线并在 import-README 列明需 Studio 侧
+手工配置（不猜、不取主字段凑数）。studio-model 目标额外产出 studio-model.yaml（dsl-spec §8
+互导格式，trigger/admission 不进模板并告警列出；links 外键缺失的连线跳过并报错列出（不猜），
+此时退出码 1 但产物照写以便人工处理）。编译只取引擎格式白名单键，DSL 自有字段
+（governance/provenance/uom/enum_values/source 及顶层
 CQ/open_questions/conflicts/assumptions）按 dsl-spec §6 编译剥离清单剥离，产物不含引擎格式之外的键
 （内置自查）。通用性要求：编译逻辑完全由 DSL 结构驱动，不含任何实体名特判。
 """
@@ -95,20 +99,29 @@ def _compile_entity(entity_name: str, entity: dict[str, Any]) -> dict[str, Any]:
         entity_name: 实体名（PascalCase）。
         entity: DSL 实体 dict（display_name / table_name / description / properties / links）。
     Returns:
-        引擎实体 dict：五键齐全，links 缺省回填空 dict（引擎格式固定含 links 键）。
+        引擎实体 dict：五键齐全，links 缺省回填空 dict（引擎格式固定含 links 键）；
+        links 编译为 别名->目标实体名 对（显式 fk 形态丢弃 fk 字段名——引擎不存储，
+        dsl-spec §6 映射表；形态非法时 SystemExit）。
     """
     #   1. 逐属性编译（保持 DSL 字段顺序）
     properties = {
         field_name: _compile_property(entity_name, field_name, field)
         for field_name, field in (entity.get("properties") or {}).items()
     }
-    #   2. 组装引擎实体；links 为 DSL 可选键，缺省/为 None 时回填空 dict
+    #   2. links：简写/显式形态统一收敛为 别名->目标（非法形态拒绝编译，不猜）
+    links_out: dict[str, str] = {}
+    for alias, value in (entity.get("links") or {}).items():
+        pair = studio_model.link_pair(value)
+        if pair is None:
+            _fail(f"实体 {entity_name}.links.{alias}",
+                  "links 项须为『目标实体名字符串』或『{target, fk}』映射")
+        links_out[alias] = pair[0]
     return {
         "display_name": entity.get("display_name", ""),
         "table_name": entity.get("table_name", ""),
         "description": entity.get("description", ""),
         "properties": properties,
-        "links": dict(entity.get("links") or {}),
+        "links": links_out,
     }
 
 
@@ -402,7 +415,8 @@ def main() -> None:
                              "studio-model=仅 Studio 模板 YAML；both=两者（默认）。"
                              "studio-model 产物为 <bundle>/studio-model.yaml；trigger/admission 规则"
                              "不进模板（stdout 告警列出，需引擎侧配置）；links 外键缺失的连线跳过并报错"
-                             "（不猜），此时退出码 1 但产物照写")
+                             "（不猜），此时退出码 1 但产物照写；复合外键连线（v0.3 显式 fk 多字段）"
+                             "告警跳过并列入 import-README（需 Studio 侧手工配置）")
     args = parser.parse_args()
     model_path = Path(args.model)
     # bundle_dir：产物目录，缺省为模型同目录下的 engine-bundle。

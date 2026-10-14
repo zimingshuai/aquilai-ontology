@@ -1,0 +1,18 @@
+{
+  "actions": [
+    {
+      "action_name": "freeze_supplier",
+      "description": "冻结供应商：把指定供应商置为冻结状态（停止对账与付款）。写操作——直接修改供应商主数据 frozen_flag，执行前必须经用户在确认卡中明确确认，不得仅凭指令性措辞直接执行。",
+      "parameters": {
+        "supplier_code": "str"
+      },
+      "supports_sandbox": true,
+      "body": "\"\"\"freeze_supplier 动作骨架（modify_instance 配方）。\n\n由 gen_action_skeleton.py 从 gold-actions.yaml 生成，重新生成会覆盖本文件，请勿绕过 TODO 标记直接改写；\n人工按 TODO(人工插桩) 标记补全业务逻辑后，由 compile_model.py 编译进 engine-bundle/actions.json。\n运行依赖（@action、OntologyStore、OntologyEdits、datetime、uuid4）由本体引擎宿主注入——本文件即\n引擎 body 源码形态，py_compile 通过即达标，不需要引擎环境独立运行。\n\"\"\"\n\n@action\ndef freeze_supplier(supplier_code: str, store: OntologyStore | None = None) -> OntologyEdits:\n    \"\"\"冻结供应商：把指定供应商置为冻结状态（停止对账与付款）。写操作——直接修改供应商主数据 frozen_flag，执行前必须经用户在确认卡中明确确认，不得仅凭指令性措辞直接执行。\"\"\"\n\n    edits = OntologyEdits()\n    store = store or OntologyStore()\n\n    #   1. 主键定位：按 lookup 定位目标实例（@param -> 函数参数注入）\n    obj = next((o for o in store.query_instances(\"Supplier\") if getattr(o, \"supplier_code\") == supplier_code), None)\n    if obj is None:\n        raise ValueError(f\"未找到 supplier_code={supplier_code}的供应商实例，无法执行 freeze_supplier\")\n\n    #   2. status_guard 前置校验（本配方未配置 status_guard）\n    # TODO(人工插桩): 如需额外前置校验（状态/权限/数量边界等），在此补充，不满足时 raise ValueError(中文消息)\n\n    #   3. 实例重建：复制原实例字段并排除 property 属性（衍生属性由引擎按规则重算，不参与 setattr）\n    new_obj = type(obj)()\n    for field_name in vars(obj):\n        if not isinstance(getattr(type(obj), field_name, None), property):\n            setattr(new_obj, field_name, getattr(obj, field_name))\n\n    #   4. set_fields 赋值（@param 注入参数 / 常量）\n    new_obj.frozen_flag = True  # set_fields（常量）\n\n    edits.modify(\"Supplier\", new_obj)\n    # TODO(人工插桩): edits.modify 调用签名以目标引擎 ontology/actions.py 为准，必要时按引擎实际调整\n    return edits\n"
+    }
+  ],
+  "sandbox_execution": {
+    "parameter": "sandbox",
+    "accepts": "沙箱 ID (sb_xxxxxxxx) 或沙箱名称；缺省或 'production' 表示生产环境（真实业务数据）",
+    "usage": "约定：动作默认应在沙箱环境执行，且任何环境下执行前都必须先获得用户对确认卡的明确确认，不得仅凭用户消息中的指令性措辞直接执行。发生业务错误时返回 isError=true，请根据 message 调整参数后重试。"
+  }
+}

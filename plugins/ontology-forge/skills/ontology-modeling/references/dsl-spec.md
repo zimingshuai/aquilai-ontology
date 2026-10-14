@@ -1,7 +1,7 @@
-# Ontology DSL 规范 v0.2
+# Ontology DSL 规范 v0.3
 
-> 版本：v0.2（2026-10-13，按 M0 POC 结论修订）｜ 正式版 source of truth
-> v0.1→v0.2 变更：①衍生字段必须在实体 properties 声明；②外键字段保留属性 + links 并存；③增加方言 cookbook；④定义多跳反向聚合语法；⑤明确 upstream 语义；⑥lint 补充两条（依据：poc/m0/REPORT.md §五）
+> 版本：v0.3（2026-10-13，按 M2/M3 与端到端复验的实证发现升级）
+> v0.2.2→v0.3 变更：①links 支持显式 fk 声明（复合外键场景，xgimi 实证 13 连线收敛问题）；②lint 第 12 条规则名全局唯一（fnb 31 处重名实证：引擎合法但 studio-model code 需唯一）；③lint 第 9 条受控词表正式启用（同文档两次独立生成仅 7/26 实体同名的漂移实证）+ seeds/glossary.md 术语对照表机制。
 > 本质定位：面向 Aquilair 本体引擎的**本体元数据设计**（数据模型层 + 语义标注层 + 行为契约层），非 OWL 本体
 
 ## 1. 顶层结构
@@ -54,7 +54,18 @@ entities:
 1. **衍生字段必须在 properties 中声明**：derived_property 规则的目标字段必须已在该 upstream 实体的 properties 里声明（含 type/display_name/description），计算逻辑由规则承载。引擎实际形态即如此（fnb 的 SKUInWarehouse.properties 含 inventory_turnover_days / idd / inventory_level 等衍生字段）。类型为推断时在 assumptions 记录。
 2. **外键字段保留为属性 + links 并存声明**：外键字段（如 supplier_code）作为普通属性保留声明，同时以 links 声明引用关系（引擎实际：fnb PurchaseOrder.properties 有 sku_code/wh_code 且 links 并存）。
 
-**links 语义**：`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。反向一对多集合不写进 links（引擎侧由对方持有引用推导），但在规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s，而非表名+s 的 sku_in_warehouses）；M1 lint 按双形态白名单校验，v0.3 待引擎侧确认生成规则后收敛为单形态）。
+**links 语义与显式 fk 声明（v0.3）**：
+
+```yaml
+    links:
+      supplier: Supplier                          # 简写形态：外键字段 = 目标主键字段名（v0.2 约定不变）
+      project: { target: Project, fk: [project_code] }        # 显式形态：单外键
+      sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code] }  # 复合外键（桥接引用）
+```
+
+`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。**显式 fk 形态用于外键字段 ≠ 目标主键名的场景**（xgimi 实证：PurchaseOrder 经 sku_code+wh_code 复合引用 SKUInWarehouse，简写约定无法表达，studio-model 编译报错）；fk 字段列表必须在 properties 中有声明（lint 校验）。反向一对多集合不写进 links（引擎侧推导），规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s）；多形态白名单校验，收敛为单形态待引擎侧确认）。
+
+**受控词表（v0.3 正式启用，lint 第 9 条）**：新建/增量建模时须对照 `seeds/glossary.md` 术语对照表优先复用既有命名；跨域同义实体（如 fnb `SKU` ↔ mfg `Material`）与同域历史版本命名（如 xgimi 两版 `RunSnapshot`↔`CalculationRun`）都登记在 glossary——**同域重跑必须走增量模式（diff/复用）而非从零生成**；新术语入库在人审时裁定。
 
 ## 3. rules（规则，三类）
 
@@ -167,7 +178,7 @@ actions:
 | `properties.<f>.{display_name,description}` | `{<E>.properties.<f>: {display_name, description}}` |
 | `properties.<f>.type` | `...{data_type}`（枚举同 DSL 7 种） |
 | `properties.<f>.primary` | `...{is_primary}`（false 时编译省略键或置 false，以引擎快照形态为准） |
-| `links.<alias>` | `{<E>: {links: {<alias>: <Target>}}}`（无 links 的实体编译回填 `{}`） |
+| `links.<alias>`（简写或显式 fk） | `{<E>: {links: {<alias>: <Target>}}}`（无 links 的实体编译回填 `{}`）；studio-model 编译的 targetPropertyCode 取显式 fk 字段（简写取目标主键名） |
 | `rules[derived].logic` | `{rules: [{rule_type: "derived_property", logic: "字段: 表达式", upstream, downstream: "Computed Property", name, description}]}` |
 | `rules[trigger].logic` | `{rules: [{rule_type: "trigger", logic: {ALL: [...]}, upstream, downstream: <action>, name, description}]}` |
 | `rules[admission].logic` | `{rules: [{rule_type: "admission", logic: {ALL: [...]}, upstream: [<action>], downstream: "Action 准入拦截: <action>", name, description}]}` |
@@ -176,18 +187,20 @@ actions:
 
 **round-trip 校验口径**：DSL → 编译 → 引擎格式，与引擎实测快照做**深度逐键比对**；编译产物中出现任何引擎格式之外的键 = 失败。
 
-## 7. lint 规则（M1 全集，确定性检查）
+## 7. lint 规则（v0.3 全集，确定性检查）
 
 1. schema 合法：类型枚举、必填键、命名风格（实体 PascalCase、字段 snake_case）
 2. 主键：每个实体至少 1 个 primary；主键字段类型建议 STRING
-3. links 闭合：目标实体必须存在；别名在实体内唯一
+3. links 闭合：目标实体必须存在；别名在实体内唯一；**显式 fk 的字段必须在本实体 properties 声明且目标实体存在（v0.3）**
 4. 表达式静态检查：derived 的目标字段**已声明于** upstream 实体 properties（v0.2 约定 1）；引用前缀是合法 links 别名或复数引用；函数名在白名单内（SUM/COALESCE/MAX）
 5. trigger：field 路径可解析；operator 合法；in 必须配数组
 6. derived 的 `downstream: "Computed Property"` 由编译器回填，DSL 不写
-7. **衍生字段一致性（v0.2）**：所有 derived 目标字段在 properties 中有声明；properties 中标注衍生的字段（如有约定标记）必须有对应 derived 规则
-8. **外键-links 一致性（v0.2）**：links 别名与外键字段对应关系可解释；外键字段值域/类型与目标实体主键兼容（type 相同或均可字符串化）
-
-受控词表检查（fnb/mfg 既有术语优先复用，新词入库走评审）——seeds 就绪后作为第 9 条启用。
+7. **衍生字段一致性（v0.2）**：所有 derived 目标字段在 properties 中有声明；`derived: true` 标记的字段必须有对应 derived 规则
+8. **外键-links 一致性（v0.2）**：外键字段与 links 声明对应可解释；类型与目标主键兼容
+9. **受控词表（v0.3 启用）**：实体名对照 seeds/glossary.md——与既有术语同义但异名时报 warning（提示复用/登记）；glossary 文件缺失时降级跳过并提示
+10. admission 的 upstream action 存在性；`@param:` 引用与 action parameters 对应（v0.2.2）
+11. admission 的 `{param: 名}` 引用与 action parameters 对应（v0.2.2）
+12. **规则名全局唯一（v0.3）**：同名规则跨实体重复报 error（引擎合法但 studio-model code 需唯一，fnb 31 处重名实证）
 
 ## 8. studio-model 互导格式（v0.2.1，2026-10-13 按试用上传的两份真实模板实证）
 

@@ -1,10 +1,12 @@
-"""DSL v0.2 模型硬校验器（lint）——ontology-forge 工具链第一环。
+"""DSL v0.3 模型硬校验器（lint）——ontology-forge 工具链第一环。
 
 主要 Input：DSL YAML 模型文件路径（命令行位置参数）。
 主要 Output：stdout 中文 lint 报告 + 退出码（0=通过；1=存在 error；2=文件/解析失败）。
-实现 dsl-spec.md §7 全部 8 条确定性检查，外加 v0.2 §3 的 upstream 单元素约束与
-v0.2.2 §4 的动作准入检查（第 10-11 条：admission 的 upstream action 必须在 actions 段声明、
-@param:{param: 名} 参数引用必须存在于对应 action 的 parameters）；
+实现 dsl-spec.md §7 全部 12 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
+表达式方言/trigger/下游声明/衍生一致/外键一致）；第 9 条受控词表（v0.3，解析逻辑在
+lint_glossary.py）；第 10-11 条动作准入（v0.2.2 §4）；第 12 条规则名全局唯一（v0.3，
+studio-model code 需唯一）；外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
+``alias: Target`` 与显式 fk ``alias: {target, fk: [字段...]}``（简写行为不变）。
 error 影响退出码，warning 仅提示。逻辑完全由 DSL 结构驱动，不含实体名特判。
 """
 
@@ -16,6 +18,9 @@ from typing import Any, Optional
 
 # 第三方依赖导入
 import yaml
+
+# 项目内部模块导入
+import lint_glossary
 
 # ===========一、常量与 YAML 加载（重复键检测）==========
 # ALLOWED_TYPES：§2 属性类型 7 枚举（与引擎 data_type 同名）。
@@ -178,20 +183,48 @@ def _check_primary_keys(entities: dict, report: Report) -> None:
 
 
 # ===========四、links 与外键一致性检查（lint 规则 3、8）==========
-def _iter_links(ent: dict) -> list[tuple[str, str]]:
-    """取实体 links 的 (别名, 目标) 列表。
+def _link_parts(value: Any) -> tuple[Optional[str], Optional[list[str]], Optional[str]]:
+    """解析单个 links 项（简写或显式 fk 形态，dsl-spec v0.3 §2）。
+
+    Args:
+        value: links 别名对应的值（目标名字符串，或 {target, fk} 映射）。
+    Returns:
+        (目标实体名, 显式外键字段列表或 None, 结构错误消息或 None) 三元组；
+        简写形态 fk 为 None；显式形态的 fk 非法（缺失/空/含非字符串）时返回结构错误。
+    """
+    if isinstance(value, str):
+        return value, None, None
+    if isinstance(value, dict) and isinstance(value.get("target"), str):
+        fk = value.get("fk")
+        if isinstance(fk, list) and fk and all(isinstance(f, str) and f for f in fk):
+            return value["target"], fk, None
+        return value["target"], None, "显式形态的 fk 必须为非空字符串列表（如 [sku_code, wh_code]）"
+    return None, None, "links 项必须为『目标实体名字符串』或『{target, fk}』映射"
+
+
+def _iter_links(ent: dict) -> list[tuple[str, Optional[str], Optional[list[str]], Optional[str]]]:
+    """取实体 links 的 (别名, 目标, 显式外键, 结构错误) 列表。
 
     Args:
         ent: 实体定义 dict。
     Returns:
-        (alias, target) 二元组列表，仅含目标为字符串的合法项；links 结构非法时返回空。
+        四元组列表（结构由 _link_parts 给出）；links 结构非法时返回空。
     """
     links = ent.get("links") if isinstance(ent.get("links"), dict) else None
-    return [(a, t) for a, t in (links or {}).items() if isinstance(t, str)]
+    return [(alias,) + _link_parts(value) for alias, value in (links or {}).items()]
+
+
+def _link_target(ent: dict, alias: str) -> Optional[str]:
+    """取实体 links[alias] 的目标实体名（两种形态统一出口）。Args: ent 实体定义；alias 别名。Returns: 目标名或 None。"""
+    for alias_, target, _fk, _err in _iter_links(ent):
+        if alias_ == alias:
+            return target
+    return None
 
 
 def _check_links(entities: dict, report: Report) -> None:
-    """lint 规则 3：links 目标实体存在；别名在实体内唯一（YAML 重复键检测兜底）。
+    """lint 规则 3：links 目标实体存在；别名在实体内唯一（YAML 重复键检测兜底）；
+    显式 fk 形态的每个外键字段必须在本实体 properties 中声明（v0.3）。
 
     Args:
         entities: 实体名 -> 实体定义 dict。
@@ -203,9 +236,19 @@ def _check_links(entities: dict, report: Report) -> None:
         if ent.get("links") is not None and not isinstance(ent.get("links"), dict):
             report.err("lint3 links", f"实体 {name}", "links 不是映射结构")
             continue
-        for alias, target in _iter_links(ent):
+        own_props = ent.get("properties") or {}
+        for alias, target, fk, err in _iter_links(ent):
+            where = f"实体 {name}.links.{alias}"
+            if err:
+                report.err("lint3 links", where, err)
+                continue
             if target not in entities:
-                report.err("lint3 links", f"实体 {name}.links.{alias}", f"目标实体 {target!r} 不存在")
+                report.err("lint3 links", where, f"目标实体 {target!r} 不存在")
+            if fk is not None:
+                for field in fk:
+                    if field not in own_props:
+                        report.err("lint3 links", where,
+                                   f"显式 fk 字段 {field!r} 未在本实体 properties 声明（v0.3 约定）")
     for key in _DUP_KEYS:
         report.err("lint3 links", "YAML 结构", f"重复键 {key!r}（links 别名/字段名必须实体内唯一）")
 
@@ -223,12 +266,11 @@ def _check_foreign_keys(entities: dict, report: Report) -> None:
         # own_types：本实体全部属性类型集合。
         own_types = {s.get("type") for s in (ent.get("properties") or {}).values()
                      if isinstance(s, dict)}
-        for alias, target in _iter_links(ent):
-            t_ent = entities.get(target)
-            if not isinstance(t_ent, dict):
-                continue  # 目标不存在已由 lint3 报告
+        for alias, target, _fk, err in _iter_links(ent):
+            if err or not isinstance(entities.get(target), dict):
+                continue  # 结构错误/目标不存在已由 lint3 报告
             # pk_types：目标实体主键类型集合。
-            pk_types = {s.get("type") for s in (t_ent.get("properties") or {}).values()
+            pk_types = {s.get("type") for s in (entities[target].get("properties") or {}).values()
                         if isinstance(s, dict) and s.get("primary")}
             if pk_types and not (pk_types & own_types):
                 report.warn("lint8 外键", f"实体 {name}.links.{alias}",
@@ -254,11 +296,11 @@ def _build_plural_index(entities: dict) -> dict[str, dict[str, set[str]]]:
     for name, ent in entities.items():
         plural_names.setdefault(name, set()).add(str(ent.get("table_name") or "") + "s")
     for ent in entities.values():
-        for alias, target in _iter_links(ent):
+        for alias, target, _fk, _err in _iter_links(ent):
             plural_names.setdefault(target, set()).add(alias + "s")
     index: dict[str, dict[str, set[str]]] = {}
     for holder, names in plural_names.items():
-        for target in {t for _a, t in _iter_links(entities.get(holder, {}))}:
+        for target in {t for _a, t, _f, e in _iter_links(entities.get(holder, {})) if not e}:
             for prefix in names:
                 index.setdefault(prefix, {}).setdefault(target, set()).add(holder)
     return index
@@ -284,9 +326,9 @@ def _path_ok(segs: list[str], idx: int, entity: str, entities: dict,
     last = idx == len(segs) - 1
     if last:
         return seg in (ent.get("properties") or {})  # 末段必须落在属性上
-    # 正向引用：沿 links 别名前进。
-    nxt = (ent.get("links") or {}).get(seg)
-    if isinstance(nxt, str) and nxt in entities and _path_ok(
+    # 正向引用：沿 links 别名前进（简写/显式形态统一取目标实体名）。
+    nxt = _link_target(ent, seg)
+    if nxt is not None and nxt in entities and _path_ok(
             segs, idx + 1, nxt, entities, plural_index):
         return True
     # 反向引用：沿复数引用前进（多跳逐级取反向集合）。
@@ -469,6 +511,32 @@ def _check_rules(model: dict, entities: dict, plural_index: dict,
                            "属性标记 derived=true 但没有以它为目标的 derived_property 规则")
 
 
+def _check_rule_names(model: dict, report: Report) -> None:
+    """lint 规则 12（v0.3）：规则名在 rules 数组内全局唯一——同名跨实体重复即 error，
+    同名每处报一条并列出所在实体（引擎侧合法，但 studio-model 的 code=md5(规则名) 需唯一）。
+
+    Args:
+        model: DSL 模型 dict。
+        report: 问题收集器。
+    Returns:
+        None。
+    """
+    # owners：规则名 -> 出现处列表（upstream 首元素，admission 为动作名，缺失记 ?）。
+    owners: dict[str, list[str]] = {}
+    for rule in model.get("rules") or []:
+        if not isinstance(rule, dict) or not isinstance(rule.get("name"), str) or not rule["name"]:
+            continue
+        upstream = rule.get("upstream") or []
+        owner = str(upstream[0]) if upstream and isinstance(upstream[0], str) else "?"
+        owners.setdefault(rule["name"], []).append(owner)
+    for name, holder_list in owners.items():
+        if len(holder_list) > 1:
+            for holder in holder_list:
+                report.err("lint12 规则名唯一", f"规则「{name}」（{holder}）",
+                           f"规则名全局重复 {len(holder_list)} 处：{'/'.join(holder_list)}"
+                           "（引擎合法但 studio-model code 需唯一，请消歧）")
+
+
 # ===========六、动作准入检查（lint 规则 10/11，dsl-spec §4）==========
 def _collect_param_refs(node: Any, refs: list[str]) -> None:
     """递归收集 admission logic 中的参数引用（两种形态）。
@@ -525,12 +593,14 @@ def _check_admission(rule: dict, actions_index: dict[str, dict],
 def lint_model(model: dict, report: Report) -> None:
     """执行全部 lint 检查（入口聚合）。Args: model DSL 模型 dict；report 问题收集器。Returns: None。"""
     _check_schema(model, report)
+    _check_rule_names(model, report)  # lint 规则 12：规则名全局唯一（v0.3）
     entities = model.get("entities")
     if not isinstance(entities, dict):
         return
     _check_primary_keys(entities, report)
     _check_links(entities, report)
     _check_foreign_keys(entities, report)
+    lint_glossary.check_entities(entities, report)  # lint 规则 9：受控词表（v0.3，缺表降级跳过）
     _check_rules(model, entities, _build_plural_index(entities), report)
 
 
