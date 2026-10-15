@@ -8,6 +8,8 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 
 把建模资料包转化为**可注册、可人审的本体元数据 DSL**。本质定位：本体元数据设计专家（数据模型层 + 语义标注层 + 行为契约层），不是学术本体工程——不引入推理机，OWL 仅按需导出。
 
+**产品定位（2026-10-14 用户校准）**：核心任务 = 设计本体元数据（schema）；**两大核心交付物 = ①可视化图片（给人看实体/属性/关系）②yaml（studio-model 设计稿格式，供导入本体用）**；引擎运行态不在插件边界内（engine JSON 仅作可选导出）。
+
 ## 二、脚本定位与产物根目录（先读，避免摩擦）
 
 - **脚本定位**：4 个脚本随插件分发于**插件根的 `scripts/` 目录**。优先以插件根的绝对路径调用（本机源仓库为 `D:\documents\elitesland-workspace\aquilair-ontology\plugins\ontology-forge\scripts\`；安装缓存路径以运行环境为准——技能目录的上级即插件根）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
@@ -20,8 +22,8 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 3. **DSL 起草**：按 [`references/dsl-spec.md`](references/dsl-spec.md)（v0.2）生成 `model.yaml`。命名与结构规范见 [`references/modeling-guide.md`](references/modeling-guide.md)；资料包模板与各输入管线的处理策略见 [`references/input-templates.md`](references/input-templates.md)。
 4. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——8 条确定性检查（schema 合法/主键/links 闭合/表达式静态检查/trigger 结构/衍生字段一致性/外键-links 一致性）。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
 5. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
-6. **拓扑可视化**：运行 `python scripts/render_topology.py <model.yaml>` 产出 Mermaid classDiagram（topology.md），随 DSL 一并呈给用户。
-7. **引擎格式导出（一期导入方式）**：运行 `python scripts/compile_model.py <model.yaml>` 产出引擎注册格式 JSON + 导入说明；人工审核通过后由平台侧注册。**你不执行任何生产写入**。
+6. **拓扑可视化（核心交付物①）**：运行 `python scripts/render_topology.py <model.yaml> --image both` 产出 **topology.png / topology.svg 图片文件**（给人看，零环境依赖）+ topology.md（Mermaid 源）。增量场景加 `--diff <base>` 产出差异高亮图。
+7. **yaml 导出（核心交付物②）**：运行 `python scripts/compile_model.py <model.yaml> --target studio-model` 产出 **studio-model.yaml**（设计稿格式，供导入本体/下游实现使用）。**你不执行任何生产写入**；`--target engine`（引擎注册 JSON）仅在用户明确需要时作为可选导出。
 8. **沉淀回流（M3 起可选，人审通过后执行）**：将本次建模的可复用知识沉淀到域知识库（`aquilair-knowledge/sources/<域名>/`，无对应域则提示用户先建）——口径定义与冲突裁决进 glossary/analyses（好答案归档），新术语同义词映射补进 glossary。**红线不变**：本体 DSL 是唯一权威，知识库只是沉淀层；回流内容须注明来源为本体 `<domain>@<version>`，后续本体演进以 DSL 变更集为准（知识库发现过时走其再摄取流程）。
 
 M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲突拒绝）、diff 拓扑（`render_topology.py --diff`）、studio-model 双格式编译与模板 lint（`compile_model.py --target both` / `lint_studio_model.py`）、ontology-review 评审技能。M3 起追加：action 骨架生成（`gen_action_skeleton.py`）、WorkBuddy 侧平移。
@@ -40,11 +42,13 @@ M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲�
 
 ```text
 models/<domain>/
-├── model.yaml                 # DSL（source of truth）
+├── model.yaml                 # 本体 DSL（source of truth）
+├── topology.png / topology.svg # ★ 核心交付物①：可视化图片（实体/属性/关系，给人看）
+├── studio-model.yaml          # ★ 核心交付物②：设计稿格式 yaml（供导入本体）
+├── topology.md                # Mermaid 源（图片的可编辑形态）
 ├── competency-questions.yaml  # CQ 清单（并入 model.yaml 时可省）
-├── topology.md                # Mermaid 拓扑
-├── engine-bundle/             # 编译产物（引擎注册格式 JSON + 导入说明）
-└── modeling-brief/            # 资料包（brief-intake 产出）
+├── modeling-brief/            # 资料包（brief-intake 产出）
+└── engine-bundle/             # 可选：引擎注册格式 JSON（仅用户明确需要时导出）
 ```
 
 ## 六、反合理化表格（借口 → 反驳）
