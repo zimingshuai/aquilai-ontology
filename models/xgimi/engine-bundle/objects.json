@@ -48,7 +48,7 @@
     "table_name": "material",
     "description": "最小跟踪单位（WiFi 模组、SoC 等），用于汇总与库存跟踪",
     "properties": {
-      "material_id": {
+      "material_code": {
         "display_name": "物料编码",
         "description": "物料唯一编码（如 300-W6A01、H-WIFI-OLD、UNIT-M）",
         "data_type": "STRING",

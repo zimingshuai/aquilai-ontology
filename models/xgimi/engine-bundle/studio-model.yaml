@@ -58,7 +58,7 @@ object_types:
   description: 最小跟踪单位（WiFi 模组、SoC 等），用于汇总与库存跟踪
   enabled: true
   attrs:
-  - code: material_id
+  - code: material_code
     name: 物料编码
     type: string
     required: true
@@ -2009,7 +2009,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_04711ef7
   source: Material
@@ -2017,7 +2017,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_336fff57
   source: Project
@@ -2049,7 +2049,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_a7afb4d2
   source: Project
@@ -2065,7 +2065,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_2c63fa8f
   source: PurchaseOrder
@@ -2081,7 +2081,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_e1e213ce
   source: HistoricalCase
@@ -2097,7 +2097,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_0f491122
   source: Material
@@ -2105,7 +2105,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_3cddf3f1
   source: Project
@@ -2137,7 +2137,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_783ee3df
   source: DataVersion
@@ -2161,7 +2161,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_d4e5bdd9
   source: CalculationRun
@@ -2201,7 +2201,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_fce2d407
   source: Supplier
@@ -2249,7 +2249,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_819d4e00
   source: CalculationRun
@@ -2265,7 +2265,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_e3cf2a48
   source: CalculationRun
@@ -2297,7 +2297,7 @@ link_types:
   name: 物料
   cardinality: 1:n
   description: ''
-  sourcePropertyCode: material_id
+  sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_0f255887
   source: HistoricalCase
