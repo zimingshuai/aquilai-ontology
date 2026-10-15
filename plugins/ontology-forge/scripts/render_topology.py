@@ -8,6 +8,9 @@ links=关联线（目标 "1" --> "*" 持有方 : 别名），derived 目标字�
 --diff 模式：新增实体/属性/links 绿色高亮、删除红色、修改黄色（classDef + class + linkStyle；
 Mermaid class 成员不支持删除线文本，删除项以红色 classDef + 行尾【删除】标签替代）；
 差异判定复用 diff_model.diff_models（与 changeset.json 同一事实来源）。
+--image png|svg|both（默认关闭，不传即保持纯 Markdown 行为零变化）：额外产出图片文件，
+与 Markdown 同目录同名（topology.png/svg 或 topology-diff.png/svg）；渲染管线在
+render_image.py（Playwright 无头浏览器 + mermaid@11，CDN 失败降级本地缓存，皆无则中文报错）。
 """
 
 # 标准库导入
@@ -19,8 +22,9 @@ from typing import Any
 # 第三方依赖导入
 import yaml
 
-# 项目内部模块导入（同目录：差异判定与 diff_model.py 共用同一逻辑）
+# 项目内部模块导入（同目录：差异判定与 diff_model.py 共用同一逻辑；图片渲染管线独立模块）
 from diff_model import diff_models
+from render_image import render_mermaid_image
 
 
 # ===========一、文本清洗（Mermaid 语法安全）==========
@@ -383,7 +387,54 @@ def render_topology_diff(target: dict[str, Any], base: dict[str, Any]) -> tuple[
     return "\n".join(lines) + "\n", stats
 
 
-# ===========六、命令行入口==========
+# ===========六、图片输出（--image：Markdown -> Mermaid 源 -> PNG/SVG）==========
+def _extract_mermaid_block(markdown: str) -> str:
+    """从渲染产物 Markdown 中提取 ```mermaid 代码块源码。
+
+    Args:
+        markdown: render_topology / render_topology_diff 生成的 Markdown 全文。
+    Returns:
+        Mermaid 源码字符串（不含围栏行）。
+    Raises:
+        ValueError: Markdown 中未找到 mermaid 代码块。
+    """
+    lines = markdown.splitlines()
+    inside = False
+    block: list[str] = []
+    for line in lines:
+        if not inside and line.strip() == "```mermaid":
+            inside = True
+            continue
+        if inside and line.strip() == "```":
+            return "\n".join(block) + "\n"
+        if inside:
+            block.append(line)
+    raise ValueError("Markdown 中未找到 ```mermaid 代码块，无法渲染图片")
+
+
+def _write_images(content: str, md_path: Path, fmt: str) -> None:
+    """提取 Mermaid 源并渲染图片，打印中文摘要（含尺寸与 mermaid 资源来源）。
+
+    Args:
+        content: 渲染产物 Markdown 全文。
+        md_path: 已写出的 Markdown 路径（图片与其同目录同名，仅扩展名不同）。
+        fmt: 图片格式 png | svg | both。
+    Raises:
+        ValueError: 未找到 mermaid 代码块；RuntimeError: 渲染环境或资源加载失败（中文提示）。
+        两者均转为 stderr 中文报错 + SystemExit(2)（Markdown 已先行落盘，不受影响）。
+    """
+    try:
+        src = _extract_mermaid_block(content)
+        info = render_mermaid_image(src, md_path.with_suffix(""), fmt)
+    except (ValueError, RuntimeError) as exc:
+        print(f"错误：拓扑图片渲染失败——{exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
+    parts = [str(p) for p in (info["png"], info["svg"]) if p]
+    print(f"====拓扑图片渲染完成====: {', '.join(parts)}（自然图幅 {info['width']}x{info['height']} CSS px，"
+          f"PNG 采样 {info['scale']}x，mermaid 来源: {info['source']}）")
+
+
+# ===========七、命令行入口==========
 def main() -> None:
     """命令行入口：读 DSL -> 全量或 --diff 差异渲染 -> 写 Markdown，打印中文摘要。"""
     parser = argparse.ArgumentParser(
@@ -393,6 +444,10 @@ def main() -> None:
                         help="输出 Markdown 路径（默认模型同目录 topology.md；--diff 模式为 topology-diff.md）")
     parser.add_argument("--diff", default=None, metavar="BASE_YAML",
                         help="base DSL YAML 路径：渲染 target 相对 base 的差异拓扑")
+    parser.add_argument("--image", default=None, const="png", nargs="?", metavar="FMT",
+                        choices=["png", "svg", "both"],
+                        help="额外产出图片文件（不传=关闭，裸 --image=png，可选 png/svg/both），"
+                             "与 Markdown 同目录同名；需 Playwright + Chromium（见 render_image.py）")
     args = parser.parse_args()
     model_path = Path(args.model)
     model = yaml.safe_load(model_path.read_text(encoding="utf-8"))
@@ -413,15 +468,22 @@ def main() -> None:
         print(f"====差异拓扑渲染完成====: {base_path} + {model_path} -> {out_path}")
         print(f"变更实体: 新增 {stats['added']} / 删除 {stats['removed']} / 修改 {stats['modified']}，"
               f"规则变更: {stats['rules']} 条")
+        if args.image:
+            #   2. --image：差异拓扑同步出图（topology-diff.png/svg）
+            _write_images(content, out_path, args.image)
         return
     #   2. 全量模式（原行为不变）：渲染 -> 写 topology.md
     out_path = Path(args.output) if args.output else model_path.parent / "topology.md"
-    out_path.write_text(render_topology(model), encoding="utf-8")
+    content = render_topology(model)
+    out_path.write_text(content, encoding="utf-8")
     link_count = sum(len((e.get("links") or {})) for e in model["entities"].values()
                      if isinstance(e, dict) and isinstance(e.get("links"), dict))
     print(f"====拓扑渲染完成====: {model_path} -> {out_path}")
     print(f"实体数: {len(model['entities'])}，links 数: {link_count}，"
           f"规则数: {len(model.get('rules') or [])}")
+    if args.image:
+        #   3. --image：全量拓扑同步出图（topology.png/svg）
+        _write_images(content, out_path, args.image)
 
 
 if __name__ == "__main__":
