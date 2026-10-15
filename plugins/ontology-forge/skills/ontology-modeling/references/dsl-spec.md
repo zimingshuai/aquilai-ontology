@@ -222,7 +222,7 @@ rule_types:   [ {code, name, ruleType, mode, description, ruleConfig: {expressio
 
 **编译约定（DSL → studio-model）**：
 - 实体→object_type（code=实体名、name=display_name）；`derived: true` 或衍生规则目标字段 → attrs.isDerived=true（实证：16 衍生字段与 16 条 calculation 输出严格对应）。
-- links→link_type：`links.{alias}: Target` → `{source: Target, target: 本实体, cardinality: "1:n", sourcePropertyCode: Target 主键, targetPropertyCode: 外键字段}`。**外键字段约定 = 目标主键字段名**（fnb/gold 全部满足；不满足时编译报错，v0.3 候选：links 显式 fk 声明）。关系 name 用 links 别名的中文业务名（无则留空）。
+- links→link_type：`links.{alias}: Target` → `{source: Target, target: 本实体, cardinality: "1:n", sourcePropertyCode: Target 主键, targetPropertyCode: 外键字段}`。**外键字段约定 = 目标主键字段名**（fnb/gold 全部满足；不满足时编译报错，v0.3 候选：links 显式 fk 声明）。**关系 name 平台必填非空**（2026-10-14 导入平台实证）：DSL 可用显式形态声明业务名（`alias: {target: X, fk: [...], name: 属于XX}`）；未声明时编译器兜底 = 目标实体的 display_name（名词式关系名，如"供应商"），恒不为空。
 - 表达式：DSL 英文 code 引用（`sku.abc_type`、`SUM(sales_orders.x)`）→ 模板中文名引用（`[SKU.abc_type 的 display_name]`、`SUM([对方实体 display_name（复数语境）.属性 display_name])`）——统一用 display_name 生成，模板内部自洽即可。
 - **trigger/admission 规则模板不承载**（实证：两模板 ruleType 仅 calculation）——编译时告警并在导入说明列出"N 条 trigger 规则不进模板，需引擎侧配置"。
 - code 生成（rel_/rule_ 前缀）：稳定 hash（如 md5(关键要素)[:8]），保证重复编译幂等。
