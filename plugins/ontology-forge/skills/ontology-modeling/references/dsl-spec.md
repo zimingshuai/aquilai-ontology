@@ -161,7 +161,11 @@ actions:
 
 **body 骨架的统一模式（生成器必须遵循，全部来自实测）**：`@action` 装饰器；签名含隐式 `store: OntologyStore | None = None`；docstring = description 原文；`edits = OntologyEdits(); store = store or OntologyStore()` 开头；主键定位 `store.query_instances("<Entity>")` + `next(...)`；存在性/状态前置校验 `raise ValueError(中文消息)`；实例重建排除 property 属性（`if not isinstance(getattr(type(obj), k, None), property): setattr(...)`）；变更走 `edits.modify/modify/create`；返回 `edits`。主键生成模式（create 类）：`f"前缀-{参数}-{时间戳%-Y%m%d%H%M%S%f[:-3]}-{uuid4().hex[:4]}"`。
 
+**宿主 API 实证（2026-10-14 平台 SDK：docs/reference/aquilair-sdk-template.py）**：`OntologyEdits` 为编辑意图容器（CREATE/UPDATE/DELETE 三种操作，同对象重复编辑自动合并，`get_edits` 只返回意图不发 HTTP——真正写回由 Action Runtime 负责）；查询侧 `EntityEndpoint.static().load()` / `.where(FieldRef.eq(...))` / `.search_around(link_code)`（关系点访问）；`EditableObject` 跟踪字段级变更。**人工插桩 body 时以该 SDK API 为准**。平台关系模型（RelationDefinition）含 source_name/target_name 正反向访问名与 1:1/1:N/N:1/N:N 四种基数——超出 yaml 模板表达力的部分（N:N、反向名）由平台 metadata-service 生成 SDK 时承载，DSL/yaml 侧维持桥表建模与单 name 约定。
+
 **编译目标**：`engine-bundle/actions.json`——结构对齐 mfg 引擎 get_meta_actions 实测：`{actions: [{action_name, description, parameters, supports_sandbox, body: <body_ref 文件内容字符串>}], sandbox_execution: {parameter: "sandbox", accepts: ..., usage: ...}}`。
+
+**平台关系的完整字段要求（SDK RelationDefinition 实证）**：code / source / target / cardinality（1:1、1:N、N:1、N:N 四种）/ source_name 与 target_name（正反向访问名）/ source_field 与 target_field——**全部非空**。yaml 模板的 link_types 需 code/source/target/name/cardinality/sourcePropertyCode/targetPropertyCode 非空（name 必填为 2026-10-14 导入平台实证踩坑）；正反向名与 N:N 由平台 metadata-service 在生成 SDK 时承载，DSL 侧维持单 name + 桥表建模。
 
 **lint 新增（第 10-11 条）**：admission 规则的 upstream 引用的 action 必须在 actions 中声明；admission 的 `@param:` 引用必须对应 action parameters 的参数名。
 
