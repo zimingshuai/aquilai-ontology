@@ -1,6 +1,7 @@
-# Ontology DSL 规范 v0.3
+# Ontology DSL 规范 v0.3.4
 
-> 版本：v0.3（2026-10-13，按 M2/M3 与端到端复验的实证发现升级）
+> 版本：v0.3.4（2026-10-15：关系语义名纪律——links 必须说清"是什么关系"，lint 第 13 条）
+> v0.3（2026-10-13，按 M2/M3 与端到端复验的实证发现升级）
 > v0.2.2→v0.3 变更：①links 支持显式 fk 声明（复合外键场景，xgimi 实证 13 连线收敛问题）；②lint 第 12 条规则名全局唯一（fnb 31 处重名实证：引擎合法但 studio-model code 需唯一）；③lint 第 9 条受控词表正式启用（同文档两次独立生成仅 7/26 实体同名的漂移实证）+ seeds/glossary.md 术语对照表机制。
 > 本质定位：面向 Aquilair 本体引擎的**本体元数据设计**（数据模型层 + 语义标注层 + 行为契约层），非 OWL 本体
 
@@ -64,11 +65,12 @@ entities:
 ```yaml
     links:
       supplier: Supplier                          # 简写形态：外键字段 = 目标主键字段名（v0.2 约定不变）
-      project: { target: Project, fk: [project_code] }        # 显式形态：单外键
+      project: { target: Project, name: 隶属项目 }             # 显式形态：fk 可缺省（视同简写约定），仅声明关系语义名
+      demand: { target: Demand, fk: [demand_id], name: 项目需求 }  # 显式形态：外键 + 关系语义名
       sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code] }  # 复合外键（桥接引用）
 ```
 
-`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。**显式 fk 形态用于外键字段 ≠ 目标主键名的场景**（xgimi 实证：PurchaseOrder 经 sku_code+wh_code 复合引用 SKUInWarehouse，简写约定无法表达，studio-model 编译报错）；fk 字段列表必须在 properties 中有声明（lint 校验）。反向一对多集合不写进 links（引擎侧推导），规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s）；多形态白名单校验，收敛为单形态待引擎侧确认）。
+`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。**关系语义名（name）是建模必填纪律（v0.3.4，用户实证：只建连线不说清"是什么关系"，拓扑与平台关系名不可读）**：每条 links 应声明中文关系语义名（动宾/偏正短语，如 订购物料/隶属项目/换算物料），进 studio-model 的 link name 与拓扑连线标签；简写形态无法带 name（lint13 提示）。**显式 fk 形态用于外键字段 ≠ 目标主键名的场景（fk 可缺省）**（xgimi 实证：PurchaseOrder 经 sku_code+wh_code 复合引用 SKUInWarehouse，简写约定无法表达，studio-model 编译报错）；fk 字段列表必须在 properties 中有声明（lint 校验）。反向一对多集合不写进 links（引擎侧推导），规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s）；多形态白名单校验，收敛为单形态待引擎侧确认）。
 
 **受控词表（v0.3 正式启用，lint 第 9 条）**：新建/增量建模时须对照 `seeds/glossary.md` 术语对照表优先复用既有命名；跨域同义实体（如 fnb `SKU` ↔ mfg `Material`）与同域历史版本命名（如 xgimi 两版 `RunSnapshot`↔`CalculationRun`）都登记在 glossary——**同域重跑必须走增量模式（diff/复用）而非从零生成**；新术语入库在人审时裁定。
 
@@ -210,6 +212,7 @@ actions:
 10. admission 的 upstream action 存在性；`@param:` 引用与 action parameters 对应（v0.2.2）
 11. admission 的 `{param: 名}` 引用与 action parameters 对应（v0.2.2）
 12. **规则名全局唯一（v0.3）**：同名规则跨实体重复报 error（引擎合法但 studio-model code 需唯一，fnb 31 处重名实证）
+13. **关系业务语义名（v0.3.4）**：links 未声明 name（简写形态或显式缺省）报 warning——只表达"有指向"未说清是什么关系，建议显式形态声明 name
 
 ## 8. studio-model 互导格式（v0.2.1，2026-10-13 按试用上传的两份真实模板实证）
 

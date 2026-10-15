@@ -1,4 +1,4 @@
-# 本体拓扑：xgimi（0.2.0-draft.2）
+# 本体拓扑：xgimi（0.3.0-draft.3）
 
 > 由 render_topology.py 从 DSL 自动生成；仅含实体 + links + 规则三要素，不含能力问题（CQ）。
 > 图例：🔑 = 主键；关联线 `目标 "1" --> "*" 持有方 : 别名` = 持有方实体的 links 别名持有指向目标的引用；
@@ -15,7 +15,7 @@
         +purpose_desc : STRING
     }
     class Material {
-        +material_id : STRING 🔑
+        +material_code : STRING 🔑
         +material_name : STRING
         +base_uom : STRING
         +unit_cost : DECIMAL
@@ -302,43 +302,43 @@
     note for EcnRecord "【触发】工程变更预防检查触发: approval_status == approved 且 evidence_status == complete"
     note for InspectionChange "【触发】授权数量变化重核算: change_type == auth_qty_change<br/>【触发】替代关系变化复核分配方案: change_type == substitution_change"
     note for Supply "【触发】冻结供给排除待核查: supply_type == frozen_stock"
-    Material "1" --> "*" UnitConversion : material
-    Material "1" --> "*" BomLine : material
-    Project "1" --> "*" BomLine : project
-    Project "1" --> "*" EcnRecord : project
-    Project "1" --> "*" Demand : project
-    Material "1" --> "*" MaterialAuthorization : material
-    Project "1" --> "*" MaterialAuthorization : project
-    Material "1" --> "*" Supply : material
-    PurchaseOrder "1" --> "*" Supply : po
-    Material "1" --> "*" PurchaseOrder : material
-    HistoricalCase "1" --> "*" StockMovement : case
-    Material "1" --> "*" StockMovement : material
-    Material "1" --> "*" SubstitutionPermission : material
-    Project "1" --> "*" SubstitutionPermission : project
-    Supply "1" --> "*" SubstitutionPermission : supply
-    Supplier "1" --> "*" SupplierSupplyCondition : supplier
-    Material "1" --> "*" SupplierSupplyCondition : material
-    DataVersion "1" --> "*" CalculationRun : input_data_version
-    CalculationRun "1" --> "*" MaterialRequirement : run
-    Material "1" --> "*" MaterialRequirement : material
-    CalculationRun "1" --> "*" InspectionChange : detection_run
-    BomLine "1" --> "*" InspectionChange : line
-    InspectionChange "1" --> "*" ReviewTask : change
-    CalculationRun "1" --> "*" SourcingSuggestion : run
-    Material "1" --> "*" SourcingSuggestion : material
-    Supplier "1" --> "*" SourcingSuggestion : supplier
-    VendorReferenceList "1" --> "*" SourcingSuggestion : list
-    CalculationRun "1" --> "*" VendorReferenceList : run
-    Supplier "1" --> "*" VendorReferenceList : supplier
-    CalculationRun "1" --> "*" PeriodSupplyBalance : run
-    Material "1" --> "*" PeriodSupplyBalance : material
-    CalculationRun "1" --> "*" SlowMovingRisk : run
-    Material "1" --> "*" SlowMovingRisk : material
-    CalculationRun "1" --> "*" SolutionPlan : run
-    PurchaseOrder "1" --> "*" SolutionPlan : target_po
-    Project "1" --> "*" HistoricalCase : project
-    Material "1" --> "*" HistoricalCase : material
-    HistoricalCase "1" --> "*" CauseAttribution : case
-    HistoricalCase "1" --> "*" PreventionRule : source_case
+    Material "1" --> "*" UnitConversion : 换算物料
+    Material "1" --> "*" BomLine : 子项物料
+    Project "1" --> "*" BomLine : 隶属项目
+    Project "1" --> "*" EcnRecord : 变更项目
+    Project "1" --> "*" Demand : 项目需求
+    Material "1" --> "*" MaterialAuthorization : 授权物料
+    Project "1" --> "*" MaterialAuthorization : 授权项目
+    Material "1" --> "*" Supply : 供给物料
+    PurchaseOrder "1" --> "*" Supply : 在途订单
+    Material "1" --> "*" PurchaseOrder : 订购物料
+    HistoricalCase "1" --> "*" StockMovement : 案例流水
+    Material "1" --> "*" StockMovement : 流水物料
+    Material "1" --> "*" SubstitutionPermission : 被替代物料
+    Project "1" --> "*" SubstitutionPermission : 适用项目
+    Supply "1" --> "*" SubstitutionPermission : 许可用供给
+    Supplier "1" --> "*" SupplierSupplyCondition : 供货供应商
+    Material "1" --> "*" SupplierSupplyCondition : 供货物料
+    DataVersion "1" --> "*" CalculationRun : 输入版本
+    CalculationRun "1" --> "*" MaterialRequirement : 所属运行
+    Material "1" --> "*" MaterialRequirement : 需求物料
+    CalculationRun "1" --> "*" InspectionChange : 检测运行
+    BomLine "1" --> "*" InspectionChange : 变化行
+    InspectionChange "1" --> "*" ReviewTask : 复核变化
+    CalculationRun "1" --> "*" SourcingSuggestion : 所属运行
+    Material "1" --> "*" SourcingSuggestion : 建议物料
+    Supplier "1" --> "*" SourcingSuggestion : 建议供应商
+    VendorReferenceList "1" --> "*" SourcingSuggestion : 汇入清单
+    CalculationRun "1" --> "*" VendorReferenceList : 所属运行
+    Supplier "1" --> "*" VendorReferenceList : 面向供应商
+    CalculationRun "1" --> "*" PeriodSupplyBalance : 所属运行
+    Material "1" --> "*" PeriodSupplyBalance : 平衡物料
+    CalculationRun "1" --> "*" SlowMovingRisk : 所属运行
+    Material "1" --> "*" SlowMovingRisk : 风险物料
+    CalculationRun "1" --> "*" SolutionPlan : 所属运行
+    PurchaseOrder "1" --> "*" SolutionPlan : 目标订单
+    Project "1" --> "*" HistoricalCase : 案例项目
+    Material "1" --> "*" HistoricalCase : 案例物料
+    HistoricalCase "1" --> "*" CauseAttribution : 归因案例
+    HistoricalCase "1" --> "*" PreventionRule : 规则来源案例
 ```

@@ -27,6 +27,23 @@ from diff_model import diff_models
 from render_image import render_mermaid_image
 
 
+
+def _link_label(alias: str, value) -> tuple[str, str]:
+    """解析单个 links 项为 (目标实体名, 连线标签)。
+
+    Args:
+        alias: links 别名。
+        value: links 项（目标名字符串或 {target, fk, name} 映射）。
+    Returns:
+        (目标实体名, 标签)；显式形态带 name 时标签为"语义名"（关系业务语义），
+        否则回退别名。
+    """
+    if isinstance(value, str):
+        return value, alias
+    if isinstance(value, dict) and isinstance(value.get("target"), str):
+        return value["target"], str(value.get("name") or alias)
+    return str(value), alias
+
 # ===========一、文本清洗（Mermaid 语法安全）==========
 def _sanitize(text: Any) -> str:
     """把任意值清洗为 Mermaid note 安全文本。
@@ -94,10 +111,11 @@ def _link_lines(entities: dict[str, Any]) -> list[str]:
         links = entity.get("links") or {}
         if not isinstance(links, dict):
             continue
-        for alias, target in links.items():
+        for alias, raw in links.items():
+            target, label = _link_label(alias, raw)
             if isinstance(target, str) and target in entities:
                 # 持有方持引用（多端），目标被引用（1 端）。
-                lines.append(f'    {target} "1" --> "*" {holder} : {alias}')
+                lines.append(f'    {target} "1" --> "*" {holder} : {label}')
     return lines
 
 
@@ -319,10 +337,11 @@ def _link_lines_diff(merged: dict[str, Any], b_entities: dict[str, Any],
         if state and state["status"] == "removed":
             continue  # 整实体已删（红色 classDef 表达），其持有的关系线不再单画
         link_status = (state or {}).get("links", {})
-        for alias, tgt_name in (ent.get("links") or {}).items():
+        for alias, raw in (ent.get("links") or {}).items():
+            tgt_name, label = _link_label(alias, raw)
             if isinstance(tgt_name, str) and tgt_name in merged:
                 tag = {"add": "【新增】", "replace": "【修改】"}.get(link_status.get(alias), "")
-                lines.append(f'    {tgt_name} "1" --> "*" {holder} : {alias}{tag}')
+                lines.append(f'    {tgt_name} "1" --> "*" {holder} : {label}{tag}')
         for alias, status in link_status.items():
             # 共有实体上被删的别名：按 base 定义补画删除线
             if status != "remove":

@@ -2006,7 +2006,7 @@ link_types:
 - code: rel_8ba0301e
   source: Material
   target: UnitConversion
-  name: 物料
+  name: 换算物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2014,7 +2014,7 @@ link_types:
 - code: rel_04711ef7
   source: Material
   target: BomLine
-  name: 物料
+  name: 子项物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2022,7 +2022,7 @@ link_types:
 - code: rel_336fff57
   source: Project
   target: BomLine
-  name: 项目
+  name: 隶属项目
   cardinality: 1:n
   description: ''
   sourcePropertyCode: project_id
@@ -2030,7 +2030,7 @@ link_types:
 - code: rel_1b9e39f9
   source: Project
   target: EcnRecord
-  name: 项目
+  name: 变更项目
   cardinality: 1:n
   description: ''
   sourcePropertyCode: project_id
@@ -2038,7 +2038,7 @@ link_types:
 - code: rel_e5935086
   source: Project
   target: Demand
-  name: 项目
+  name: 项目需求
   cardinality: 1:n
   description: ''
   sourcePropertyCode: project_id
@@ -2046,7 +2046,7 @@ link_types:
 - code: rel_c9e4445e
   source: Material
   target: MaterialAuthorization
-  name: 物料
+  name: 授权物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2054,7 +2054,7 @@ link_types:
 - code: rel_a7afb4d2
   source: Project
   target: MaterialAuthorization
-  name: 项目
+  name: 授权项目
   cardinality: 1:n
   description: ''
   sourcePropertyCode: project_id
@@ -2062,7 +2062,7 @@ link_types:
 - code: rel_66f6753b
   source: Material
   target: Supply
-  name: 物料
+  name: 供给物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2070,7 +2070,7 @@ link_types:
 - code: rel_2c63fa8f
   source: PurchaseOrder
   target: Supply
-  name: 采购订单
+  name: 在途订单
   cardinality: 1:n
   description: ''
   sourcePropertyCode: po_id
@@ -2078,7 +2078,7 @@ link_types:
 - code: rel_643985e8
   source: Material
   target: PurchaseOrder
-  name: 物料
+  name: 订购物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2086,7 +2086,7 @@ link_types:
 - code: rel_e1e213ce
   source: HistoricalCase
   target: StockMovement
-  name: 历史呆滞案例
+  name: 案例流水
   cardinality: 1:n
   description: ''
   sourcePropertyCode: case_id
@@ -2094,7 +2094,7 @@ link_types:
 - code: rel_cc00f36e
   source: Material
   target: StockMovement
-  name: 物料
+  name: 流水物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2102,7 +2102,7 @@ link_types:
 - code: rel_0f491122
   source: Material
   target: SubstitutionPermission
-  name: 物料
+  name: 被替代物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2110,7 +2110,7 @@ link_types:
 - code: rel_3cddf3f1
   source: Project
   target: SubstitutionPermission
-  name: 项目
+  name: 适用项目
   cardinality: 1:n
   description: ''
   sourcePropertyCode: project_id
@@ -2118,7 +2118,7 @@ link_types:
 - code: rel_5e1dc2d0
   source: Supply
   target: SubstitutionPermission
-  name: 供给记录
+  name: 许可用供给
   cardinality: 1:n
   description: ''
   sourcePropertyCode: supply_id
@@ -2126,7 +2126,7 @@ link_types:
 - code: rel_bad3c217
   source: Supplier
   target: SupplierSupplyCondition
-  name: 供应商
+  name: 供货供应商
   cardinality: 1:n
   description: ''
   sourcePropertyCode: supplier_id
@@ -2134,7 +2134,7 @@ link_types:
 - code: rel_2f9f9c78
   source: Material
   target: SupplierSupplyCondition
-  name: 物料
+  name: 供货物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2142,7 +2142,7 @@ link_types:
 - code: rel_783ee3df
   source: DataVersion
   target: CalculationRun
-  name: 数据版本
+  name: 输入版本
   cardinality: 1:n
   description: ''
   sourcePropertyCode: version_id
@@ -2150,7 +2150,7 @@ link_types:
 - code: rel_13993c79
   source: CalculationRun
   target: MaterialRequirement
-  name: 计算运行快照
+  name: 所属运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2158,7 +2158,7 @@ link_types:
 - code: rel_f797c76f
   source: Material
   target: MaterialRequirement
-  name: 物料
+  name: 需求物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2166,7 +2166,7 @@ link_types:
 - code: rel_d4e5bdd9
   source: CalculationRun
   target: InspectionChange
-  name: 计算运行快照
+  name: 检测运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2174,7 +2174,7 @@ link_types:
 - code: rel_4f36cf0d
   source: BomLine
   target: InspectionChange
-  name: BOM行
+  name: 变化行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: line_id
@@ -2182,7 +2182,7 @@ link_types:
 - code: rel_d8ceb2d7
   source: InspectionChange
   target: ReviewTask
-  name: 点检变化记录
+  name: 复核变化
   cardinality: 1:n
   description: ''
   sourcePropertyCode: change_id
@@ -2190,7 +2190,7 @@ link_types:
 - code: rel_7b7433f2
   source: CalculationRun
   target: SourcingSuggestion
-  name: 计算运行快照
+  name: 所属运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2198,7 +2198,7 @@ link_types:
 - code: rel_c9bd6ea6
   source: Material
   target: SourcingSuggestion
-  name: 物料
+  name: 建议物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2206,7 +2206,7 @@ link_types:
 - code: rel_fce2d407
   source: Supplier
   target: SourcingSuggestion
-  name: 供应商
+  name: 建议供应商
   cardinality: 1:n
   description: ''
   sourcePropertyCode: supplier_id
@@ -2214,7 +2214,7 @@ link_types:
 - code: rel_35f2e654
   source: VendorReferenceList
   target: SourcingSuggestion
-  name: 供应商参考清单
+  name: 汇入清单
   cardinality: 1:n
   description: ''
   sourcePropertyCode: list_id
@@ -2222,7 +2222,7 @@ link_types:
 - code: rel_1b2d54e4
   source: CalculationRun
   target: VendorReferenceList
-  name: 计算运行快照
+  name: 所属运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2230,7 +2230,7 @@ link_types:
 - code: rel_78c8eda5
   source: Supplier
   target: VendorReferenceList
-  name: 供应商
+  name: 面向供应商
   cardinality: 1:n
   description: ''
   sourcePropertyCode: supplier_id
@@ -2238,7 +2238,7 @@ link_types:
 - code: rel_22e3127a
   source: CalculationRun
   target: PeriodSupplyBalance
-  name: 计算运行快照
+  name: 所属运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2246,7 +2246,7 @@ link_types:
 - code: rel_035efff8
   source: Material
   target: PeriodSupplyBalance
-  name: 物料
+  name: 平衡物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2254,7 +2254,7 @@ link_types:
 - code: rel_819d4e00
   source: CalculationRun
   target: SlowMovingRisk
-  name: 计算运行快照
+  name: 所属运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2262,7 +2262,7 @@ link_types:
 - code: rel_26ba6628
   source: Material
   target: SlowMovingRisk
-  name: 物料
+  name: 风险物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2270,7 +2270,7 @@ link_types:
 - code: rel_e3cf2a48
   source: CalculationRun
   target: SolutionPlan
-  name: 计算运行快照
+  name: 所属运行
   cardinality: 1:n
   description: ''
   sourcePropertyCode: run_id
@@ -2278,7 +2278,7 @@ link_types:
 - code: rel_48f28f78
   source: PurchaseOrder
   target: SolutionPlan
-  name: 采购订单
+  name: 目标订单
   cardinality: 1:n
   description: ''
   sourcePropertyCode: po_id
@@ -2286,7 +2286,7 @@ link_types:
 - code: rel_c78e07d7
   source: Project
   target: HistoricalCase
-  name: 项目
+  name: 案例项目
   cardinality: 1:n
   description: ''
   sourcePropertyCode: project_id
@@ -2294,7 +2294,7 @@ link_types:
 - code: rel_57c56235
   source: Material
   target: HistoricalCase
-  name: 物料
+  name: 案例物料
   cardinality: 1:n
   description: ''
   sourcePropertyCode: material_code
@@ -2302,7 +2302,7 @@ link_types:
 - code: rel_0f255887
   source: HistoricalCase
   target: CauseAttribution
-  name: 历史呆滞案例
+  name: 归因案例
   cardinality: 1:n
   description: ''
   sourcePropertyCode: case_id
@@ -2310,7 +2310,7 @@ link_types:
 - code: rel_de692b23
   source: HistoricalCase
   target: PreventionRule
-  name: 历史呆滞案例
+  name: 规则来源案例
   cardinality: 1:n
   description: ''
   sourcePropertyCode: case_id

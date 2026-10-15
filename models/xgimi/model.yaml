@@ -5,7 +5,7 @@
 #   OQ-01（CEILING 取整）A 方案：方言扩展需求转引擎侧（方言 cookbook 待办），扩展落地后由 derived 规则承载取整口径；
 #   OQ-10~12 转业务方补充。OQ 原文全部保留，resolution 字段记录裁决。
 ontology: xgimi
-version: 0.2.0-draft.2
+version: 0.3.0-draft.3
 base_version: null            # target_engine=new，从零建库
 governance:
   owner: 聂江锋（推断自文档"数字化负责人/CIO"，待用户确认）
@@ -65,7 +65,7 @@ entities:
       ratio: { display_name: 换算比率, description: 1 源单位 = ratio 目标单位（1盒=100颗）, type: DECIMAL, uom: 颗/盒, source: "xgimi-poc-doc.md#§11.8 测试六" }
       approval_status: { display_name: 批准状态, description: 换算关系须为已批准才可参与计算, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.8 测试六（批准换算）" }
       evidence_status: { display_name: 证据状态, description: complete=证据齐全；missing=换算依据被移除，缺证提示、不按零处理, type: STRING, enum_values: [complete, missing], source: "xgimi-poc-doc.md#§11.8 测试六" }
-    links: { material: {target: Material, fk: [material_id]} }
+    links: { material: {target: Material, fk: [material_id], name: 换算物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.1+§11.8 测试六, reviewed: false }
 
   Supplier:
@@ -100,7 +100,7 @@ entities:
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见时间，取值为数据版本号（V0/V1/V0之前）；版本机制见 DataVersion, type: STRING, source: "xgimi-poc-doc.md#§11.2 known_at 列" }
       evidence_status: { display_name: 证据状态, description: complete=明细齐全；missing=缺证版本移除行明细后标记缺失，依赖它的推导同步不可验证, type: STRING, enum_values: [complete, missing], source: "xgimi-poc-doc.md#§11.6 缺证版本" }
       standard_usage: { display_name: 标准用量, description: 标准 = BOM 行用量 ÷ BOM 基准数量（derived）, type: DECIMAL, uom: 件/台, derived: true, source: "xgimi-poc-doc.md#§4.2 核心判断规则" }
-    links: { material: {target: Material, fk: [material_id]}, project: Project }
+    links: { material: {target: Material, fk: [material_id], name: 子项物料}, project: {target: Project, name: 隶属项目} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.2+§4.2, reviewed: false }
 
   EcnRecord:
@@ -117,7 +117,7 @@ entities:
       approval_status: { display_name: 批准状态, description: approved=已批准；pending=待批准, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.6（已批准的工程切换）" }
       evidence_status: { display_name: 证据状态, description: complete=批准文件与变更后 BOM 明细齐全；missing=引用编号保留但批准文件缺失，依赖推导不可验证, type: STRING, enum_values: [complete, missing], source: "xgimi-poc-doc.md#§5.4.6" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本（如 V1）, type: STRING, source: "xgimi-poc-doc.md#§11.1" }
-    links: { project: Project }
+    links: { project: {target: Project, name: 变更项目} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.1+§11.6+§5.4.6, reviewed: false }
 
   # ---------- 三、需求与授权层 ----------
@@ -137,7 +137,7 @@ entities:
       status: { display_name: 需求状态, description: confirmed=已确认参与计算；superseded=已被新版本替换；reference=仅作参考（被替换的早期预测）, type: STRING, enum_values: [confirmed, superseded, reference], source: "xgimi-poc-doc.md#§11.2" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本（V0/V3）, type: STRING, source: "xgimi-poc-doc.md#§11.2" }
       package_id: { display_name: 所属数据包ID, description: 所属数据包（主案例/历史案例/补充测试互不混算）, type: STRING, source: "xgimi-poc-doc.md#§11（每条记录具有唯一编号、所属数据包和版本）" }
-    links: { project: Project }
+    links: { project: {target: Project, name: 项目需求} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.2+§4.3 ①, reviewed: false }
 
   MaterialAuthorization:
@@ -155,7 +155,7 @@ entities:
       effective_from: { display_name: 生效开始日期, description: 授权生效起始日期, type: DATE, source: "xgimi-poc-doc.md#§11.8 测试四" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本, type: STRING, source: "xgimi-poc-doc.md#§11.8 测试四" }
       package_id: { display_name: 所属数据包ID, description: 所属数据包, type: STRING, source: "xgimi-poc-doc.md#§11" }
-    links: { material: {target: Material, fk: [material_id]}, project: Project }
+    links: { material: {target: Material, fk: [material_id], name: 授权物料}, project: {target: Project, name: 授权项目} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.3 步骤6+§11.8 测试四+§8 红线, reviewed: false }
 
   # ---------- 四、供给层 ----------
@@ -176,7 +176,7 @@ entities:
       package_id: { display_name: 所属数据包ID, description: 所属数据包（主案例/历史/测试包独立）, type: STRING, source: "xgimi-poc-doc.md#§11" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本（六条供给均在 V0 可见）, type: STRING, source: "xgimi-poc-doc.md#§11.3" }
       exclude_reason: { display_name: 排除原因, description: 不参与供给分配的原因（质检冻结：未获放行，单列待核查，不认定零风险或全额损失）, type: STRING, source: "xgimi-poc-doc.md#§11.3 PS-1002" }
-    links: { material: {target: Material, fk: [material_id]}, po: PurchaseOrder }
+    links: { material: {target: Material, fk: [material_id], name: 供给物料}, po: {target: PurchaseOrder, name: 在途订单} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.3+§11.1, reviewed: false }
 
   PurchaseOrder:
@@ -202,7 +202,7 @@ entities:
       unreceived_qty: { display_name: 订单未收货量, description: 未收货量 = max(订单数量−累计有效收货量−已取消量−已关闭未收余量, 0)（derived）, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.3 ③ 公式" }
       package_id: { display_name: 所属数据包ID, description: 所属数据包, type: STRING, source: "xgimi-poc-doc.md#§11" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本, type: STRING, source: "xgimi-poc-doc.md#§11.3" }
-    links: { material: {target: Material, fk: [material_id]} }
+    links: { material: {target: Material, fk: [material_id], name: 订购物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.3 ③+§11.3, reviewed: false }
 
   StockMovement:
@@ -219,7 +219,7 @@ entities:
       movement_date: { display_name: 流水日期, description: 发生日期（发生后方可用于事实还原）, type: DATE, source: "xgimi-poc-doc.md#§11.6" }
       evidence_status: { display_name: 证据状态, description: complete/missing；流水覆盖完整观察区间，缺证时只输出可确认事实, type: STRING, enum_values: [complete, missing], source: "xgimi-poc-doc.md#§11.6" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本/时点, type: STRING, source: "xgimi-poc-doc.md#§11.6" }
-    links: { case: HistoricalCase, material: {target: Material, fk: [material_id]} }
+    links: { case: {target: HistoricalCase, name: 案例流水}, material: {target: Material, fk: [material_id], name: 流水物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.6+§5.4.3, reviewed: false }
 
   SubstitutionPermission:
@@ -242,7 +242,7 @@ entities:
       approval_status: { display_name: 批准状态, description: approved=已批准；expired=已失效, type: STRING, enum_values: [approved, expired], source: "xgimi-poc-doc.md#§11.4" }
       known_at: { display_name: known_at（可见数据版本）, description: 记录可见数据版本（测试七记录均在 2026-10-02 09:00 已知）, type: STRING, source: "xgimi-poc-doc.md#§11.8 测试七" }
       package_id: { display_name: 所属数据包ID, description: 所属数据包（SUB-02 属独立测试包）, type: STRING, source: "xgimi-poc-doc.md#§11.4" }
-    links: { material: {target: Material, fk: [material_id]}, project: Project, supply: Supply }
+    links: { material: {target: Material, fk: [material_id], name: 被替代物料}, project: {target: Project, name: 适用项目}, supply: {target: Supply, name: 许可用供给} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.4+§5.2, reviewed: false }
 
   SupplierSupplyCondition:
@@ -259,7 +259,7 @@ entities:
       order_multiple: { display_name: 订购倍数, description: 订购倍数（1,000 颗），取整产生的额外数量单独展示并纳入风险评估, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§11.5+§4.3 ⑤" }
       share_ratio: { display_name: 分配份额, description: 供应商分配份额（100%；双供应商 70%/30% 为取整前目标，实际比例另行显示）, type: DECIMAL, uom: "%", source: "xgimi-poc-doc.md#§11.5+§11.8 测试一" }
       approval_status: { display_name: 批准状态, description: approved=已批准供货（两家均已批准，无另设产能上限）, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.8 测试一" }
-    links: { supplier: Supplier, material: {target: Material, fk: [material_id]} }
+    links: { supplier: {target: Supplier, name: 供货供应商}, material: {target: Material, fk: [material_id], name: 供货物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.5+§11.8 测试一, reviewed: false }
 
   # ---------- 五、运行底座层 ----------
@@ -290,7 +290,7 @@ entities:
       rule_version: { display_name: 规则版本, description: 本次运行使用的规则版本, type: STRING, source: "xgimi-poc-doc.md#§4.1" }
       evaluation_period_from: { display_name: 评估期间起, description: 评估期间起始日（2026-11-01）, type: DATE, source: "xgimi-poc-doc.md#§11.1" }
       evaluation_period_to: { display_name: 评估期间止, description: 评估期间截止日（2026-12-31）, type: DATE, source: "xgimi-poc-doc.md#§11.1" }
-    links: { input_data_version: DataVersion }
+    links: { input_data_version: {target: DataVersion, name: 输入版本} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.1+§11.1, reviewed: false }
 
   MaterialRequirement:
@@ -311,7 +311,7 @@ entities:
       physical_gap_qty: { display_name: 物理缺口, description: 新料缺口 = max(剩余新料需求 − 已分配新料供给, 0)（derived）；不得因授权增加而新增供给, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.3 ④ 公式+§11.8 测试四" }
       pending_auth_qty: { display_name: 待授权数量, description: 待授权 = max(毛需求 − 已授权覆盖量, 0)（derived；测试四 18,000−10,000=8,000）, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§11.8 测试四" }
       pending_auth_amount: { display_name: 待授权参考金额, description: 待授权数量 × 参考单价（derived；8,000×20=160,000 元）, type: DECIMAL, uom: 元, derived: true, source: "xgimi-poc-doc.md#§11.8 测试四" }
-    links: { run: CalculationRun, material: {target: Material, fk: [material_id]} }
+    links: { run: {target: CalculationRun, name: 所属运行}, material: {target: Material, fk: [material_id], name: 需求物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.3+§11.8 测试四, reviewed: false }
 
   # ---------- 六、点检层（场景39） ----------
@@ -332,7 +332,7 @@ entities:
       judgment_basis: { display_name: 判断依据, description: 判断方法与依据保留（在单位和基准数量一致后比较标准用量等）, type: STRING, source: "xgimi-poc-doc.md#§4.2 步骤4" }
       impact_desc: { display_name: 影响明细, description: 受影响的项目、物料、需求和供给（如 12 月到货 4,000 颗旧料不符合临时许可需复核采购安排）, type: STRING, source: "xgimi-poc-doc.md#§4.2 步骤3-4" }
       known_at: { display_name: known_at（可见数据版本）, description: 变化记录可见数据版本, type: STRING, source: "xgimi-poc-doc.md#§4.2" }
-    links: { detection_run: CalculationRun, line: BomLine }
+    links: { detection_run: {target: CalculationRun, name: 检测运行}, line: {target: BomLine, name: 变化行} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.2+A_schema/inspection-rules.csv, reviewed: false }
 
   ReviewTask:
@@ -346,7 +346,7 @@ entities:
       task_desc: { display_name: 任务描述, description: 复核内容描述, type: STRING, source: "xgimi-poc-doc.md#§4.2" }
       status: { display_name: 任务状态, description: open=待处理；cancelled/adjusted/retained=已收到处理依据；closed=已关闭, type: STRING, enum_values: [open, cancelled, adjusted, retained, closed], source: "xgimi-poc-doc.md#§5.4.7" }
       resolution_basis: { display_name: 处理记录, description: 关闭依据（取消/调整/明确保留的处理依据与判断记录）, type: STRING, source: "xgimi-poc-doc.md#§4.2 步骤4+§5.4.7" }
-    links: { change: InspectionChange }
+    links: { change: {target: InspectionChange, name: 复核变化} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.2+§5.4.7, reviewed: false }
 
   # ---------- 七、策备输出层（场景24） ----------
@@ -365,7 +365,7 @@ entities:
       suggested_qty: { display_name: 建议量, description: 建议量 = 按订购倍数向上取整〔max(分配量, 最小起订量)〕（9,000/4,000）；向上取整超出方言白名单，由运行时计算契约承载（OQ-01），不设 derived 标记, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§4.3 ⑤ 公式" }
       rounding_extra_qty: { display_name: 取整增量, description: 取整产生的额外数量单独展示并纳入后续风险评估（总建议 13,000 多出 1,000）, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§4.3 ⑤+§11.8 测试一" }
       expected_arrival_date: { display_name: 预计到货日, description: 按 9 月 30 日下单推算的到货日（2027-01-20/02-03）；晚于需求日期不视为解决当期缺料, type: DATE, source: "xgimi-poc-doc.md#§11.8 测试一+§4.3 ⑤" }
-    links: { run: CalculationRun, material: {target: Material, fk: [material_id]}, supplier: Supplier, list: VendorReferenceList }
+    links: { run: {target: CalculationRun, name: 所属运行}, material: {target: Material, fk: [material_id], name: 建议物料}, supplier: {target: Supplier, name: 建议供应商}, list: {target: VendorReferenceList, name: 汇入清单} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.3 ⑤+§11.8 测试一, reviewed: false }
 
   VendorReferenceList:
@@ -379,7 +379,7 @@ entities:
       supplier_id: { display_name: 供应商编码, description: 清单所属供应商, type: STRING, source: "xgimi-poc-doc.md#§3 流程③" }
       status: { display_name: 清单状态, description: draft=草拟；internal_review=内部审核；archived=归档；不外发（外发审批流程未定义，见 OQ-11）, type: STRING, enum_values: [draft, internal_review, archived], source: "xgimi-poc-doc.md#§3+§8 红线" }
       created_at: { display_name: 生成日期, description: 清单生成日期, type: DATE, source: "xgimi-poc-doc.md#§4.3 ⑤" }
-    links: { run: CalculationRun, supplier: Supplier }
+    links: { run: {target: CalculationRun, name: 所属运行}, supplier: {target: Supplier, name: 面向供应商} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§3 流程③+§8, reviewed: false }
 
   # ---------- 八、呆滞模拟层（场景51） ----------
@@ -401,7 +401,7 @@ entities:
       other_outflow_qty: { display_name: 其他有效流出, description: 本期其他有效流出数量, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§4.4 ①" }
       unmet_demand_qty: { display_name: 本期未满足需求, description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量（derived）；保留为逾期需求结转不重复累计, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.4 ① 公式" }
       ending_qty: { display_name: 本期期末量, description: 期末量 = 期初 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出（derived）, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.4 ① 公式" }
-    links: { run: CalculationRun, material: {target: Material, fk: [material_id]} }
+    links: { run: {target: CalculationRun, name: 所属运行}, material: {target: Material, fk: [material_id], name: 平衡物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.4 ①+§11.7, reviewed: false }
 
   SlowMovingRisk:
@@ -420,7 +420,7 @@ entities:
       unit_cost: { display_name: 成本单价, description: 对应成本单价（WiFi5 16 元/颗、WiFi6 20 元/颗演示成本）, type: DECIMAL, uom: 元/颗, source: "xgimi-poc-doc.md#§4.4 ④+§11.5" }
       risk_qty: { display_name: 期末风险量, description: 风险量 = max(评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0)（derived）, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.4 ② 公式" }
       risk_amount: { display_name: 风险金额, description: 风险金额 = 风险数量 × 对应成本单价（derived）；不等于减值损失或实际收益，预计损失另行结合回收价值与处置方式计算, type: DECIMAL, uom: 元, derived: true, source: "xgimi-poc-doc.md#§4.4 ④ 公式" }
-    links: { run: CalculationRun, material: {target: Material, fk: [material_id]} }
+    links: { run: {target: CalculationRun, name: 所属运行}, material: {target: Material, fk: [material_id], name: 风险物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.4+§11.7, reviewed: false }
 
   SolutionPlan:
@@ -444,7 +444,7 @@ entities:
       intervened_risk_qty: { display_name: 干预后风险量, description: 采取措施后的风险量（及时取消 6,000 颗后剩余 2,000 颗）, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§5.4.5" }
       reducible_qty: { display_name: 模拟可减少风险量, description: 模拟可减少风险量 = max(不干预风险量 − 干预后风险量, 0)（derived）；表示条件成立时可减少的量，不等同已实现收益, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.5 ③ 公式" }
       total_exposure_amount: { display_name: 合计敞口金额, description: 窗口内风险金额 + 窗口后未消化承诺（derived；S2 合计仍为 88,000 元，不能把 64,000 移出窗口当作风险消除）, type: DECIMAL, uom: 元, derived: true, source: "xgimi-poc-doc.md#§11.7 方案表说明" }
-    links: { run: CalculationRun, target_po: PurchaseOrder }
+    links: { run: {target: CalculationRun, name: 所属运行}, target_po: {target: PurchaseOrder, name: 目标订单} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.4+§4.5 ③+§11.7+A_schema/scenario-recompute.csv, reviewed: false }
 
   # ---------- 九、历史层（场景55） ----------
@@ -465,7 +465,7 @@ entities:
       decision_observed_date: { display_name: 决策观察时点, description: 回放评估选用的历史决策时点（本例与风险形成时点相同，其他案例不必相同）, type: DATE, source: "xgimi-poc-doc.md#§5.4.2" }
       evidence_status: { display_name: 证据状态, description: complete=五类记录齐全；missing=缺证版本（保留 ECN 引用编号，批准文件与变更后 BOM 明细缺失，不输出确定结论）, type: STRING, enum_values: [complete, missing], source: "xgimi-poc-doc.md#§5.4.6" }
       unattributed_qty: { display_name: 未归因数量, description: 未归因 = max(呆滞总量 − Σ各原因归因数量, 0)（derived）；无法确认的部分保留为未归因、不强行凑足总量, type: DECIMAL, uom: 颗, derived: true, source: "xgimi-poc-doc.md#§4.5 ④ 公式+§8 红线" }
-    links: { project: Project, material: {target: Material, fk: [material_id]} }
+    links: { project: {target: Project, name: 案例项目}, material: {target: Material, fk: [material_id], name: 案例物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.6+§4.5+§5.4, reviewed: false }
 
   CauseAttribution:
@@ -480,7 +480,7 @@ entities:
       attributed_qty: { display_name: 归因数量, description: 分配到该原因的数量；各主要原因数量之和 ≤ 案例呆滞总量（约束见 OQ-09）, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§4.5 ④" }
       evidence_desc: { display_name: 证据说明, description: 支持该归因的证据描述（证据不充分时不输出确定的可避免数量）, type: STRING, source: "xgimi-poc-doc.md#§4.5 ④" }
       is_primary: { display_name: 是否主要原因, description: true=主要原因, type: BOOLEAN, source: "xgimi-poc-doc.md#§4.5 ④（各主要原因对应数量）" }
-    links: { case: HistoricalCase }
+    links: { case: {target: HistoricalCase, name: 归因案例} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.5 ④+§5.4.6, reviewed: false }
 
   PreventionRule:
@@ -495,7 +495,7 @@ entities:
       trigger_timing: { display_name: 触发时机, description: 变更已获知且影响能够判断时触发，不能等到 BOM 正式生效后才检查（否则可能错过取消窗口）, type: STRING, source: "xgimi-poc-doc.md#§5.4.7" }
       status: { display_name: 规则状态, description: draft=草案；review=审核中；trial=测试运行；active=启用（经审核后进入测试运行）, type: STRING, enum_values: [draft, review, trial, active], source: "xgimi-poc-doc.md#§5.4.7" }
       close_basis: { display_name: 关闭依据, description: 任务只有在收到取消、调整或明确保留的处理依据后才能关闭，不能把已通知当作已解决, type: STRING, source: "xgimi-poc-doc.md#§5.4.7" }
-    links: { source_case: HistoricalCase }
+    links: { source_case: {target: HistoricalCase, name: 规则来源案例} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§5.4.7+§4.5 输出, reviewed: false }
 
 # =====================================================================

@@ -184,21 +184,25 @@ def _check_primary_keys(entities: dict, report: Report) -> None:
 
 # ===========四、links 与外键一致性检查（lint 规则 3、8）==========
 def _link_parts(value: Any) -> tuple[Optional[str], Optional[list[str]], Optional[str]]:
-    """解析单个 links 项（简写或显式 fk 形态，dsl-spec v0.3 §2）。
+    """解析单个 links 项（简写或显式形态，dsl-spec v0.3.4 §2）。
 
     Args:
-        value: links 别名对应的值（目标名字符串，或 {target, fk} 映射）。
+        value: links 别名对应的值（目标名字符串，或 {target, fk?, name?} 映射）。
     Returns:
         (目标实体名, 显式外键字段列表或 None, 结构错误消息或 None) 三元组；
-        简写形态 fk 为 None；显式形态的 fk 非法（缺失/空/含非字符串）时返回结构错误。
+        简写形态 fk 为 None；显式形态 fk **可缺省**（视同简写外键约定，
+        常见于仅声明关系语义名 name 的场景），仅 fk 存在但非法（空列表/含
+        非字符串）时返回结构错误。
     """
     if isinstance(value, str):
         return value, None, None
     if isinstance(value, dict) and isinstance(value.get("target"), str):
         fk = value.get("fk")
+        if fk is None:
+            return value["target"], None, None  # 仅声明 name 的显式形态，外键按简写约定
         if isinstance(fk, list) and fk and all(isinstance(f, str) and f for f in fk):
             return value["target"], fk, None
-        return value["target"], None, "显式形态的 fk 必须为非空字符串列表（如 [sku_code, wh_code]）"
+        return value["target"], None, "显式形态的 fk 必须为非空字符串列表（如 [sku_code, wh_code]）或省略"
     return None, None, "links 项必须为『目标实体名字符串』或『{target, fk}』映射"
 
 
@@ -249,6 +253,14 @@ def _check_links(entities: dict, report: Report) -> None:
                     if field not in own_props:
                         report.err("lint3 links", where,
                                    f"显式 fk 字段 {field!r} 未在本实体 properties 声明（v0.3 约定）")
+            # lint13：关系业务语义名缺失（简写形态无 name / 显式形态未写 name）——warning
+            # （用户实证：只建连线不说清"是什么关系"，拓扑与平台关系名不可读）
+            raw = (ent.get("links") or {}).get(alias)
+            has_name = isinstance(raw, dict) and isinstance(raw.get("name"), str) and raw["name"].strip()
+            if not has_name:
+                report.warn("lint13 关系语义名", where,
+                            "缺少关系业务语义名（name）——只表达'有指向'未说清是什么关系，"
+                            "建议显式形态声明 name（如 订购物料/隶属项目）")
     for key in _DUP_KEYS:
         report.err("lint3 links", "YAML 结构", f"重复键 {key!r}（links 别名/字段名必须实体内唯一）")
 
