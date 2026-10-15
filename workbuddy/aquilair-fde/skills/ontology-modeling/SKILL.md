@@ -4,7 +4,7 @@ description: 本体建模主技能——十步流水线编排核心（M1 版覆�
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.2），修改请改源侧后重新平移。
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.4），修改请改源侧后重新平移。
 
 # 本体建模主技能（ontology-modeling）
 
@@ -14,7 +14,8 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 
 ## 二、脚本定位与产物根目录（先读，避免摩擦）
 
-- **脚本定位**：4 个脚本随插件分发于**插件根的 `scripts/` 目录**。优先以插件根的绝对路径调用（本机源仓库为 `D:\documents\elitesland-workspace\aquilair-ontology\plugins\ontology-forge\scripts\`；安装缓存路径以运行环境为准——技能目录的上级即插件根）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
+- **脚本定位**：脚本随插件分发于**插件根的 `scripts/` 目录**。优先以插件根的绝对路径调用（本机源仓库为 `D:\documents\elitesland-workspace\aquilair-ontology\plugins\ontology-forge\scripts\`；安装缓存路径以运行环境为准——技能目录的上级即插件根）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
+- **图片渲染依赖**：`--image` 需要 Playwright（首次使用：`pip install playwright` + `python -m playwright install chromium`，一次性）；mermaid 走 CDN、断网自动用本地缓存 `scripts/assets/mermaid.min.js`。环境不满足时如实告知用户装依赖，**不静默退化为只出 Mermaid 代码**（除非用户同意）。
 - **产物根目录**：`models/<domain>/` 相对**当前会话工作区**落位。会话工作区不是专门的本体仓库时，先向用户确认产物根目录（团队协作场景应落到统一仓库），不要静默散落到默认工作区。
 
 ## 三、流水线（M1 版七步，强制顺序）
@@ -26,7 +27,8 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 5. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 6. **拓扑可视化（核心交付物①）**：运行 `python scripts/render_topology.py <model.yaml> --image both` 产出 **topology.png / topology.svg 图片文件**（给人看，零环境依赖）+ topology.md（Mermaid 源）。增量场景加 `--diff <base>` 产出差异高亮图。
 7. **yaml 导出（核心交付物②）**：运行 `python scripts/compile_model.py <model.yaml> --target studio-model` 产出 **studio-model.yaml**（设计稿格式，供导入本体/下游实现使用）。**你不执行任何生产写入**；`--target engine`（引擎注册 JSON）仅在用户明确需要时作为可选导出。
-8. **沉淀回流（M3 起可选，人审通过后执行）**：将本次建模的可复用知识沉淀到域知识库（`aquilair-knowledge/sources/<域名>/`，无对应域则提示用户先建）——口径定义与冲突裁决进 glossary/analyses（好答案归档），新术语同义词映射补进 glossary。**红线不变**：本体 DSL 是唯一权威，知识库只是沉淀层；回流内容须注明来源为本体 `<domain>@<version>`，后续本体演进以 DSL 变更集为准（知识库发现过时走其再摄取流程）。
+8. **导入平台后自检（可选闭环）**：用户把 studio-model.yaml 导入平台（Studio）成功后，请其从平台下载该工作区的 SDK（aquilair.py），存档为 `models/<domain>/platform-sdk.py`（平台生效快照），并运行 `python scripts/check_platform_sync.py <model.yaml> <platform-sdk.py>`——实体/字段/主键/关系四维比对，**平台侧手改当场现形**（实证：xgimi 曾抓到 Material 主键被改）。发现差异时向用户报告并按其裁决写回 DSL。
+9. **沉淀回流（M3 起可选，人审通过后执行）**：将本次建模的可复用知识沉淀到域知识库（`aquilair-knowledge/sources/<域名>/`，无对应域则提示用户先建）——口径定义与冲突裁决进 glossary/analyses（好答案归档），新术语同义词映射补进 glossary。**红线不变**：本体 DSL 是唯一权威，知识库只是沉淀层；回流内容须注明来源为本体 `<domain>@<version>`，后续本体演进以 DSL 变更集为准（知识库发现过时走其再摄取流程）。
 
 M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲突拒绝）、diff 拓扑（`render_topology.py --diff`）、studio-model 双格式编译与模板 lint（`compile_model.py --target both` / `lint_studio_model.py`）、ontology-review 评审技能。M3 起追加：action 骨架生成（`gen_action_skeleton.py`）、WorkBuddy 侧平移。
 

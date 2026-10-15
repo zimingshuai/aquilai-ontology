@@ -287,7 +287,35 @@ def build_case8(results: list) -> None:
     assert_case(results, "case8", "lint xgimi 退出码 0", lint_xgimi_exit0)
 
 
-# ===========七、主流程==========
+# ===========七、case9：平台一致性自检（冻结夹具：xgimi 导入后快照）==========
+def build_case9(results: list) -> None:
+    """case9 断言：check_platform_sync 对一致夹具报零差异、对漂移夹具报差异。"""
+    sync_script = SCRIPTS_DIR / "check_platform_sync.py"
+    fixture_dir = EVAL_ROOT / "case9-platform-sync"
+    frozen = fixture_dir / "model-frozen.yaml"
+    drifted = fixture_dir / "model-drifted.yaml"
+    sdk = fixture_dir / "platform-sdk-frozen.py"
+    if not all(p.exists() for p in (sync_script, frozen, drifted, sdk)):
+        results.append(("case9", "前置就绪检测", "SKIP（check_platform_sync 或 case9 夹具未就绪）"))
+        return
+
+    def sync_ok():
+        proc = run_cmd([sync_script, frozen, sdk])
+        assert proc.returncode == 0, f"一致夹具应退出码 0: {proc.stdout[-300:]}"
+
+    def drift_detected():
+        # drifted 夹具把 Material 主键改回 material_id，应被平台差异检出（退出码 1）
+        proc = run_cmd([sync_script, drifted, sdk])
+        combined = (proc.stdout or "") + (proc.stderr or "")
+        assert proc.returncode == 1, f"漂移夹具应退出码 1，实际 {proc.returncode}"
+        assert "Material" in combined and ("主键" in combined or "字段" in combined), \
+            f"差异报告缺 Material 明细: {combined[-300:]}"
+
+    assert_case(results, "case9", "平台一致性零差异", sync_ok)
+    assert_case(results, "case9", "平台漂移检出", drift_detected)
+
+
+# ===========八、主流程==========
 def main() -> int:
     """执行全部机械断言并输出结果表。
 
@@ -301,6 +329,7 @@ def main() -> int:
     build_case4(results)
     build_case7(results)
     build_case8(results)
+    build_case9(results)
     print("\n====evals 回归结果====")
     for case, name, status in results:
         print(f"[{case}] {name}: {status}")

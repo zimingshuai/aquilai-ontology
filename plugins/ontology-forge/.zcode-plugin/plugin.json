@@ -1,6 +1,6 @@
 {
   "name": "ontology-forge",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "LLM 辅助本体元数据设计：摄取归位/DSL 起草/11条lint/CQ回验/拓扑/双格式编译(引擎JSON+studio-model)/变更集diff/action骨架/评审技能",
   "author": {
     "name": "ElitesLand Aquilair"
