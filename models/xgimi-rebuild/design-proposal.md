@@ -1,7 +1,8 @@
 # xgimi-rebuild 本体设计提案（design-proposal）
 
 > 版本：1-draft ｜ 呈审人：FDE（agent，ontology-modeling v0.3.6 流水线）｜ 待确认人：____
-> 确认记录：____（确认人/日期/修改意见摘要——每次返改追加一行）
+> 确认记录：
+> - 确认人：用户（zishuai）｜ 日期：2026-10-15 ｜ 批复："都没问题"（①Scenario Charter 与②设计稿含骨架拓扑逐表批准，两项分别确认通过）｜ 修改记录：无驳回项，按本版进入第 5 步 DSL 形式化
 >
 > 本提案由 models/xgimi-rebuild/modeling-brief/ 从零合成（charter.md + fact-cards.md 为支撑证据）；命名对照 seeds/glossary.md 建议名。
 > **确认点②硬关卡：本文件与骨架拓扑经 FDE 逐表确认前，不生成完整 model.yaml、不跑 lint/CQ/编译。**
