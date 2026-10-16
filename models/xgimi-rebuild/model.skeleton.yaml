@@ -1,0 +1,288 @@
+# xgimi-rebuild 骨架 DSL（model.skeleton.yaml）
+# 用途：设计稿确认点②的骨架拓扑画图输入——仅实体 + links（含中文关系语义名）+ 主键与名称字段。
+# 纪律：确认点②未通过前不得升级为完整 model.yaml（语义决策见 design-proposal.md）。
+# 命名：对照 seeds/glossary.md 建议名（CalculationRun/MaterialAuthorization/SubstitutionPermission/SlowMovingRisk 等）。
+ontology: xgimi-rebuild
+version: 0.1.0-draft.1
+governance:
+  owner: 待确认（推断：聂江锋，见 brief.yaml）
+  maturity: experimental
+entities:
+  Project:
+    display_name: 项目
+    layer: L1 主数据
+    table_name: project
+    description: 机型/产品线，需求和 BOM 的挂载主体（E01）
+    properties:
+      project_code: {display_name: 项目编码, description: 如 100-Z9001, type: STRING, primary: true}
+      project_name: {display_name: 项目代号, description: 如 P-Z9, type: STRING}
+  Material:
+    display_name: 物料
+    layer: L1 主数据
+    table_name: material
+    description: 最小跟踪单位（WiFi、SoC、主板、整机），汇总与库存跟踪的锚点（E02）
+    properties:
+      material_code: {display_name: 物料编码, description: 如 300-W6A01, type: STRING, primary: true}
+      material_name: {display_name: 物料名称, description: 如 WiFi6 模组, type: STRING}
+  BomLine:
+    display_name: BOM 行
+    layer: L2 BOM与变更
+    table_name: bom_line
+    description: 机型结构清单行：类型/版本/层级用量/良率/生效期，点检与展开的载体（E03）
+    properties:
+      bom_line_id: {display_name: BOM行标识, description: 如 L-Z9-02-new, type: STRING, primary: true}
+      bom_type: {display_name: BOM类型, description: 标准/风险/维修, type: STRING}
+    links:
+      parent_material: {target: Material, fk: [parent_material_code], name: 父项物料}
+      child_material: {target: Material, fk: [child_material_code], name: 子项物料}
+      project: {target: Project, fk: [project_code], name: 隶属项目}
+      ecn: {target: EcnRecord, fk: [ecn_id], name: 产生于变更}
+  EcnRecord:
+    display_name: 工程变更记录
+    layer: L2 BOM与变更
+    table_name: ecn_record
+    description: 换料等工程变更的发布与批准记录，BOM 版本变化的驱动源（E04）
+    properties:
+      ecn_id: {display_name: 变更单号, description: 如 Z9 换料 ECN / H-ECN-01, type: STRING, primary: true}
+      ecn_desc: {display_name: 变更描述, description: 变更内容摘要, type: STRING}
+  Demand:
+    display_name: 需求
+    layer: L3 需求与供给
+    table_name: demand
+    description: 各项目需要数量与日期（MPS/客户订单/预测/维修），覆盖与替换关系明确（E05）
+    properties:
+      demand_id: {display_name: 需求编号, description: 如 DEM-Z9-NOV, type: STRING, primary: true}
+      record_version: {display_name: 记录版本, description: v1/v2 替换不追加计数, type: STRING, primary: true}
+      demand_type: {display_name: 需求类型, description: 已确认MPS/客户订单/早期预测/维修, type: STRING}
+    links:
+      project: {target: Project, fk: [project_code], name: 归属项目}
+      covered_by: {target: Demand, fk: [covered_demand_id, covered_demand_version], name: 被需求覆盖}
+      supersedes: {target: Demand, fk: [superseded_demand_id, superseded_demand_version], name: 替换历史版本}
+  MaterialAuthorization:
+    display_name: 物料授权
+    layer: L3 需求与供给
+    table_name: material_authorization
+    description: 整机料号采购授权记录（策备表域），授权覆盖量与物理供给分开核算（E06）
+    properties:
+      project_code: {display_name: 授权项目编码, description: 整机料号, type: STRING, primary: true}
+      material_code: {display_name: 授权物料编码, description: 被授权物料, type: STRING, primary: true}
+      auth_version: {display_name: 授权版本, description: v2 替换 v1, type: STRING, primary: true}
+    links:
+      project: {target: Project, fk: [project_code], name: 授权项目}
+      material: {target: Material, fk: [material_code], name: 授权物料}
+  Supply:
+    display_name: 供给
+    layer: L3 需求与供给
+    table_name: supply
+    description: 可用库存/质检冻结/已确认未收货订单的统一供给记录，含取消与延期条件（E07）
+    properties:
+      supply_id: {display_name: 供给编号, description: 如 PS-3002 / SIM-W6-9000, type: STRING, primary: true}
+      supply_type: {display_name: 供给类型, description: 可用库存/质检冻结库存/已确认未收货订单, type: STRING}
+    links:
+      material: {target: Material, fk: [material_code], name: 供给物料}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  StockMovement:
+    display_name: 库存收发流水
+    layer: L3 需求与供给
+    table_name: stock_movement
+    description: 收货/入库/消耗/出库事实流水（分类互斥），waterfall 核对与收货转库存的依据（E08）
+    properties:
+      movement_id: {display_name: 流水编号, description: 演示如 ST-R1 关联流水, type: STRING, primary: true}
+      movement_type: {display_name: 流水类型, description: 有效收货及其他入库/实际消耗及其他出库, type: STRING}
+    links:
+      material: {target: Material, fk: [material_code], name: 收发物料}
+      source_supply: {target: Supply, fk: [source_supply_id], name: 来源供给}
+  Supplier:
+    display_name: 供应商
+    layer: L1 主数据
+    table_name: supplier
+    description: 具备供货资格的供应商主体（E09）
+    properties:
+      supplier_code: {display_name: 供应商编码, description: 如 V-WLINK, type: STRING, primary: true}
+      supplier_name: {display_name: 供应商名称, description: 供应商主体名, type: STRING}
+  SupplierSupplyCondition:
+    display_name: 供应商供货条件
+    layer: L1 主数据
+    table_name: supplier_supply_condition
+    description: 交期/最小起订量/订购倍数/配额约定（E10）
+    properties:
+      supplier_code: {display_name: 供应商编码, description: 条件归属供应商, type: STRING, primary: true}
+      material_code: {display_name: 适用物料编码, description: 条件按物料生效, type: STRING, primary: true}
+    links:
+      supplier: {target: Supplier, fk: [supplier_code], name: 供货供应商}
+      material: {target: Material, fk: [material_code], name: 适用物料}
+  SubstitutionPermission:
+    display_name: 替代与转用许可
+    layer: L3 需求与供给
+    table_name: substitution_permission
+    description: 物料间可替换规则及批准条件（临时许可替代/售后转用），替代计算准入门槛（E11）
+    properties:
+      permission_id: {display_name: 许可编号, description: 如 SUB-01/SUB-02, type: STRING, primary: true}
+      permission_type: {display_name: 许可类型, description: 临时许可替代/售后转用, type: STRING}
+    links:
+      replaced_material: {target: Material, fk: [replaced_material_code], name: 被替代物料}
+      replacing_material: {target: Material, fk: [replacing_material_code], name: 替代物料}
+      project: {target: Project, fk: [project_code], name: 适用项目}
+  UnitConversion:
+    display_name: 单位换算
+    layer: L1 主数据
+    table_name: unit_conversion
+    description: 已确认的计量单位换算关系，原始值保留计算用换算（E12）
+    properties:
+      material_code: {display_name: 换算物料编码, description: 如 UNIT-M, type: STRING, primary: true}
+      alt_unit: {display_name: 备选单位, description: 如 盒, type: STRING, primary: true}
+    links:
+      material: {target: Material, fk: [material_code], name: 换算物料}
+  CalculationRun:
+    display_name: 计算运行
+    layer: L4 计算输出
+    table_name: calculation_run
+    description: 一次计算的运行身份：观察时点/数据版本/规则版本/情景分支，追溯与复算的锚（E13）
+    properties:
+      run_id: {display_name: 运行编号, description: 如 V2 策备运行快照, type: STRING, primary: true}
+      branch: {display_name: 分支, description: FACT/SIM 事实与模拟分开保存, type: STRING}
+  ChangeRecord:
+    display_name: 变化记录
+    layer: L4 计算输出
+    table_name: change_record
+    description: 点检对比产出的单条变化（物料增删/用量/单位/生效日期/替代/授权六类）（E14）
+    properties:
+      change_id: {display_name: 变化编号, description: 点检输出唯一编号, type: STRING, primary: true}
+      change_type: {display_name: 变化类型, description: 六类判断枚举, type: STRING}
+    links:
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      bom_line: {target: BomLine, fk: [bom_line_id], name: 涉及BOM行}
+      substitution: {target: SubstitutionPermission, fk: [permission_id], name: 涉及替代关系}
+      authorization: {target: MaterialAuthorization, fk: [project_code, material_code, auth_version], name: 涉及授权}
+  ImpactRecord:
+    display_name: 影响记录
+    layer: L4 计算输出
+    table_name: impact_record
+    description: 变化波及对象的合并明细（多条依据合并一条），复核任务及处理状态载体（E15）
+    properties:
+      impact_id: {display_name: 影响编号, description: 合并后唯一编号, type: STRING, primary: true}
+      review_status: {display_name: 复核状态, description: 待复核/已收处理依据/关闭, type: STRING}
+    links:
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      project: {target: Project, fk: [project_code], name: 受影响项目}
+      material: {target: Material, fk: [material_code], name: 受影响物料}
+  AllocationRecord:
+    display_name: 供需分配记录
+    layer: L4 计算输出
+    table_name: allocation_record
+    description: 一批供给对一个需求（含替代路径）的分配明细，累计不超可用、可展开复算（E16）
+    properties:
+      allocation_id: {display_name: 分配编号, description: 分配明细唯一编号, type: STRING, primary: true}
+      allocated_qty: {display_name: 分配数量, description: 实际分配量, type: INTEGER}
+    links:
+      demand: {target: Demand, fk: [demand_id, demand_version], name: 分配需求}
+      supply: {target: Supply, fk: [supply_id], name: 分配供给}
+      substitution: {target: SubstitutionPermission, fk: [permission_id], name: 依据替代许可}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  SourcingSuggestion:
+    display_name: 策备建议
+    layer: L4 计算输出
+    table_name: sourcing_suggestion
+    description: 对剩余缺口的采购建议量：MOQ/倍数取整、取整额外量、交期满足检查（E17）
+    properties:
+      run_id: {display_name: 运行编号, description: 建议归属运行, type: STRING, primary: true}
+      material_code: {display_name: 建议物料编码, description: 建议针对的物料, type: STRING, primary: true}
+      supplier_code: {display_name: 建议供应商编码, description: 建议面向的供应商, type: STRING, primary: true}
+    links:
+      material: {target: Material, fk: [material_code], name: 建议物料}
+      supplier: {target: Supplier, fk: [supplier_code], name: 建议供应商}
+      ref_list: {target: VendorReferenceList, fk: [run_id, supplier_code], name: 列入参考清单}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  VendorReferenceList:
+    display_name: 供应商参考清单
+    layer: L4 计算输出
+    table_name: vendor_reference_list
+    description: 按供应商整理的建议参考清单，供内部审核；不等同采购订单、默认不外发（E18）
+    properties:
+      run_id: {display_name: 运行编号, description: 清单归属运行, type: STRING, primary: true}
+      supplier_code: {display_name: 面向供应商编码, description: 清单按供应商整理, type: STRING, primary: true}
+      list_status: {display_name: 清单状态, description: 草稿/内部审核, type: STRING}
+    links:
+      supplier: {target: Supplier, fk: [supplier_code], name: 面向供应商}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  PeriodSupplyDemand:
+    display_name: 分期供需
+    layer: L4 计算输出
+    table_name: period_supply_demand
+    description: 按评估期逐期推演的供需行（期初/到货/满足/期末/未满足结转）（E19）
+    properties:
+      run_id: {display_name: 运行编号, description: 分期数据随方案运行独立成套, type: STRING, primary: true}
+      material_code: {display_name: 供需物料编码, description: 分期推演按物料, type: STRING, primary: true}
+      period: {display_name: 期间, description: 演示粒度为月, type: STRING, primary: true}
+    links:
+      material: {target: Material, fk: [material_code], name: 供需物料}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  SlowMovingRisk:
+    display_name: 呆滞风险
+    layer: L4 计算输出
+    table_name: slow_moving_risk
+    description: 评估期末无法消耗的剩余风险（区分库存与未到货订单风险），含窗口后承诺与待核查项（E20）
+    properties:
+      run_id: {display_name: 运行编号, description: 风险归属运行, type: STRING, primary: true}
+      material_code: {display_name: 风险物料编码, description: 风险按物料计量, type: STRING, primary: true}
+      risk_type: {display_name: 风险类型, description: 库存风险/未到货订单风险, type: STRING}
+    links:
+      material: {target: Material, fk: [material_code], name: 风险物料}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  SolutionPlan:
+    display_name: 处理方案
+    layer: L4 计算输出
+    table_name: solution_plan
+    description: 对呆滞风险的取消/减量/延期/替代消耗/转用方案（含不处理基线），调整后同套公式重算（E21）
+    properties:
+      run_id: {display_name: 运行编号, description: 方案重算在独立运行分支, type: STRING, primary: true}
+      plan_code: {display_name: 方案编号, description: 如 S0/S1/S2, type: STRING, primary: true}
+      action_type: {display_name: 动作类型, description: 不处理/取消或减量/延期/替代消耗/跨项目转用, type: STRING}
+    links:
+      risk: {target: SlowMovingRisk, fk: [run_id, material_code], name: 处置风险}
+      adjusted_supply: {target: Supply, fk: [adjusted_supply_id], name: 调整供给}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+  HistoricalCase:
+    display_name: 历史呆滞案例
+    layer: L5 历史分析
+    table_name: historical_case
+    description: 已发生呆滞的独立分析案例（独立数据包不混算）：还原/归因/可干预结论的宿主（E22）
+    properties:
+      case_id: {display_name: 案例编号, description: 如 X8 案例包, type: STRING, primary: true}
+      evidence_status: {display_name: 证据状态, description: 完整/缺证（不可验证推导标记）, type: STRING}
+    links:
+      project: {target: Project, fk: [project_code], name: 历史项目}
+      old_material: {target: Material, fk: [old_material_code], name: 案例旧料}
+      new_material: {target: Material, fk: [new_material_code], name: 案例新料}
+  HistoricalMilestone:
+    display_name: 历史关键时点
+    layer: L5 历史分析
+    table_name: historical_milestone
+    description: 案例时间线锚点（风险形成/取消窗口/观察决策/结果核实），回答何时已知什么（E23）
+    properties:
+      case_id: {display_name: 案例编号, description: 时点归属案例, type: STRING, primary: true}
+      milestone_type: {display_name: 时点类型, description: 风险形成/取消窗口截止/观察决策点/结果核实, type: STRING, primary: true}
+      milestone_date: {display_name: 时点日期, description: 如 2025-07-15, type: DATE}
+    links:
+      case: {target: HistoricalCase, fk: [case_id], name: 归属案例}
+  CauseAttribution:
+    display_name: 原因归因
+    layer: L5 历史分析
+    table_name: cause_attribution
+    description: 呆滞案例原因结论行：归因数量受总量上限约束，余量保留未归因（E24）
+    properties:
+      case_id: {display_name: 案例编号, description: 归因行归属案例, type: STRING, primary: true}
+      cause_type: {display_name: 原因类型, description: 如 停采过晚/未归因, type: STRING, primary: true}
+      attributed_qty: {display_name: 归因数量, description: 各原因之和不超过案例总量, type: INTEGER}
+    links:
+      case: {target: HistoricalCase, fk: [case_id], name: 归属案例}
+  PreventionRule:
+    display_name: 预防规则
+    layer: L5 历史分析
+    table_name: prevention_rule
+    description: 历史教训沉淀的检查规则，经审核并试运行后启用；变更已获知且影响可判断时触发（E25）
+    properties:
+      rule_id: {display_name: 规则编号, description: 规则草案唯一编号, type: STRING, primary: true}
+      rule_status: {display_name: 规则状态, description: 草案/审核/试运行/启用, type: STRING}
+    links:
+      source_case: {target: HistoricalCase, fk: [source_case_id], name: 源自案例}

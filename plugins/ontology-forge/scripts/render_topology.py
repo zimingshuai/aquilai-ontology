@@ -454,11 +454,64 @@ def _write_images(content: str, md_path: Path, fmt: str) -> None:
 
 
 # ===========七、命令行入口==========
+
+# ===========六、分层混合拓扑（flowchart subgraph，--layout layered）==========
+def render_layered(model: dict, out_path) -> list:
+    """按实体 layer 字段渲染分层混合拓扑（Mermaid flowchart subgraph）。
+
+    Args:
+        model: DSL 模型 dict（实体需含可选 layer 字段；缺省归"未分层"组）。
+        out_path: 输出 Path。
+    Returns:
+        生成的 Mermaid 行列表。
+    """
+    # layers：层名 -> [实体名]（保持 DSL 声明序）；无 layer 的实体收尾组。
+    layers: dict[str, list[str]] = {}
+    unlayered: list[str] = []
+    for name, ent in model.get("entities", {}).items():
+        lay = (ent.get("layer") or "").strip()
+        if lay:
+            layers.setdefault(lay, []).append(name)
+        else:
+            unlayered.append(name)
+    if unlayered:
+        layers["未分层"] = unlayered
+    # node_id：实体名安全化（flowchart 节点 id 不含特殊字符，实体名本身安全）。
+    lines = ["    flowchart TD"]
+    for lay, ents in layers.items():
+        lines.append(f'    subgraph SG_{abs(hash(lay)) % 10**8}["{lay}"]')
+        for e in ents:
+            disp = model["entities"][e].get("display_name", e)
+            lines.append(f'        {e}["{disp}<br/>{e}"]')
+        lines.append("    end")
+    # 连线：目标(1) --> 持有方(n) : 语义名（与 classDiagram 同向，标签优先语义名）
+    for holder, ent in model.get("entities", {}).items():
+        for alias, raw in (ent.get("links") or {}).items():
+            if isinstance(raw, str):
+                target, label = raw, alias
+            elif isinstance(raw, dict):
+                target = raw.get("target")
+                label = str(raw.get("name") or alias)
+            else:
+                continue
+            if target:
+                lines.append(f'    {target} -->|{label}| {holder}')
+    # body：Mermaid 主体（行拼接）；文件头=说明 + mermaid 代码块。
+    body = chr(10).join(lines)
+    nl = chr(10)
+    out_path.write_text(
+        "# 本体分层拓扑（" + str(model.get("ontology", "?")) + "）" + nl + nl
+        + "> 分层混合图：subgraph=业务层（实体 layer 字段），连线标签=关系语义名，方向 1 侧 → n 侧。" + nl + nl
+        + "```mermaid" + nl + body + nl + "```" + nl, encoding="utf-8")
+    return lines
+
 def main() -> None:
     """命令行入口：读 DSL -> 全量或 --diff 差异渲染 -> 写 Markdown，打印中文摘要。"""
     parser = argparse.ArgumentParser(
         description="DSL 模型拓扑可视化（Mermaid classDiagram，支持 --diff 差异拓扑）")
     parser.add_argument("model", help="DSL YAML 模型路径（--diff 模式下为 target 模型）")
+    parser.add_argument("--layout", choices=["class", "layered"], default="class",
+                        help="布局：class=classDiagram（默认）| layered=分层 flowchart（需实体 layer 字段）")
     parser.add_argument("-o", "--output", default=None,
                         help="输出 Markdown 路径（默认模型同目录 topology.md；--diff 模式为 topology-diff.md）")
     parser.add_argument("--diff", default=None, metavar="BASE_YAML",
@@ -491,7 +544,21 @@ def main() -> None:
             #   2. --image：差异拓扑同步出图（topology-diff.png/svg）
             _write_images(content, out_path, args.image)
         return
-    #   2. 全量模式（原行为不变）：渲染 -> 写 topology.md
+    #   2. 全量模式：layered 分层布局（--layout layered）优先分支
+    if args.layout == "layered":
+        #   2.1 分层 flowchart：subgraph=层，连线标签=关系语义名
+        out_path = Path(args.output) if args.output else model_path.parent / "topology-layered.md"
+        lines = render_layered(model, out_path)
+        link_count = sum(len((e.get("links") or {})) for e in model["entities"].values()
+                         if isinstance(e, dict) and isinstance(e.get("links"), dict))
+        layered_ents = sum(1 for e in model["entities"].values()
+                           if isinstance(e, dict) and (e.get("layer") or "").strip())
+        print(f"====分层拓扑渲染完成====: {model_path} -> {out_path}")
+        print(f"实体数: {len(model['entities'])}（分层 {layered_ents}），links 数: {link_count}")
+        if args.image:
+            _write_images(out_path.read_text(encoding="utf-8"), out_path, args.image)
+        return
+    #   3. 全量模式（原行为不变）：渲染 -> 写 topology.md
     out_path = Path(args.output) if args.output else model_path.parent / "topology.md"
     content = render_topology(model)
     out_path.write_text(content, encoding="utf-8")

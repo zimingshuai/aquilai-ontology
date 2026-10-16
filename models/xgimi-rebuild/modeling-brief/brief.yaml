@@ -1,0 +1,10 @@
+# 资料包清单（brief）
+domain: xgimi-rebuild
+scenario_name: 极米四场景本体 POC（点检变化/策备计算/呆滞模拟/历史呆滞）
+business_owner: "聂江锋（推断自文档'数字化负责人/CIO'，待用户确认）"
+target_engine: new
+source_systems: [SAP, PDM, SRM, 卫国策备表]
+known_conflicts: []   # 单文档自洽；正文设计红线节反复强调口径纪律，未发现跨文档冲突
+notes: >-
+  2026-10-13 端到端复验任务（同文档上次试用产出 21 实体，本次在 0.3.0 完整能力下重跑）。
+  降本机会挖掘（场景4）不纳入 POC 范围。
