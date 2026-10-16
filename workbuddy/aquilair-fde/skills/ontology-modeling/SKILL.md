@@ -4,7 +4,7 @@ description: 本体建模主技能——十步流水线编排核心（M1 版覆�
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.6），修改请改源侧后重新平移。
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.7），修改请改源侧后重新平移。
 
 # 本体建模主技能（ontology-modeling）
 
@@ -21,11 +21,12 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ## 三、流水线（v0.3.6 九步，强制顺序——设计稿确认为硬关卡）
 
 1. **场景圈定**：读 brief.yaml + B_scenarios → 产出 **Scenario Charter**（业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ **5~10 条能力问题 CQ**（写法见 references/cq-guide.md）。**Charter 未经用户确认，不进入抽取**。
-2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（JSON）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。
-3. **★设计稿合成（确认点②的呈审材料）**：从事实卡片合成两样东西给 FDE 审——
+2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（`fact-cards.md`，markdown 表格载体：候选/来源/置信度/状态/三源交叉列）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。
+3. **★设计稿合成（确认点①与②的呈审材料）**：从事实卡片合成呈审材料包——
    - **design-proposal.md**（模板见 [`references/design-proposal-template.md`](references/design-proposal-template.md)）：实体表（名称/展示名/主键/关键字段/来源）、关系表（A→B/语义名/基数/来源）、规则表（类型/口径/来源）、CQ 映射、open_questions/conflicts——纯自然语言+表格，FDE 不需要懂任何格式规范就能审；
-   - **骨架拓扑图**：先落一个极简 DSL（仅实体+links，属性只列主键与名称字段）→ `render_topology.py --image both` 出图（工具本就支持极简输入）。
-4. **★设计稿确认（硬关卡）**：**design-proposal.md 与骨架拓扑未经 FDE 逐表确认，禁止进入 DSL 生成**（对齐楠总蓝图 OntologyProposal 理念：先提案后形式化）。FDE 的修改意见当场回改设计稿与骨架并重新呈审；确认结论在设计稿头部留痕（确认人/日期/修改记录）。
+   - **交互式拓扑**（核心呈审图）：骨架 DSL（实体+links[语义名]+主键与名称字段+layer 分层）→ `render_topology.py --interactive` 产出**自包含 HTML**（分层+点击聚焦+全部关系名开关，浏览器直接打开）+ `--image both` 出静态 PNG/SVG（发人或存档两用）；
+   - **CQ 勾选交互组件（Gen UI 环境增强）**：ZCode 等支持内联渲染的宿主中，把 CQ 清单写成三态勾选组件（✅真业务/✏️要改/❌删 + 备注 + 补充框，勾选状态经 widgetState 自动随用户消息带回）内嵌呈审；**无 Gen UI 环境降级**为 Markdown 勾选表（交互 HTML 产物本身始终完整可用）。
+4. **★设计稿确认（硬关卡）**：**design-proposal.md 与骨架拓扑未经 FDE 逐表确认，禁止进入 DSL 生成**（对齐楠总蓝图 OntologyProposal 理念：先提案后形式化）。FDE 的修改意见当场回改设计稿与骨架并重新呈审；确认结论在设计稿头部留痕（确认人/日期/修改记录）。**合并呈审变体**：重跑/用户在场要求快速推进时，确认点①（Charter）与②（设计稿）可一并呈审，但两项须分别批复——Charter 被驳回回第 1 步、设计稿被驳回回第 3 步，互不牵连。
 5. **DSL 生成**：确认后的设计稿→完整 `model.yaml`（此步是**机械形式化**——语义已在确认点②定死，这里只做形态转换：补全属性/类型/规则表达式）。按 [`references/dsl-spec.md`](references/dsl-spec.md)（v0.3.4）与 [`references/modeling-guide.md`](references/modeling-guide.md) 执行。
 6. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——13 条确定性检查。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
 7. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。

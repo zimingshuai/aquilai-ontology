@@ -4,7 +4,7 @@ description: 建模资料包摄取技能——本体建模任务的统一入口�
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.6），修改请改源侧后重新平移。
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.7），修改请改源侧后重新平移。
 
 # 建模资料摄取（brief-intake）
 
