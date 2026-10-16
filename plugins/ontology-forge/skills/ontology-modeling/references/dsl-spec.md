@@ -169,6 +169,8 @@ actions:
 
 **平台关系的完整字段要求（SDK RelationDefinition 实证）**：code / source / target / cardinality（1:1、1:N、N:1、N:N 四种）/ source_name 与 target_name（正反向访问名）/ source_field 与 target_field——**全部非空**。yaml 模板的 link_types 需 code/source/target/name/cardinality/sourcePropertyCode/targetPropertyCode 非空（name 必填为 2026-10-14 导入平台实证踩坑）；正反向名与 N:N 由平台 metadata-service 在生成 SDK 时承载，DSL 侧维持单 name + 桥表建模。
 
+**平台连线模型（2026-10-15 workspace 999 浏览器实测，决定性）**：平台"新建关系"表单只收 关系名称/源实体/目标实体/基数；保存后详情面板的关联属性区——**1 侧自动填充为目标实体主键且禁改（"主键自动填充"），N 侧选单外键字段（必填，未完善弹"请先完善必填项"告警）**。**平台连线 = 单字段对硬约束，不支持复合主键连线**——复合主键实体必须单列主键化（Palantir 路线：独立业务编码主键，平台先例 list_id）才能进平台；复合键的联合唯一性以普通属性 + description 语义承载。
+
 **lint 新增（第 10-11 条）**：admission 规则的 upstream 引用的 action 必须在 actions 中声明；admission 的 `@param:` 引用必须对应 action parameters 的参数名。
 
 ## 5. competency_questions（能力问题）

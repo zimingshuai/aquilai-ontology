@@ -9,7 +9,7 @@
 | 实体名 | PascalCase，映射业务自然概念 | `PurchaseOrder`、`SKUInWarehouse` | `PO`（缩写）、`PurchaseOrderV2`（版本化命名） |
 | table_name | snake_case，对齐源系统表名；不假设与实体名有变换关系 | `purchase_order` | — |
 | 字段名 | snake_case，业务可读 | `safety_stock` | `ss`、`stk_qty` |
-| 主键 | 建议 STRING 类型 + 业务编码（内在唯一，不依赖运行时生成） | `sku_code` | 自增 id、uuid |
+| 主键 | **单列**业务编码（内在唯一，不依赖运行时生成）——**禁复合主键**（平台连线为单字段对硬约束，2026-10-15 实测；联合唯一性用普通属性+语义说明承载） | `sku_code`、`list_id` | 自增 id、uuid、复合主键（多字段 primary） |
 | 外键字段 | 指向目标表主键，命名取目标主键名 | `supplier_code` | `sid` |
 | 时间戳 | `{动作}_time` / `{动作}_date`，类型对齐（TIMESTAMP/DATE） | `create_time`、`sign_date` | `t1` |
 | 布尔 | `*_flag` / `is_*`，含义在 description 写明真/假各是什么 | `frozen_flag` | — |
