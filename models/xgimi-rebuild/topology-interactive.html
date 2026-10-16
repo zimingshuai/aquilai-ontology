@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>xgimi-rebuild 交互式分层拓扑</title>
+<style>
+:root { --fg:#1a1a1a; --mut:#6b7280; --bd:#d4d4d8; --bg:#fafafa; --card:#fff; --acc:#2563eb; }
+@media (prefers-color-scheme: dark) { :root { --fg:#e8e8ea; --mut:#9ca3af; --bd:#3f3f46; --bg:#18181b; --card:#232327; --acc:#60a5fa; } }
+body { font-family: system-ui, "Microsoft YaHei", sans-serif; color: var(--fg); background: var(--bg); margin: 16px; }
+h3 { margin: 0 0 4px; font-weight: 500; }
+.hint { color: var(--mut); font-size: 13px; margin: 0 0 10px; }
+.bar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.bar button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--bd);
+  border-radius: 8px; background: var(--card); color: var(--fg); cursor: pointer; }
+.bar button[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: #fff; }
+svg { width: 100%; height: auto; display: block; }
+.band { fill: var(--bd); opacity: .28; }
+.bandlabel { fill: var(--mut); font-size: 13px; font-weight: 500; }
+.node rect { fill: var(--card); stroke: var(--bd); }
+.node { cursor: pointer; }
+.node text { pointer-events: none; }
+.n-cn { fill: var(--fg); font-size: 12px; }
+.n-en { fill: var(--mut); font-size: 10.5px; }
+.edge { fill: none; stroke: var(--acc); stroke-opacity: .18; stroke-width: 1.5; }
+.elabel { fill: var(--mut); font-size: 10.5px; opacity: 0; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg.labels .elabel { opacity: .9; }
+svg.focused .edge { stroke-opacity: .05; }
+svg.focused.labels .elabel { opacity: 0; }
+.edge.hl { stroke-opacity: 1; stroke-width: 2.5; }
+.elabel.hl { opacity: 1 !important; fill: var(--fg); font-weight: 500; }
+svg.focused .node { opacity: .3; }
+.node.hl { opacity: 1; }
+.node.hl rect { stroke: var(--acc); stroke-width: 2; }
+</style></head><body>
+<div id="app"></div>
+<script>
+const DATA = {"entities": {"Project": {"name": "项目", "layer": "L1 主数据"}, "Material": {"name": "物料", "layer": "L1 主数据"}, "BomLine": {"name": "BOM 行", "layer": "L2 BOM与变更"}, "EcnRecord": {"name": "工程变更记录", "layer": "L2 BOM与变更"}, "Demand": {"name": "需求", "layer": "L3 需求与供给"}, "MaterialAuthorization": {"name": "物料授权", "layer": "L3 需求与供给"}, "Supply": {"name": "供给", "layer": "L3 需求与供给"}, "StockMovement": {"name": "库存收发流水", "layer": "L3 需求与供给"}, "Supplier": {"name": "供应商", "layer": "L1 主数据"}, "SupplierSupplyCondition": {"name": "供应商供货条件", "layer": "L1 主数据"}, "SubstitutionPermission": {"name": "替代与转用许可", "layer": "L3 需求与供给"}, "UnitConversion": {"name": "单位换算", "layer": "L1 主数据"}, "CalculationRun": {"name": "计算运行", "layer": "L4 计算输出"}, "ChangeRecord": {"name": "变化记录", "layer": "L4 计算输出"}, "ImpactRecord": {"name": "影响记录", "layer": "L4 计算输出"}, "AllocationRecord": {"name": "供需分配记录", "layer": "L4 计算输出"}, "SourcingSuggestion": {"name": "策备建议", "layer": "L4 计算输出"}, "VendorReferenceList": {"name": "供应商参考清单", "layer": "L4 计算输出"}, "PeriodSupplyDemand": {"name": "分期供需", "layer": "L4 计算输出"}, "SlowMovingRisk": {"name": "呆滞风险", "layer": "L4 计算输出"}, "SolutionPlan": {"name": "处理方案", "layer": "L4 计算输出"}, "HistoricalCase": {"name": "历史呆滞案例", "layer": "L5 历史分析"}, "HistoricalMilestone": {"name": "历史关键时点", "layer": "L5 历史分析"}, "CauseAttribution": {"name": "原因归因", "layer": "L5 历史分析"}, "PreventionRule": {"name": "预防规则", "layer": "L5 历史分析"}}, "links": [{"a": "Material", "b": "BomLine", "label": "父项物料"}, {"a": "Material", "b": "BomLine", "label": "子项物料"}, {"a": "Project", "b": "BomLine", "label": "隶属项目"}, {"a": "EcnRecord", "b": "BomLine", "label": "产生于变更"}, {"a": "Project", "b": "Demand", "label": "归属项目"}, {"a": "Demand", "b": "Demand", "label": "被需求覆盖"}, {"a": "Demand", "b": "Demand", "label": "替换历史版本"}, {"a": "Project", "b": "MaterialAuthorization", "label": "授权项目"}, {"a": "Material", "b": "MaterialAuthorization", "label": "授权物料"}, {"a": "Material", "b": "Supply", "label": "供给物料"}, {"a": "CalculationRun", "b": "Supply", "label": "所属运行"}, {"a": "Material", "b": "StockMovement", "label": "收发物料"}, {"a": "Supply", "b": "StockMovement", "label": "来源供给"}, {"a": "Supplier", "b": "SupplierSupplyCondition", "label": "供货供应商"}, {"a": "Material", "b": "SupplierSupplyCondition", "label": "适用物料"}, {"a": "Material", "b": "SubstitutionPermission", "label": "被替代物料"}, {"a": "Material", "b": "SubstitutionPermission", "label": "替代物料"}, {"a": "Project", "b": "SubstitutionPermission", "label": "适用项目"}, {"a": "Material", "b": "UnitConversion", "label": "换算物料"}, {"a": "CalculationRun", "b": "ChangeRecord", "label": "所属运行"}, {"a": "BomLine", "b": "ChangeRecord", "label": "涉及BOM行"}, {"a": "SubstitutionPermission", "b": "ChangeRecord", "label": "涉及替代关系"}, {"a": "MaterialAuthorization", "b": "ChangeRecord", "label": "涉及授权"}, {"a": "CalculationRun", "b": "ImpactRecord", "label": "所属运行"}, {"a": "Project", "b": "ImpactRecord", "label": "受影响项目"}, {"a": "Material", "b": "ImpactRecord", "label": "受影响物料"}, {"a": "Demand", "b": "AllocationRecord", "label": "分配需求"}, {"a": "Supply", "b": "AllocationRecord", "label": "分配供给"}, {"a": "SubstitutionPermission", "b": "AllocationRecord", "label": "依据替代许可"}, {"a": "CalculationRun", "b": "AllocationRecord", "label": "所属运行"}, {"a": "Material", "b": "SourcingSuggestion", "label": "建议物料"}, {"a": "Supplier", "b": "SourcingSuggestion", "label": "建议供应商"}, {"a": "VendorReferenceList", "b": "SourcingSuggestion", "label": "列入参考清单"}, {"a": "CalculationRun", "b": "SourcingSuggestion", "label": "所属运行"}, {"a": "Supplier", "b": "VendorReferenceList", "label": "面向供应商"}, {"a": "CalculationRun", "b": "VendorReferenceList", "label": "所属运行"}, {"a": "Material", "b": "PeriodSupplyDemand", "label": "供需物料"}, {"a": "CalculationRun", "b": "PeriodSupplyDemand", "label": "所属运行"}, {"a": "Material", "b": "SlowMovingRisk", "label": "风险物料"}, {"a": "CalculationRun", "b": "SlowMovingRisk", "label": "所属运行"}, {"a": "SlowMovingRisk", "b": "SolutionPlan", "label": "处置风险"}, {"a": "Supply", "b": "SolutionPlan", "label": "调整供给"}, {"a": "CalculationRun", "b": "SolutionPlan", "label": "所属运行"}, {"a": "Project", "b": "HistoricalCase", "label": "历史项目"}, {"a": "Material", "b": "HistoricalCase", "label": "案例旧料"}, {"a": "Material", "b": "HistoricalCase", "label": "案例新料"}, {"a": "HistoricalCase", "b": "HistoricalMilestone", "label": "归属案例"}, {"a": "HistoricalCase", "b": "CauseAttribution", "label": "归属案例"}, {"a": "HistoricalCase", "b": "PreventionRule", "label": "源自案例"}]};
+const layers = {};
+for (const [k, v] of Object.entries(DATA.entities)) (layers[v.layer] = layers[v.layer] || []).push(k);
+const layerNames = Object.keys(layers);
+const NW = 150, NH = 40, PAD = 26, W = 1500;
+let bandY = 60; const bands = [];
+const pos = {};
+for (const ln of layerNames) {
+  const mem = layers[ln];
+  const perRow = mem.length > 6 ? 5 : mem.length;
+  const rows = [];
+  for (let i = 0; i < mem.length; i += perRow) rows.push(mem.slice(i, i + perRow));
+  const bh = PAD * 2 + rows.length * (NH + 18);
+  bands.push({ name: ln, y: bandY, h: bh, n: mem.length });
+  rows.forEach((row, ri) => {
+    const rw = perRow * NW + (perRow - 1) * 26;
+    const x0 = (W - rw) / 2;
+    row.forEach((e, ci) => { pos[e] = [x0 + ci * (NW + 26) + NW / 2, bandY + PAD + ri * (NH + 18) + NH / 2]; });
+  });
+  bandY += bh + 56;
+}
+const H = bandY + 20;
+let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="本体分层拓扑">';
+for (const b of bands) {
+  svg += '<rect class="band" x="20" y="' + b.y + '" width="' + (W-40) + '" height="' + b.h + '" rx="12"/>';
+  svg += '<text class="bandlabel" x="40" y="' + (b.y+24) + '">' + b.name + '（' + b.n + '）</text>';
+}
+const pairCount = {};
+DATA.links.forEach(l => { const k = l.a + '|' + l.b; pairCount[k] = (pairCount[k] || 0) + 1; });
+const pairSeen = {};
+DATA.links.forEach((l, i) => {
+  const [x1, y1] = pos[l.a], [x2, y2] = pos[l.b];
+  const k = l.a + '|' + l.b;
+  const idx = pairSeen[k] = (pairSeen[k] || 0) + 1;
+  const off = (idx - (pairCount[k] + 1) / 2) * 14;
+  const mx = (x1 + x2) / 2 + off, my = (y1 + y2) / 2;
+  svg += '<path class="edge" data-i="' + i + '" data-a="' + l.a + '" data-b="' + l.b +
+    '" d="M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2 + '"/>';
+  svg += '<text class="elabel" data-i="' + i + '" x="' + mx + '" y="' + (my - 4) + '" text-anchor="middle">' + l.label + '</text>';
+});
+for (const [e, cc] of Object.entries(pos)) {
+  svg += '<g class="node" data-id="' + e + '" transform="translate(' + cc[0] + ',' + cc[1] + ')">' +
+    '<rect x="' + (-NW/2) + '" y="' + (-NH/2) + '" width="' + NW + '" height="' + NH + '" rx="8"/>' +
+    '<text text-anchor="middle" dy="-1"><tspan class="n-cn">' + DATA.entities[e].name + '</tspan></text>' +
+    '<text text-anchor="middle" dy="12"><tspan class="n-en">' + e + '</tspan></text></g>';
+}
+svg += '</svg>';
+document.getElementById('app').innerHTML =
+  '<h3>' + document.title + '</h3>' +
+  '<p class="hint">点击实体聚焦它的全部关系（其余淡化）；连线标签 = 关系语义名，方向：上端(1) → 下端(n)。共 ' + Object.keys(DATA.entities).length + ' 实体 / ' + DATA.links.length + ' 关系。</p>' +
+  '<div class="bar"><button type="button" id="lblBtn" aria-pressed="true">全部关系名：开</button>' +
+  '<span class="hint" id="stat"></span></div>' + svg;
+const svgEl = document.querySelector('svg');
+let sel = null;
+document.getElementById('lblBtn').addEventListener('click', (ev) => {
+  const on = ev.target.getAttribute('aria-pressed') !== 'true';
+  ev.target.setAttribute('aria-pressed', on);
+  ev.target.textContent = '全部关系名：' + (on ? '开' : '关');
+  svgEl.classList.toggle('labels', on);
+});
+document.querySelectorAll('.node').forEach(n => n.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  sel = sel === n.dataset.id ? null : n.dataset.id;
+  apply();
+}));
+svgEl.addEventListener('click', () => { if (sel) { sel = null; apply(); } });
+function apply() {
+  svgEl.classList.toggle('focused', !!sel);
+  document.querySelectorAll('.edge, .elabel').forEach(el => {
+    const on = sel && (el.dataset.a === sel || el.dataset.b === sel);
+    el.classList.toggle('hl', !!on);
+  });
+  document.querySelectorAll('.node').forEach(n => {
+    const id = n.dataset.id;
+    const adj = sel && id !== sel && Array.from(document.querySelectorAll('.edge')).some(e =>
+      (e.dataset.a === sel && e.dataset.b === id) || (e.dataset.b === sel && e.dataset.a === id));
+    n.classList.toggle('hl', id === sel || !!adj);
+  });
+  document.getElementById('stat').textContent = sel ? '聚焦：' + sel + '（' +
+    document.querySelectorAll('.edge.hl').length + ' 条关系）' : '';
+}
+svgEl.classList.add('labels');
+</script></body></html>

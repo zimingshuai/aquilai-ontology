@@ -505,6 +505,158 @@ def render_layered(model: dict, out_path) -> list:
         + "```mermaid" + nl + body + nl + "```" + nl, encoding="utf-8")
     return lines
 
+
+# ===========七、交互式拓扑产物（--interactive：自包含 HTML，浏览器直接可开）==========
+def render_interactive(model: dict, out_path) -> None:
+    """生成自包含交互式分层拓扑 HTML（泛化产物：不依赖 Gen UI 宿主，浏览器直接打开完整可用）。
+
+    Args:
+        model: DSL 模型 dict（实体含 layer 字段则分层，缺省归"未分层"组）。
+        out_path: 输出 HTML Path。
+    Returns:
+        None（文件写入；交互：点击实体聚焦邻接关系、"全部关系名"开关默认开）。
+    """
+    import json as _json
+    ents = {name: {"name": ent.get("display_name", name),
+                   "layer": (ent.get("layer") or "").strip() or "未分层"}
+            for name, ent in model.get("entities", {}).items()}
+    links_data = []
+    for holder, ent in model.get("entities", {}).items():
+        for alias, raw in (ent.get("links") or {}).items():
+            if isinstance(raw, str):
+                target, label = raw, alias
+            elif isinstance(raw, dict):
+                target = raw.get("target")
+                label = str(raw.get("name") or alias)
+            else:
+                continue
+            if target:
+                links_data.append({"a": target, "b": holder, "label": label})
+    payload = _json.dumps({"entities": ents, "links": links_data}, ensure_ascii=False)
+    html = INTERACTIVE_TMPL.replace("__PAYLOAD__", payload)
+    html = html.replace("__TITLE__", str(model.get("ontology", "本体")) + " 交互式分层拓扑")
+    out_path.write_text(html, encoding="utf-8")
+
+INTERACTIVE_TMPL = '''<!doctype html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root { --fg:#1a1a1a; --mut:#6b7280; --bd:#d4d4d8; --bg:#fafafa; --card:#fff; --acc:#2563eb; }
+@media (prefers-color-scheme: dark) { :root { --fg:#e8e8ea; --mut:#9ca3af; --bd:#3f3f46; --bg:#18181b; --card:#232327; --acc:#60a5fa; } }
+body { font-family: system-ui, "Microsoft YaHei", sans-serif; color: var(--fg); background: var(--bg); margin: 16px; }
+h3 { margin: 0 0 4px; font-weight: 500; }
+.hint { color: var(--mut); font-size: 13px; margin: 0 0 10px; }
+.bar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.bar button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--bd);
+  border-radius: 8px; background: var(--card); color: var(--fg); cursor: pointer; }
+.bar button[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: #fff; }
+svg { width: 100%; height: auto; display: block; }
+.band { fill: var(--bd); opacity: .28; }
+.bandlabel { fill: var(--mut); font-size: 13px; font-weight: 500; }
+.node rect { fill: var(--card); stroke: var(--bd); }
+.node { cursor: pointer; }
+.node text { pointer-events: none; }
+.n-cn { fill: var(--fg); font-size: 12px; }
+.n-en { fill: var(--mut); font-size: 10.5px; }
+.edge { fill: none; stroke: var(--acc); stroke-opacity: .18; stroke-width: 1.5; }
+.elabel { fill: var(--mut); font-size: 10.5px; opacity: 0; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+svg.labels .elabel { opacity: .9; }
+svg.focused .edge { stroke-opacity: .05; }
+svg.focused.labels .elabel { opacity: 0; }
+.edge.hl { stroke-opacity: 1; stroke-width: 2.5; }
+.elabel.hl { opacity: 1 !important; fill: var(--fg); font-weight: 500; }
+svg.focused .node { opacity: .3; }
+.node.hl { opacity: 1; }
+.node.hl rect { stroke: var(--acc); stroke-width: 2; }
+</style></head><body>
+<div id="app"></div>
+<script>
+const DATA = __PAYLOAD__;
+const layers = {};
+for (const [k, v] of Object.entries(DATA.entities)) (layers[v.layer] = layers[v.layer] || []).push(k);
+const layerNames = Object.keys(layers);
+const NW = 150, NH = 40, PAD = 26, W = 1500;
+let bandY = 60; const bands = [];
+const pos = {};
+for (const ln of layerNames) {
+  const mem = layers[ln];
+  const perRow = mem.length > 6 ? 5 : mem.length;
+  const rows = [];
+  for (let i = 0; i < mem.length; i += perRow) rows.push(mem.slice(i, i + perRow));
+  const bh = PAD * 2 + rows.length * (NH + 18);
+  bands.push({ name: ln, y: bandY, h: bh, n: mem.length });
+  rows.forEach((row, ri) => {
+    const rw = perRow * NW + (perRow - 1) * 26;
+    const x0 = (W - rw) / 2;
+    row.forEach((e, ci) => { pos[e] = [x0 + ci * (NW + 26) + NW / 2, bandY + PAD + ri * (NH + 18) + NH / 2]; });
+  });
+  bandY += bh + 56;
+}
+const H = bandY + 20;
+let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="本体分层拓扑">';
+for (const b of bands) {
+  svg += '<rect class="band" x="20" y="' + b.y + '" width="' + (W-40) + '" height="' + b.h + '" rx="12"/>';
+  svg += '<text class="bandlabel" x="40" y="' + (b.y+24) + '">' + b.name + '（' + b.n + '）</text>';
+}
+const pairCount = {};
+DATA.links.forEach(l => { const k = l.a + '|' + l.b; pairCount[k] = (pairCount[k] || 0) + 1; });
+const pairSeen = {};
+DATA.links.forEach((l, i) => {
+  const [x1, y1] = pos[l.a], [x2, y2] = pos[l.b];
+  const k = l.a + '|' + l.b;
+  const idx = pairSeen[k] = (pairSeen[k] || 0) + 1;
+  const off = (idx - (pairCount[k] + 1) / 2) * 14;
+  const mx = (x1 + x2) / 2 + off, my = (y1 + y2) / 2;
+  svg += '<path class="edge" data-i="' + i + '" data-a="' + l.a + '" data-b="' + l.b +
+    '" d="M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2 + '"/>';
+  svg += '<text class="elabel" data-i="' + i + '" x="' + mx + '" y="' + (my - 4) + '" text-anchor="middle">' + l.label + '</text>';
+});
+for (const [e, cc] of Object.entries(pos)) {
+  svg += '<g class="node" data-id="' + e + '" transform="translate(' + cc[0] + ',' + cc[1] + ')">' +
+    '<rect x="' + (-NW/2) + '" y="' + (-NH/2) + '" width="' + NW + '" height="' + NH + '" rx="8"/>' +
+    '<text text-anchor="middle" dy="-1"><tspan class="n-cn">' + DATA.entities[e].name + '</tspan></text>' +
+    '<text text-anchor="middle" dy="12"><tspan class="n-en">' + e + '</tspan></text></g>';
+}
+svg += '</svg>';
+document.getElementById('app').innerHTML =
+  '<h3>' + document.title + '</h3>' +
+  '<p class="hint">点击实体聚焦它的全部关系（其余淡化）；连线标签 = 关系语义名，方向：上端(1) → 下端(n)。共 ' + Object.keys(DATA.entities).length + ' 实体 / ' + DATA.links.length + ' 关系。</p>' +
+  '<div class="bar"><button type="button" id="lblBtn" aria-pressed="true">全部关系名：开</button>' +
+  '<span class="hint" id="stat"></span></div>' + svg;
+const svgEl = document.querySelector('svg');
+let sel = null;
+document.getElementById('lblBtn').addEventListener('click', (ev) => {
+  const on = ev.target.getAttribute('aria-pressed') !== 'true';
+  ev.target.setAttribute('aria-pressed', on);
+  ev.target.textContent = '全部关系名：' + (on ? '开' : '关');
+  svgEl.classList.toggle('labels', on);
+});
+document.querySelectorAll('.node').forEach(n => n.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  sel = sel === n.dataset.id ? null : n.dataset.id;
+  apply();
+}));
+svgEl.addEventListener('click', () => { if (sel) { sel = null; apply(); } });
+function apply() {
+  svgEl.classList.toggle('focused', !!sel);
+  document.querySelectorAll('.edge, .elabel').forEach(el => {
+    const on = sel && (el.dataset.a === sel || el.dataset.b === sel);
+    el.classList.toggle('hl', !!on);
+  });
+  document.querySelectorAll('.node').forEach(n => {
+    const id = n.dataset.id;
+    const adj = sel && id !== sel && Array.from(document.querySelectorAll('.edge')).some(e =>
+      (e.dataset.a === sel && e.dataset.b === id) || (e.dataset.b === sel && e.dataset.a === id));
+    n.classList.toggle('hl', id === sel || !!adj);
+  });
+  document.getElementById('stat').textContent = sel ? '聚焦：' + sel + '（' +
+    document.querySelectorAll('.edge.hl').length + ' 条关系）' : '';
+}
+svgEl.classList.add('labels');
+</script></body></html>
+'''
+
 def main() -> None:
     """命令行入口：读 DSL -> 全量或 --diff 差异渲染 -> 写 Markdown，打印中文摘要。"""
     parser = argparse.ArgumentParser(
@@ -512,6 +664,8 @@ def main() -> None:
     parser.add_argument("model", help="DSL YAML 模型路径（--diff 模式下为 target 模型）")
     parser.add_argument("--layout", choices=["class", "layered"], default="class",
                         help="布局：class=classDiagram（默认）| layered=分层 flowchart（需实体 layer 字段）")
+    parser.add_argument("--interactive", action="store_true",
+                        help="生成自包含交互式 HTML（分层+点击聚焦+关系名开关，浏览器直接打开，不依赖渲染环境）")
     parser.add_argument("-o", "--output", default=None,
                         help="输出 Markdown 路径（默认模型同目录 topology.md；--diff 模式为 topology-diff.md）")
     parser.add_argument("--diff", default=None, metavar="BASE_YAML",
@@ -543,6 +697,15 @@ def main() -> None:
         if args.image:
             #   2. --image：差异拓扑同步出图（topology-diff.png/svg）
             _write_images(content, out_path, args.image)
+        return
+    #   1.5 交互式产物（--interactive）：自包含 HTML，独立于其余布局参数
+    if args.interactive:
+        out_path = model_path.parent / "topology-interactive.html"
+        render_interactive(model, out_path)
+        link_count = sum(len((e.get("links") or {})) for e in model["entities"].values()
+                         if isinstance(e, dict) and isinstance(e.get("links"), dict))
+        print(f"====交互式拓扑生成完成====: {model_path} -> {out_path}")
+        print(f"实体数: {len(model['entities'])}，links 数: {link_count}（浏览器直接打开，含聚焦与关系名开关）")
         return
     #   2. 全量模式：layered 分层布局（--layout layered）优先分支
     if args.layout == "layered":
