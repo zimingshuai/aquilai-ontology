@@ -23,8 +23,8 @@ from playwright.sync_api import sync_playwright
 # ===========一、常量（CDN 地址 / 缓存路径 / 页面模板）==========
 # MERMAID_CDN_URL：mermaid@11 官方推荐的 CDN ESM 入口（浏览器 import() 直接可用，子 chunk 由 CDN 解析）。
 MERMAID_CDN_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
-# ASSET_CACHE_PATH：CDN 不可达时的本地降级缓存（mermaid@11 UMD 单文件，含全部图型）。
-ASSET_CACHE_PATH = Path(__file__).parent / "assets" / "mermaid.min.js"
+# ASSET_CACHE_PATH：CDN 不可达时的本地降级缓存（mermaid@11 UMD 单文件，含全部图型；插件根 assets/ 标准资源位）。
+ASSET_CACHE_PATH = Path(__file__).parent.parent / "assets" / "mermaid.min.js"
 # ASSET_URL_PATH：页面内引用本地缓存的 URL 路径（由本模块内置 HTTP 服务提供）。
 ASSET_URL_PATH = "/assets/mermaid.min.js"
 # VIEWPORT_SIZE：无头浏览器视口（截图按元素边界捕获，超出视口部分可截；视口仅影响初始布局）。
