@@ -1,4 +1,4 @@
-# 本体拓扑：xgimi-rebuild（0.1.0-draft.1）
+# 本体拓扑：xgimi-rebuild（0.2.0-draft.2）
 
 > 由 render_topology.py 从 DSL 自动生成；仅含实体 + links + 规则三要素，不含能力问题（CQ）。
 > 图例：🔑 = 主键；关联线 `目标 "1" --> "*" 持有方 : 别名` = 持有方实体的 links 别名持有指向目标的引用；
@@ -25,16 +25,18 @@
         +purchase_group : STRING
     }
     class SupplierSupplyCondition {
-        +supplier_code : STRING 🔑
-        +material_code : STRING 🔑
+        +condition_id : STRING 🔑
+        +supplier_code : STRING
+        +material_code : STRING
         +lead_time_days : INTEGER
         +moq : INTEGER
         +order_multiple : INTEGER
         +quota_ratio : DOUBLE
     }
     class UnitConversion {
-        +material_code : STRING 🔑
-        +alt_unit : STRING 🔑
+        +conversion_id : STRING 🔑
+        +material_code : STRING
+        +alt_unit : STRING
         +factor : DOUBLE
         +approval_status : STRING
     }
@@ -64,8 +66,9 @@
         +evidence_status : STRING
     }
     class Demand {
-        +demand_id : STRING 🔑
-        +record_version : STRING 🔑
+        +demand_uid : STRING 🔑
+        +demand_id : STRING
+        +record_version : STRING
         +demand_type : STRING
         +project_code : STRING
         +required_qty : INTEGER
@@ -75,11 +78,14 @@
         +covered_demand_version : STRING
         +superseded_demand_id : STRING
         +superseded_demand_version : STRING
+        +supersedes_uid : STRING
+        +covered_by_uid : STRING
     }
     class MaterialAuthorization {
-        +project_code : STRING 🔑
-        +material_code : STRING 🔑
-        +auth_version : STRING 🔑
+        +auth_id : STRING 🔑
+        +project_code : STRING
+        +material_code : STRING
+        +auth_version : STRING
         +authorized_qty : INTEGER
         +approve_date : DATE
         +status : STRING
@@ -146,6 +152,7 @@
         +project_code : STRING
         +material_code : STRING
         +auth_version : STRING
+        +auth_id : STRING
     }
     class ImpactRecord {
         +impact_id : STRING 🔑
@@ -166,25 +173,30 @@
         +allocated_qty : INTEGER
         +priority_seq : INTEGER
         +reserved_flag : BOOLEAN
+        +demand_uid : STRING
     }
     class SourcingSuggestion {
-        +run_id : STRING 🔑
-        +material_code : STRING 🔑
-        +supplier_code : STRING 🔑
+        +suggestion_id : STRING 🔑
+        +run_id : STRING
+        +material_code : STRING
+        +supplier_code : STRING
         +allocated_qty : INTEGER
         +suggested_qty : INTEGER
         +rounding_extra_qty : INTEGER
         +eta_meets_demand : BOOLEAN
+        +list_id : STRING
     }
     class VendorReferenceList {
-        +run_id : STRING 🔑
-        +supplier_code : STRING 🔑
+        +list_id : STRING 🔑
+        +run_id : STRING
+        +supplier_code : STRING
         +list_status : STRING
         +review_note : STRING
     }
     class PeriodSupplyDemand {
-        +run_id : STRING 🔑
-        +material_code : STRING 🔑
+        +balance_id : STRING 🔑
+        +run_id : STRING
+        +material_code : STRING
         +period : STRING
         +opening_qty : INTEGER
         +arrival_qty : INTEGER
@@ -196,8 +208,9 @@
         +unmet_carry_qty : INTEGER
     }
     class SlowMovingRisk {
-        +run_id : STRING 🔑
-        +material_code : STRING 🔑
+        +risk_id : STRING 🔑
+        +run_id : STRING
+        +material_code : STRING
         +risk_type : STRING
         +remaining_qty : INTEGER
         +reserved_qty : INTEGER
@@ -209,14 +222,16 @@
         +pending_check_amount : DOUBLE
     }
     class SolutionPlan {
-        +run_id : STRING 🔑
-        +plan_code : STRING 🔑
+        +plan_id : STRING 🔑
+        +run_id : STRING
+        +plan_code : STRING
         +action_type : STRING
         +material_code : STRING
         +adjusted_supply_id : STRING
         +action_cost : DOUBLE
         +shortage_flag : BOOLEAN
         +feasible_reason : STRING
+        +risk_id : STRING
     }
     class HistoricalCase {
         +case_id : STRING 🔑
@@ -237,14 +252,16 @@
         +simulated_reducible_qty : INTEGER
     }
     class HistoricalMilestone {
-        +case_id : STRING 🔑
-        +milestone_type : STRING 🔑
+        +milestone_id : STRING 🔑
+        +case_id : STRING
+        +milestone_type : STRING
         +milestone_date : DATE
         +known_info : STRING
     }
     class CauseAttribution {
-        +case_id : STRING 🔑
-        +cause_type : STRING 🔑
+        +attribution_id : STRING 🔑
+        +case_id : STRING
+        +cause_type : STRING
         +attributed_qty : INTEGER
         +evidence_ref : STRING
         +conclusion_level : STRING

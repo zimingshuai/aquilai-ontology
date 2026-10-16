@@ -116,21 +116,29 @@ object_types:
   description: 交期/最小起订量/订购倍数/配额约定（E10）
   enabled: true
   attrs:
-  - code: supplier_code
-    name: 供应商编码
+  - code: condition_id
+    name: 供货条件ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 条件归属供应商
+    description: 供应商-物料供货条件的唯一标识
+    isDerived: false
+  - code: supplier_code
+    name: 供应商编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 条件归属供应商；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: material_code
     name: 适用物料编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 条件按物料生效
+    description: 条件按物料生效；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: lead_time_days
     name: 交期
@@ -169,21 +177,29 @@ object_types:
   description: 已确认的计量单位换算关系，原始值保留计算用换算（E12）
   enabled: true
   attrs:
-  - code: material_code
-    name: 换算物料编码
+  - code: conversion_id
+    name: 换算关系ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 如 UNIT-M（基本单位颗）
+    description: 物料单位换算关系的唯一标识
+    isDerived: false
+  - code: material_code
+    name: 换算物料编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 如 UNIT-M（基本单位颗）；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: alt_unit
     name: 备选单位
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 如 盒
+    description: 如 盒；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: factor
     name: 换算系数
@@ -384,21 +400,29 @@ object_types:
   description: 各项目需要数量与日期（MPS/客户订单/预测/维修），覆盖与替换关系明确（E05）
   enabled: true
   attrs:
-  - code: demand_id
-    name: 需求编号
+  - code: demand_uid
+    name: 需求实例UID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 如 DEM-Z9-NOV / ORD-Z9-NOV / FCST-Z9-NOV
+    description: 需求实例唯一标识（demand_id+版本联合定位的业务实例）
+    isDerived: false
+  - code: demand_id
+    name: 需求编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 如 DEM-Z9-NOV / ORD-Z9-NOV / FCST-Z9-NOV；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: record_version
     name: 记录版本
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 如 v1/v2，新版本替换旧版本不追加计数
+    description: 如 v1/v2，新版本替换旧版本不追加计数；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: demand_type
     name: 需求类型
@@ -472,34 +496,58 @@ object_types:
     defaultValue: ''
     description: 与 superseded_demand_id 组成复合外键
     isDerived: false
+  - code: supersedes_uid
+    name: 替换目标UID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本记录替换的上一版本需求实例（demand_uid）；无前版为空
+    isDerived: false
+  - code: covered_by_uid
+    name: 被覆盖需求UID
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 本需求被哪条已确认需求覆盖（demand_uid）；无覆盖为空
+    isDerived: false
 - code: MaterialAuthorization
   name: 物料授权
   description: 整机料号采购授权记录（策备表域），授权覆盖量与物理供给分开核算（E06）
   enabled: true
   attrs:
-  - code: project_code
-    name: 授权项目编码
+  - code: auth_id
+    name: 授权ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 整机料号
+    description: 物料授权记录唯一标识
+    isDerived: false
+  - code: project_code
+    name: 授权项目编码
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 整机料号；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: material_code
     name: 授权物料编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 被授权物料
+    description: 被授权物料；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: auth_version
     name: 授权版本
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: v2 替换 v1
+    description: v2 替换 v1；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: authorized_qty
     name: 授权覆盖数量
@@ -974,6 +1022,14 @@ object_types:
     defaultValue: ''
     description: 授权数量变化指向的授权记录（复合外键成员），可空
     isDerived: false
+  - code: auth_id
+    name: 关联物料授权
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 指向物料授权（MaterialAuthorization）主键 auth_id 的外键
+    isDerived: false
 - code: ImpactRecord
   name: 影响记录
   description: 变化波及对象的合并明细（多条依据合并一条），复核任务及处理状态载体（E15）
@@ -1112,34 +1168,50 @@ object_types:
     defaultValue: ''
     description: true=为当前需求预留的供给计入已覆盖量
     isDerived: false
+  - code: demand_uid
+    name: 关联需求
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 指向需求（Demand）主键 demand_uid 的外键
+    isDerived: false
 - code: SourcingSuggestion
   name: 策备建议
   description: 对剩余缺口的采购建议量：MOQ/倍数取整、取整额外量、交期满足检查（E17）
   enabled: true
   attrs:
-  - code: run_id
-    name: 运行编号
+  - code: suggestion_id
+    name: 建议ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 建议归属运行（V2 快照）
+    description: 策备建议唯一标识
+    isDerived: false
+  - code: run_id
+    name: 运行编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 建议归属运行（V2 快照）；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: material_code
     name: 建议物料编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 建议针对的物料
+    description: 建议针对的物料；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: supplier_code
     name: 建议供应商编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 建议面向的供应商
+    description: 建议面向的供应商；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: allocated_qty
     name: 分配量
@@ -1173,26 +1245,42 @@ object_types:
     defaultValue: ''
     description: false=到货晚于需求日期，不得视为解决当期缺料（测试十）
     isDerived: false
+  - code: list_id
+    name: 关联供应商参考清单
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 指向供应商参考清单（VendorReferenceList）主键 list_id 的外键
+    isDerived: false
 - code: VendorReferenceList
   name: 供应商参考清单
   description: 按供应商整理的建议参考清单，供内部审核；不等同采购订单、默认不外发（E18）
   enabled: true
   attrs:
-  - code: run_id
-    name: 运行编号
+  - code: list_id
+    name: 清单ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 清单归属运行
+    description: 供应商参考清单唯一标识（平台先例命名）
+    isDerived: false
+  - code: run_id
+    name: 运行编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 清单归属运行；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: supplier_code
     name: 面向供应商编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 清单按供应商整理
+    description: 清单按供应商整理；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: list_status
     name: 清单状态
@@ -1215,21 +1303,29 @@ object_types:
   description: 按评估期逐期推演的供需行（期初/到货/流入/满足/流出/期末/未满足结转）（E19）
   enabled: true
   attrs:
-  - code: run_id
-    name: 运行编号
+  - code: balance_id
+    name: 平衡记录ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 分期数据随方案运行独立成套
+    description: 分期供需记录唯一标识
+    isDerived: false
+  - code: run_id
+    name: 运行编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 分期数据随方案运行独立成套；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: material_code
     name: 供需物料编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 分期推演按物料
+    description: 分期推演按物料；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: period
     name: 期间
@@ -1308,21 +1404,29 @@ object_types:
   description: 评估期末无法消耗的剩余风险（区分库存与未到货订单风险），含窗口后承诺与待核查项（E20）
   enabled: true
   attrs:
-  - code: run_id
-    name: 运行编号
+  - code: risk_id
+    name: 风险ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 风险归属运行
+    description: 呆滞风险记录唯一标识
+    isDerived: false
+  - code: run_id
+    name: 运行编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 风险归属运行；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: material_code
     name: 风险物料编码
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 风险按物料计量
+    description: 风险按物料计量；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: risk_type
     name: 风险类型
@@ -1401,21 +1505,29 @@ object_types:
   description: 对呆滞风险的取消/减量/延期/替代消耗/转用方案（含不处理基线），调整后同套公式重算（E21）
   enabled: true
   attrs:
-  - code: run_id
-    name: 运行编号
+  - code: plan_id
+    name: 方案ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 方案重算在独立运行分支（同时为处置风险的复合外键成员）
+    description: 处理方案唯一标识
+    isDerived: false
+  - code: run_id
+    name: 运行编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 方案重算在独立运行分支（同时为处置风险的复合外键成员）；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: plan_code
     name: 方案编号
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 如 S0/S1/S2
+    description: 如 S0/S1/S2；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: action_type
     name: 动作类型
@@ -1464,6 +1576,14 @@ object_types:
     isKey: false
     defaultValue: ''
     description: 可行/不可行原因（含推荐标记，如 S1 可作为优先复核方案）
+    isDerived: false
+  - code: risk_id
+    name: 关联呆滞风险
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 指向呆滞风险（SlowMovingRisk）主键 risk_id 的外键
     isDerived: false
 - code: HistoricalCase
   name: 历史呆滞案例
@@ -1603,21 +1723,29 @@ object_types:
   description: 案例时间线锚点（风险形成/取消窗口/观察决策/结果核实），回答何时已知什么（E23）
   enabled: true
   attrs:
-  - code: case_id
-    name: 案例编号
+  - code: milestone_id
+    name: 时点ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 时点归属案例
+    description: 历史关键时点唯一标识
+    isDerived: false
+  - code: case_id
+    name: 案例编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 时点归属案例；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: milestone_type
     name: 时点类型
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 本例三个时点，其他案例不必相同（时点数可变）
+    description: 本例三个时点，其他案例不必相同（时点数可变）；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: milestone_date
     name: 时点日期
@@ -1640,21 +1768,29 @@ object_types:
   description: 呆滞案例原因结论行：归因数量受总量上限约束，余量保留未归因（E24）
   enabled: true
   attrs:
-  - code: case_id
-    name: 案例编号
+  - code: attribution_id
+    name: 归因ID
     type: string
     required: true
     isKey: true
     defaultValue: ''
-    description: 归因行归属案例
+    description: 原因归因记录唯一标识
+    isDerived: false
+  - code: case_id
+    name: 案例编号
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 归因行归属案例；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: cause_type
     name: 原因类型
     type: string
-    required: true
-    isKey: true
+    required: false
+    isKey: false
     defaultValue: ''
-    description: 如 停采过晚/未归因（不应把全部 8
+    description: 如 停采过晚/未归因（不应把全部 8；与原复合键其余成员联合唯一（业务唯一性语义保留）
     isDerived: false
   - code: attributed_qty
     name: 归因数量
@@ -1678,7 +1814,7 @@ object_types:
     required: false
     isKey: false
     defaultValue: ''
-    description: 能确认的事实/待核实/不可下结论
+    description: 能确认的事实/待核实/不可下结论（枚举分级：主因/次因/待核实，非数值量）
     isDerived: false
 - code: PreventionRule
   name: 预防规则
@@ -1790,6 +1926,22 @@ link_types:
   description: ''
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
+- code: rel_bf1db796
+  source: Demand
+  target: Demand
+  name: 被需求覆盖
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: demand_uid
+  targetPropertyCode: covered_by_uid
+- code: rel_1988059c
+  source: Demand
+  target: Demand
+  name: 替换历史版本
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: demand_uid
+  targetPropertyCode: supersedes_uid
 - code: rel_f9742ef0
   source: Project
   target: MaterialAuthorization
@@ -1886,6 +2038,14 @@ link_types:
   description: ''
   sourcePropertyCode: permission_id
   targetPropertyCode: permission_id
+- code: rel_7ae0a816
+  source: MaterialAuthorization
+  target: ChangeRecord
+  name: 涉及授权
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: auth_id
+  targetPropertyCode: auth_id
 - code: rel_d1e5939d
   source: CalculationRun
   target: ImpactRecord
@@ -1910,6 +2070,14 @@ link_types:
   description: ''
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
+- code: rel_da6f0d07
+  source: Demand
+  target: AllocationRecord
+  name: 分配需求
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: demand_uid
+  targetPropertyCode: demand_uid
 - code: rel_bb9581b1
   source: Supply
   target: AllocationRecord
@@ -1950,6 +2118,14 @@ link_types:
   description: ''
   sourcePropertyCode: supplier_code
   targetPropertyCode: supplier_code
+- code: rel_35f2e654
+  source: VendorReferenceList
+  target: SourcingSuggestion
+  name: 列入参考清单
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: list_id
+  targetPropertyCode: list_id
 - code: rel_7b7433f2
   source: CalculationRun
   target: SourcingSuggestion
@@ -2006,6 +2182,14 @@ link_types:
   description: ''
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
+- code: rel_652d2991
+  source: SlowMovingRisk
+  target: SolutionPlan
+  name: 处置风险
+  cardinality: 1:n
+  description: ''
+  sourcePropertyCode: risk_id
+  targetPropertyCode: risk_id
 - code: rel_858fca76
   source: Supply
   target: SolutionPlan

@@ -5,8 +5,8 @@
 # 规则形态说明：RU-01~RU-11 落 derived_property（表达式按 dsl-spec §3.1 方言白名单）；RU-12/RU-13 落 trigger；
 # RU-14（复合约束）登记 OQ-12 动作域候选（admission 须挂 actions 段声明的动作，本 POC 只读无动作域）。
 ontology: xgimi-rebuild
-version: 0.1.0-draft.1
-base_version: null                      # 从零建库，无引擎快照基线
+version: 0.2.0-draft.2
+base_version:                           # 从零建库，无引擎快照基线
 governance:
   owner: 聂江锋（推断，OQ-11 待确认）     # business_owner 推断值，用户确认后回写
   maturity: experimental
@@ -14,14 +14,14 @@ governance:
 # 新术语注记（受控词表 modeling-guide §四：glossary 未登记的实体名首次入库供人审裁定；
 # 其余 17 个实体名已对照 seeds/glossary.md 建议名/两版同名复用）
 glossary_additions:
-  - {term: StockMovement, definition: 出入库事实流水（收货/入库/消耗/出库，分类互斥），waterfall 核对与收货转库存的依据}
-  - {term: ChangeRecord, definition: 点检对比产出的单条变化（六类判断）；上次试用版对应概念为 InspectionChange}
-  - {term: ImpactRecord, definition: 变化波及对象的合并明细（多条依据合并一条），复核任务状态内嵌；上次试用版拆为 InspectionChange+ReviewTask}
-  - {term: AllocationRecord, definition: 一批供给对一个需求（含替代路径）的分配明细，可展开复算；替代上次试用版 MaterialRequirement 的汇总口径}
-  - {term: PeriodSupplyDemand, definition: 按评估期逐期推演的供需行；上次试用版对应概念为 PeriodSupplyBalance}
-  - {term: HistoricalMilestone, definition: 历史案例时间线锚点（风险形成/取消窗口/观察决策/结果核实），回答何时已知什么}
-  - {term: CauseAttribution, definition: 呆滞案例原因结论行（归因数量受总量上限约束，余量保留未归因）}
-  - {term: PreventionRule, definition: 历史教训沉淀的检查规则（草案→审核→试运行→启用），变更已获知且影响可判断时触发}
+- {term: StockMovement, definition: 出入库事实流水（收货/入库/消耗/出库，分类互斥），waterfall 核对与收货转库存的依据}
+- {term: ChangeRecord, definition: 点检对比产出的单条变化（六类判断）；上次试用版对应概念为 InspectionChange}
+- {term: ImpactRecord, definition: 变化波及对象的合并明细（多条依据合并一条），复核任务状态内嵌；上次试用版拆为 InspectionChange+ReviewTask}
+- {term: AllocationRecord, definition: 一批供给对一个需求（含替代路径）的分配明细，可展开复算；替代上次试用版 MaterialRequirement 的汇总口径}
+- {term: PeriodSupplyDemand, definition: 按评估期逐期推演的供需行；上次试用版对应概念为 PeriodSupplyBalance}
+- {term: HistoricalMilestone, definition: 历史案例时间线锚点（风险形成/取消窗口/观察决策/结果核实），回答何时已知什么}
+- {term: CauseAttribution, definition: 呆滞案例原因结论行（归因数量受总量上限约束，余量保留未归因）}
+- {term: PreventionRule, definition: 历史教训沉淀的检查规则（草案→审核→试运行→启用），变更已获知且影响可判断时触发}
 
 entities:
 
@@ -69,8 +69,13 @@ entities:
     description: 交期/最小起订量/订购倍数/配额约定（E10）
     provenance: {doc: "xgimi-poc-doc §4.1/§11.5；fact-cards FC-E-10", reviewed: false}
     properties:
-      supplier_code: {display_name: 供应商编码, description: 条件归属供应商, type: STRING, primary: true, source: "§11.5"}
-      material_code: {display_name: 适用物料编码, description: 条件按物料生效, type: STRING, primary: true, source: "§11.5"}
+      condition_id:
+        display_name: 供货条件ID
+        description: 供应商-物料供货条件的唯一标识
+        type: STRING
+        primary: true
+      supplier_code: {display_name: 供应商编码, description: 条件归属供应商；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.5"}
+      material_code: {display_name: 适用物料编码, description: 条件按物料生效；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.5"}
       lead_time_days: {display_name: 交期, description: 日历周口径的供货交期, type: INTEGER, uom: 天, source: "§11.5（8 周）"}
       moq: {display_name: 最小起订量, description: '如 5,000', type: INTEGER, uom: 件, source: "§11.5"}
       order_multiple: {display_name: 订购倍数, description: 建议量按此向上取整, type: INTEGER, uom: 件, source: '§11.5（1,000）'}
@@ -86,8 +91,13 @@ entities:
     description: 已确认的计量单位换算关系，原始值保留计算用换算（E12）
     provenance: {doc: "xgimi-poc-doc §4.1 统一计算约定/测试六；fact-cards FC-E-12", reviewed: false}
     properties:
-      material_code: {display_name: 换算物料编码, description: 如 UNIT-M（基本单位颗）, type: STRING, primary: true, source: "测试六"}
-      alt_unit: {display_name: 备选单位, description: 如 盒, type: STRING, primary: true, source: "测试六"}
+      conversion_id:
+        display_name: 换算关系ID
+        description: 物料单位换算关系的唯一标识
+        type: STRING
+        primary: true
+      material_code: {display_name: 换算物料编码, description: 如 UNIT-M（基本单位颗）；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "测试六"}
+      alt_unit: {display_name: 备选单位, description: 如 盒；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "测试六"}
       factor: {display_name: 换算系数, description: 1 盒=100 颗, type: DOUBLE, uom: 系数, source: "测试六"}
       approval_status: {display_name: 批准状态, description: 移除换算依据后提示缺证，不将 12 盒当作 12 颗, type: STRING, source: "测试六"}
     links:
@@ -144,8 +154,13 @@ entities:
     description: 各项目需要数量与日期（MPS/客户订单/预测/维修），覆盖与替换关系明确（E05）
     provenance: {doc: "xgimi-poc-doc §4.1/§4.3①/§11.2；fact-cards FC-E-05", reviewed: false}
     properties:
-      demand_id: {display_name: 需求编号, description: 如 DEM-Z9-NOV / ORD-Z9-NOV / FCST-Z9-NOV, type: STRING, primary: true, source: "§11.2"}
-      record_version: {display_name: 记录版本, description: 如 v1/v2，新版本替换旧版本不追加计数, type: STRING, primary: true, source: "§11.2"}
+      demand_uid:
+        display_name: 需求实例UID
+        description: 需求实例唯一标识（demand_id+版本联合定位的业务实例）
+        type: STRING
+        primary: true
+      demand_id: {display_name: 需求编号, description: 如 DEM-Z9-NOV / ORD-Z9-NOV / FCST-Z9-NOV；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.2"}
+      record_version: {display_name: 记录版本, description: 如 v1/v2，新版本替换旧版本不追加计数；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.2"}
       demand_type: {display_name: 需求类型, description: 已确认MPS/客户订单/早期预测/维修, type: STRING, enum_values: [已确认MPS, 客户订单, 早期预测, 维修], source: "§11.2"}
       project_code: {display_name: 归属项目编码, description: 需求按项目归口汇总, type: STRING, source: "§11.2"}
       required_qty: {display_name: 需求数量, description: 台/颗口径的需要数量, type: INTEGER, uom: 件, source: "§11.2"}
@@ -155,10 +170,18 @@ entities:
       covered_demand_version: {display_name: 被覆盖需求版本, description: 与 covered_demand_id 组成复合外键, type: STRING, source: "§11.2"}
       superseded_demand_id: {display_name: 被替换需求编号, description: 旧版本需求编号（v2 替换 v1），可空, type: STRING, source: "§11.2"}
       superseded_demand_version: {display_name: 被替换需求版本, description: 与 superseded_demand_id 组成复合外键, type: STRING, source: "§11.2"}
+      supersedes_uid:
+        display_name: 替换目标UID
+        description: 本记录替换的上一版本需求实例（demand_uid）；无前版为空
+        type: STRING
+      covered_by_uid:
+        display_name: 被覆盖需求UID
+        description: 本需求被哪条已确认需求覆盖（demand_uid）；无覆盖为空
+        type: STRING
     links:
       project: {target: Project, fk: [project_code], name: 归属项目}
-      covered_by: {target: Demand, fk: [covered_demand_id, covered_demand_version], name: 被需求覆盖}
-      supersedes: {target: Demand, fk: [superseded_demand_id, superseded_demand_version], name: 替换历史版本}
+      covered_by: {target: Demand, fk: [covered_by_uid], name: 被需求覆盖}
+      supersedes: {target: Demand, fk: [supersedes_uid], name: 替换历史版本}
 
   MaterialAuthorization:
     display_name: 物料授权
@@ -167,9 +190,14 @@ entities:
     description: 整机料号采购授权记录（策备表域），授权覆盖量与物理供给分开核算（E06）
     provenance: {doc: "xgimi-poc-doc §2.1/§4.3⑥/测试四；fact-cards FC-E-06", reviewed: false}
     properties:
-      project_code: {display_name: 授权项目编码, description: 整机料号, type: STRING, primary: true, source: "§2.1/测试四"}
-      material_code: {display_name: 授权物料编码, description: 被授权物料, type: STRING, primary: true, source: "测试四"}
-      auth_version: {display_name: 授权版本, description: v2 替换 v1, type: STRING, primary: true, source: "测试四"}
+      auth_id:
+        display_name: 授权ID
+        description: 物料授权记录唯一标识
+        type: STRING
+        primary: true
+      project_code: {display_name: 授权项目编码, description: 整机料号；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§2.1/测试四"}
+      material_code: {display_name: 授权物料编码, description: 被授权物料；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "测试四"}
+      auth_version: {display_name: 授权版本, description: v2 替换 v1；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "测试四"}
       authorized_qty: {display_name: 授权覆盖数量, description: '覆盖台数/颗数（v1 10,000 → v2 6,000）', type: INTEGER, uom: 件, source: 测试四}
       approve_date: {display_name: 批准日期, description: 如 10-01 批准 v2, type: DATE, source: "测试四"}
       status: {display_name: 授权状态, description: 授权状态说明（全集未给）, type: STRING, source: "§4.1 需求行"}
@@ -193,11 +221,11 @@ entities:
       qty: {display_name: 数量, description: 供给数量, type: INTEGER, uom: 件, source: "§11.3"}
       available_date: {display_name: 可用或到货日, description: 库存可用日/订单到货日, type: DATE, source: "§11.3"}
       branch: {display_name: 分支, description: 事实与模拟分开保存, type: STRING, enum_values: [FACT, SIM], source: "§11.1"}
-      order_qty: {display_name: 订单数量, description: 未收货订单类型的订单总量（测试八 8,000）, type: INTEGER, uom: 件, source: "§4.3③/测试八"}
-      received_qty: {display_name: 累计有效收货量, description: 已收货转入库存部分（测试八 3,000）, type: INTEGER, uom: 件, source: "§4.3③/测试八"}
+      order_qty: {display_name: 订单数量, description: 未收货订单类型的订单总量（测试八 8, 000）: null, type: INTEGER, uom: 件, source: "§4.3③/测试八"}
+      received_qty: {display_name: 累计有效收货量, description: 已收货转入库存部分（测试八 3, 000）: null, type: INTEGER, uom: 件, source: "§4.3③/测试八"}
       cancelled_qty: {display_name: 已取消量, description: 已办理取消的数量, type: INTEGER, uom: 件, source: "§4.3③"}
       closed_unreceived_qty: {display_name: 已关闭未收余量, description: 订单关闭时仍未收货的余量, type: INTEGER, uom: 件, source: "§4.3③"}
-      open_order_qty: {display_name: 订单未收货量, description: RU-03 衍生——max(订单数量−累计有效收货量−已取消量−已关闭未收余量, 0)；收货转库存后不重复计, type: INTEGER, uom: 件, derived: true, source: "§4.3③/测试八"}
+      open_order_qty: {display_name: 订单未收货量, description: RU-03 衍生——max(订单数量−累计有效收货量−已取消量−已关闭未收余量, 0)；收货转库存后不重复计: null, type: INTEGER, uom: 件, derived: true, source: "§4.3③/测试八"}
       cancel_deadline_date: {display_name: 取消截止日, description: 如 10-15；设计稿 E07 阶段⑤落位字段, type: DATE, source: "§11.3"}
       cancellation_fee: {display_name: 取消费, description: 如 1 元/颗；设计稿 E07 阶段⑤落位字段, type: DOUBLE, uom: 元/颗, source: "§11.3"}
       restriction_note: {display_name: 限制条件说明, description: '如"仅按临时许可使用"/"最多可取消 2,000、可整单延期至 2027-01-15"；设计稿 E07 阶段⑤落位字段', type: STRING, source: "§11.3"}
@@ -280,11 +308,15 @@ entities:
       project_code: {display_name: 涉及授权项目编码, description: 授权数量变化指向的授权记录（复合外键成员），可空, type: STRING, source: "inspection-rules.csv"}
       material_code: {display_name: 涉及授权物料编码, description: 授权数量变化指向的授权记录（复合外键成员），可空, type: STRING, source: "inspection-rules.csv"}
       auth_version: {display_name: 涉及授权版本, description: 授权数量变化指向的授权记录（复合外键成员），可空, type: STRING, source: "inspection-rules.csv"}
+      auth_id:
+        display_name: 关联物料授权
+        description: 指向物料授权（MaterialAuthorization）主键 auth_id 的外键
+        type: STRING
     links:
       run: {target: CalculationRun, fk: [run_id], name: 所属运行}
       bom_line: {target: BomLine, fk: [bom_line_id], name: 涉及BOM行}
       substitution: {target: SubstitutionPermission, fk: [permission_id], name: 涉及替代关系}
-      authorization: {target: MaterialAuthorization, fk: [project_code, material_code, auth_version], name: 涉及授权}
+      authorization: {target: MaterialAuthorization, fk: [auth_id], name: 涉及授权}
 
   ImpactRecord:
     display_name: 影响记录
@@ -321,8 +353,12 @@ entities:
       allocated_qty: {display_name: 分配数量, description: 实际分配量（累计分配量≤该批可用数量，RU-14① 约束）, type: INTEGER, uom: 件, source: "§4.3④"}
       priority_seq: {display_name: 分配优先顺序, description: 相同日期按项目编码、供给可用日期和供给ID稳定排序, type: INTEGER, source: "§11.3"}
       reserved_flag: {display_name: 预留标记, description: true=为当前需求预留的供给计入已覆盖量, type: BOOLEAN, source: "§11.3"}
+      demand_uid:
+        display_name: 关联需求
+        description: 指向需求（Demand）主键 demand_uid 的外键
+        type: STRING
     links:
-      demand: {target: Demand, fk: [demand_id, demand_version], name: 分配需求}
+      demand: {target: Demand, fk: [demand_uid], name: 分配需求}
       supply: {target: Supply, fk: [supply_id], name: 分配供给}
       substitution: {target: SubstitutionPermission, fk: [permission_id], name: 依据替代许可}
       run: {target: CalculationRun, fk: [run_id], name: 所属运行}
@@ -334,17 +370,26 @@ entities:
     description: 对剩余缺口的采购建议量：MOQ/倍数取整、取整额外量、交期满足检查（E17）
     provenance: {doc: "xgimi-poc-doc §4.3⑤⑥/§11.5/§11.6/测试一/测试十；fact-cards FC-E-17", reviewed: false}
     properties:
-      run_id: {display_name: 运行编号, description: 建议归属运行（V2 快照）, type: STRING, primary: true, source: "§11.1"}
-      material_code: {display_name: 建议物料编码, description: 建议针对的物料, type: STRING, primary: true, source: "§4.3⑤"}
-      supplier_code: {display_name: 建议供应商编码, description: 建议面向的供应商, type: STRING, primary: true, source: "§4.3⑤"}
+      suggestion_id:
+        display_name: 建议ID
+        description: 策备建议唯一标识
+        type: STRING
+        primary: true
+      run_id: {display_name: 运行编号, description: 建议归属运行（V2 快照）；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.1"}
+      material_code: {display_name: 建议物料编码, description: 建议针对的物料；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.3⑤"}
+      supplier_code: {display_name: 建议供应商编码, description: 建议面向的供应商；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.3⑤"}
       allocated_qty: {display_name: 分配量, description: 建议基于的已分配量, type: INTEGER, uom: 件, source: "§4.3⑤"}
       suggested_qty: {display_name: 建议量, description: '按订购倍数向上取整〔max(分配量,最小起订量)〕——向上取整超方言白名单，落为输入侧预处理字段（OQ-02）', type: INTEGER, uom: 件, source: "§4.3⑤/测试一"}
       rounding_extra_qty: {display_name: 取整额外数量, description: RU-08 衍生——建议量−分配量；单独展示并纳入后续风险评估, type: INTEGER, uom: 件, derived: true, source: "§4.3⑤"}
       eta_meets_demand: {display_name: 交期满足, description: false=到货晚于需求日期，不得视为解决当期缺料（测试十）, type: BOOLEAN, source: "§4.3⑤/测试十"}
+      list_id:
+        display_name: 关联供应商参考清单
+        description: 指向供应商参考清单（VendorReferenceList）主键 list_id 的外键
+        type: STRING
     links:
       material: {target: Material, fk: [material_code], name: 建议物料}
       supplier: {target: Supplier, fk: [supplier_code], name: 建议供应商}
-      ref_list: {target: VendorReferenceList, fk: [run_id, supplier_code], name: 列入参考清单}
+      ref_list: {target: VendorReferenceList, fk: [list_id], name: 列入参考清单}
       run: {target: CalculationRun, fk: [run_id], name: 所属运行}
 
   VendorReferenceList:
@@ -354,8 +399,13 @@ entities:
     description: 按供应商整理的建议参考清单，供内部审核；不等同采购订单、默认不外发（E18）
     provenance: {doc: "xgimi-poc-doc §3.2③/§4.1/§5.3.3；fact-cards FC-E-18", reviewed: false}
     properties:
-      run_id: {display_name: 运行编号, description: 清单归属运行, type: STRING, primary: true, source: "§11.1"}
-      supplier_code: {display_name: 面向供应商编码, description: 清单按供应商整理, type: STRING, primary: true, source: "§3.2③"}
+      list_id:
+        display_name: 清单ID
+        description: 供应商参考清单唯一标识（平台先例命名）
+        type: STRING
+        primary: true
+      run_id: {display_name: 运行编号, description: 清单归属运行；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.1"}
+      supplier_code: {display_name: 面向供应商编码, description: 清单按供应商整理；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§3.2③"}
       list_status: {display_name: 清单状态, description: 草稿/内部审核；默认不外发, type: STRING, enum_values: [草稿, 内部审核], source: "§3.2③/§5.3.3"}
       review_note: {display_name: 审核备注, description: 内部审核意见（内部批准≠可用供给）, type: STRING, source: "§4.3 异常处理"}
     links:
@@ -369,8 +419,13 @@ entities:
     description: 按评估期逐期推演的供需行（期初/到货/流入/满足/流出/期末/未满足结转）（E19）
     provenance: {doc: "xgimi-poc-doc §4.4①/§11.6；fact-cards FC-E-19", reviewed: false}
     properties:
-      run_id: {display_name: 运行编号, description: 分期数据随方案运行独立成套, type: STRING, primary: true, source: "§4.4③"}
-      material_code: {display_name: 供需物料编码, description: 分期推演按物料, type: STRING, primary: true, source: "§4.4①"}
+      balance_id:
+        display_name: 平衡记录ID
+        description: 分期供需记录唯一标识
+        type: STRING
+        primary: true
+      run_id: {display_name: 运行编号, description: 分期数据随方案运行独立成套；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.4③"}
+      material_code: {display_name: 供需物料编码, description: 分期推演按物料；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.4①"}
       period: {display_name: 期间, description: 演示粒度为月（假设 A-03），粒度本身为字段不硬编码, type: STRING, source: "§11.6"}
       opening_qty: {display_name: 期初量, description: 第一期期初量取观察时间的可用库存（初始库存只计一次）, type: INTEGER, uom: 件, source: "§4.4①"}
       arrival_qty: {display_name: 本期有效到货, description: 本期内有效到货量, type: INTEGER, uom: 件, source: "§4.4①"}
@@ -391,13 +446,18 @@ entities:
     description: 评估期末无法消耗的剩余风险（区分库存与未到货订单风险），含窗口后承诺与待核查项（E20）
     provenance: {doc: "xgimi-poc-doc §4.4②④/§11.6；fact-cards FC-E-20", reviewed: false}
     properties:
-      run_id: {display_name: 运行编号, description: 风险归属运行, type: STRING, primary: true, source: "§4.4"}
-      material_code: {display_name: 风险物料编码, description: 风险按物料计量, type: STRING, primary: true, source: "§4.4②"}
+      risk_id:
+        display_name: 风险ID
+        description: 呆滞风险记录唯一标识
+        type: STRING
+        primary: true
+      run_id: {display_name: 运行编号, description: 风险归属运行；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.4"}
+      material_code: {display_name: 风险物料编码, description: 风险按物料计量；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.4②"}
       risk_type: {display_name: 风险类型, description: 库存风险/未到货订单风险（风险可先出现在未到货订单上，不等入库）, type: STRING, enum_values: [库存风险, 未到货订单风险], source: "§4.4②"}
       remaining_qty: {display_name: 期末剩余量, description: 评估期末剩余数量, type: INTEGER, uom: 件, source: "§4.4②"}
       reserved_qty: {display_name: 经确认保留量, description: '保留与期后消耗不得重复覆盖同一用途，不得凭"以后可能会用"扣减', type: INTEGER, uom: 件, source: "§4.4②"}
       post_period_consumed_qty: {display_name: 经证实的期后消耗量, description: 期后已证实消耗, type: INTEGER, uom: 件, source: "§4.4②"}
-      risk_qty: {display_name: 风险量, description: RU-06 衍生——max(期末剩余−保留−期后消耗, 0), type: INTEGER, uom: 件, derived: true, source: "§4.4②"}
+      risk_qty: {display_name: 风险量, description: RU-06 衍生——max(期末剩余−保留−期后消耗, 0): null, type: INTEGER, uom: 件, derived: true, source: "§4.4②"}
       risk_amount: {display_name: 风险金额, description: RU-07 衍生——风险量×成本单价；预计损失另行结合回收价值/处置方式计算，不与风险金额混同, type: DOUBLE, uom: 元, derived: true, source: "§4.4④/§11.6"}
       window_later_commit_qty: {display_name: 窗口后未消化承诺数量, description: '如 S2 旧料 4,000 颗（延期≠消除）；设计稿 E20 阶段⑤落位字段', type: INTEGER, uom: 件, source: "§11.6"}
       window_later_commit_amount: {display_name: 窗口后未消化承诺金额, description: '如 S2 旧料 64,000 元；设计稿 E20 阶段⑤落位字段', type: DOUBLE, uom: 元, source: "§11.6"}
@@ -413,16 +473,25 @@ entities:
     description: 对呆滞风险的取消/减量/延期/替代消耗/转用方案（含不处理基线），调整后同套公式重算（E21）
     provenance: {doc: "xgimi-poc-doc §4.4③④⑤/scenario-recompute.csv/§11.6；fact-cards FC-E-21", reviewed: false}
     properties:
-      run_id: {display_name: 运行编号, description: 方案重算在独立运行分支（同时为处置风险的复合外键成员）, type: STRING, primary: true, source: "§4.4④"}
-      plan_code: {display_name: 方案编号, description: 如 S0/S1/S2, type: STRING, primary: true, source: "§11.6"}
+      plan_id:
+        display_name: 方案ID
+        description: 处理方案唯一标识
+        type: STRING
+        primary: true
+      run_id: {display_name: 运行编号, description: 方案重算在独立运行分支（同时为处置风险的复合外键成员）；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.4④"}
+      plan_code: {display_name: 方案编号, description: 如 S0/S1/S2；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.6"}
       action_type: {display_name: 动作类型, description: 不处理/取消或减量/延期/替代消耗/跨项目转用（同一批数量不能重复用于多个措施）, type: STRING, enum_values: [不处理, 取消或减量, 延期, 替代消耗, 跨项目转用], source: "scenario-recompute.csv"}
       material_code: {display_name: 处置风险物料编码, description: 与 run_id 组合指向被处置的呆滞风险记录（复合外键成员）, type: STRING, source: "§11.6"}
       adjusted_supply_id: {display_name: 调整供给编号, description: 取消/延期所调整的供给批次，可空, type: STRING, source: "§11.6"}
       action_cost: {display_name: 行动成本, description: '如 S1 2,000 元', type: DOUBLE, uom: 元, source: "§11.6"}
       shortage_flag: {display_name: 是否缺料, description: 方案执行后是否造成缺料, type: BOOLEAN, source: "§11.6"}
       feasible_reason: {display_name: 可行性说明, description: 可行/不可行原因（含推荐标记，如 S1 可作为优先复核方案）, type: STRING, source: "§4.4⑤"}
+      risk_id:
+        display_name: 关联呆滞风险
+        description: 指向呆滞风险（SlowMovingRisk）主键 risk_id 的外键
+        type: STRING
     links:
-      risk: {target: SlowMovingRisk, fk: [run_id, material_code], name: 处置风险}
+      risk: {target: SlowMovingRisk, fk: [risk_id], name: 处置风险}
       adjusted_supply: {target: Supply, fk: [adjusted_supply_id], name: 调整供给}
       run: {target: CalculationRun, fk: [run_id], name: 所属运行}
 
@@ -449,7 +518,7 @@ entities:
       stock_check_diff: {display_name: 核对差异, description: 还原值与记录不一致先列差异不判呆滞, type: INTEGER, uom: 件, source: "§4.5①"}
       baseline_risk_qty: {display_name: 不干预风险量, description: 'RU-11 输入——不干预情景的风险量（8,000）', type: INTEGER, uom: 件, source: "§4.5③/§11.7"}
       intervened_risk_qty: {display_name: 干预后风险量, description: 'RU-11 输入——及时干预情景的风险量（2,000）', type: INTEGER, uom: 件, source: "§4.5③/§11.7"}
-      simulated_reducible_qty: {display_name: 模拟可减少风险量, description: RU-11 衍生——max(不干预−干预后, 0)；同评估期间同口径，只用当时已知信息，证据不足不输出确定值, type: INTEGER, uom: 件, derived: true, source: "§4.5③/§11.7"}
+      simulated_reducible_qty: {display_name: 模拟可减少风险量, description: RU-11 衍生——max(不干预−干预后, 0)；同评估期间同口径，只用当时已知信息，证据不足不输出确定值: null, type: INTEGER, uom: 件, derived: true, source: "§4.5③/§11.7"}
     links:
       project: {target: Project, fk: [project_code], name: 历史项目}
       old_material: {target: Material, fk: [old_material_code], name: 案例旧料}
@@ -462,8 +531,13 @@ entities:
     description: 案例时间线锚点（风险形成/取消窗口/观察决策/结果核实），回答何时已知什么（E23）
     provenance: {doc: "xgimi-poc-doc §4.5③/§11.7；fact-cards FC-E-23", reviewed: false}
     properties:
-      case_id: {display_name: 案例编号, description: 时点归属案例, type: STRING, primary: true, source: "§11.7"}
-      milestone_type: {display_name: 时点类型, description: 本例三个时点，其他案例不必相同（时点数可变）, type: STRING, primary: true, enum_values: [风险形成, 取消窗口截止, 观察决策点, 结果核实], source: "§11.7"}
+      milestone_id:
+        display_name: 时点ID
+        description: 历史关键时点唯一标识
+        type: STRING
+        primary: true
+      case_id: {display_name: 案例编号, description: 时点归属案例；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§11.7"}
+      milestone_type: {display_name: 时点类型, description: 本例三个时点，其他案例不必相同（时点数可变）；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, enum_values: [风险形成, 取消窗口截止, 观察决策点, 结果核实], source: "§11.7"}
       milestone_date: {display_name: 时点日期, description: 如 2025-07-15 工程切换/07-22 最晚启动取消/09-30 核实, type: DATE, source: "§11.7"}
       known_info: {display_name: 当时已知信息, description: 回到该时点只使用当时已知信息（缺证版本忍住不给确定结论）, type: STRING, source: "§4.5③"}
     links:
@@ -476,11 +550,16 @@ entities:
     description: 呆滞案例原因结论行：归因数量受总量上限约束，余量保留未归因（E24）
     provenance: {doc: "xgimi-poc-doc §4.5④/§5.4；fact-cards FC-E-24", reviewed: false}
     properties:
-      case_id: {display_name: 案例编号, description: 归因行归属案例, type: STRING, primary: true, source: "§4.5④"}
-      cause_type: {display_name: 原因类型, description: 如 停采过晚/未归因（不应把全部 8,000 颗归为停采过晚）, type: STRING, primary: true, source: "§5.4"}
+      attribution_id:
+        display_name: 归因ID
+        description: 原因归因记录唯一标识
+        type: STRING
+        primary: true
+      case_id: {display_name: 案例编号, description: 归因行归属案例；与原复合键其余成员联合唯一（业务唯一性语义保留）, type: STRING, source: "§4.5④"}
+      cause_type: {display_name: 原因类型, description: 如 停采过晚/未归因（不应把全部 8；与原复合键其余成员联合唯一（业务唯一性语义保留）, 000 颗归为停采过晚）: null, type: STRING, source: "§5.4"}
       attributed_qty: {display_name: 归因数量, description: '各原因之和≤案例呆滞总量（RU-14② 约束），无法确认部分保留为未归因', type: INTEGER, uom: 件, source: "§4.5④"}
       evidence_ref: {display_name: 证据引用, description: 该归因行的证据出处, type: STRING, source: "§5.4"}
-      conclusion_level: {display_name: 结论层级, description: 能确认的事实/待核实/不可下结论, type: STRING, enum_values: [可确认事实, 待核实, 不可下结论], source: "§5.4"}
+      conclusion_level: {display_name: 结论层级, description: 能确认的事实/待核实/不可下结论（枚举分级：主因/次因/待核实，非数值量）, type: STRING, enum_values: [可确认事实, 待核实, 不可下结论], source: "§5.4"}
     links:
       case: {target: HistoricalCase, fk: [case_id], name: 归属案例}
 
@@ -502,207 +581,214 @@ entities:
 # =========== 规则（14 条设计口径 → 13 条 DSL + RU-14 落 OQ-12）==========
 rules:
   # RU-01 衍生｜标准用量（§4.2/inspection-rules.csv：在单位和基准数量一致后比较标准用量）
-  - rule_type: derived_property
-    name: 标准用量
-    upstream: [BomLine]
-    logic: "std_usage_qty: line_qty / base_qty"
-    description: 标准用量 = BOM 行用量 ÷ BOM 基准数量（演示各层 1:1 → 标准用量 1）；点检用量比较与下层展开的基准口径。
+- rule_type: derived_property
+  name: 标准用量
+  upstream: [BomLine]
+  logic: "std_usage_qty: line_qty / base_qty"
+  description: 标准用量 = BOM 行用量 ÷ BOM 基准数量（演示各层 1:1 → 标准用量 1）；点检用量比较与下层展开的基准口径。
 
   # RU-02 衍生｜下层物料需求（§4.3②/测试五：20,000÷0.98÷0.99=20,615 颗）
-  - rule_type: derived_property
-    name: 下层物料需求
-    upstream: [BomLine]
-    logic: "lower_level_demand_qty: SUM(project.demands.required_qty) * std_usage_qty / COALESCE(yield_rate, 1)"
-    description: 下层物料需求 = 上层需求 × 标准用量 ÷ 有效良率。本 DSL 落单层展开口径（挂载 BomLine，fact-cards 候选之一，假设 A-08）：取隶属项目需求合计×标准用量÷良率（良率仅计明确适用层级，无损耗取 1，COALESCE 兜底；同一损耗不得经良率与损耗系数重复计）；多层逐层展开后同物料汇总属多跳反向聚合（OQ-03 引擎沙箱验证，不支持则逐级衍生）；替代料不作为额外必需组件重复展开。
+- rule_type: derived_property
+  name: 下层物料需求
+  upstream: [BomLine]
+  logic: "lower_level_demand_qty: SUM(project.demands.required_qty) * std_usage_qty / COALESCE(yield_rate, 1)"
+  description: 下层物料需求 = 上层需求 × 标准用量 ÷ 有效良率。本 DSL 落单层展开口径（挂载 BomLine，fact-cards 候选之一，假设 A-08）：取隶属项目需求合计×标准用量÷良率（良率仅计明确适用层级，无损耗取 1，COALESCE 兜底；同一损耗不得经良率与损耗系数重复计）；多层逐层展开后同物料汇总属多跳反向聚合（OQ-03 引擎沙箱验证，不支持则逐级衍生）；替代料不作为额外必需组件重复展开。
 
   # RU-03 衍生｜订单未收货量（§4.3③/测试八：8,000=3,000+5,000 不重复计）
-  - rule_type: derived_property
-    name: 订单未收货量
-    upstream: [Supply]
-    logic: "open_order_qty: MAX(order_qty - received_qty - cancelled_qty - closed_unreceived_qty, 0)"
-    description: max（订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0）；收货转库存后不再按原未收数量重复计（配套 StockMovement.source_supply 溯源）。
+- rule_type: derived_property
+  name: 订单未收货量
+  upstream: [Supply]
+  logic: "open_order_qty: MAX(order_qty - received_qty - cancelled_qty - closed_unreceived_qty, 0)"
+  description: max（订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0）；收货转库存后不再按原未收数量重复计（配套 StockMovement.source_supply 溯源）。
 
   # RU-04 衍生｜分期期末量（§4.4①/§11.6 分期表数字逐一吻合）
-  - rule_type: derived_property
-    name: 分期期末量
-    upstream: [PeriodSupplyDemand]
-    logic: "closing_qty: opening_qty + arrival_qty + other_inflow_qty - fulfilled_qty - other_outflow_qty"
-    description: 本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；本期期初量 = 上期期末量、初始库存只计一次（跨期递归结转由运行侧逐期推演承载，字段级公式如上）。
+- rule_type: derived_property
+  name: 分期期末量
+  upstream: [PeriodSupplyDemand]
+  logic: "closing_qty: opening_qty + arrival_qty + other_inflow_qty - fulfilled_qty - other_outflow_qty"
+  description: 本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；本期期初量 = 上期期末量、初始库存只计一次（跨期递归结转由运行侧逐期推演承载，字段级公式如上）。
 
   # RU-05 衍生｜分期未满足需求（§4.4①：11 月 9,000 未满足→12 月底 7,800）
-  - rule_type: derived_property
-    name: 分期未满足需求
-    upstream: [PeriodSupplyDemand]
-    logic: "unmet_carry_qty: required_qty - fulfilled_qty"
-    description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量；未满足保留为逾期需求，后续结转时不得重复累计。
+- rule_type: derived_property
+  name: 分期未满足需求
+  upstream: [PeriodSupplyDemand]
+  logic: "unmet_carry_qty: required_qty - fulfilled_qty"
+  description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量；未满足保留为逾期需求，后续结转时不得重复累计。
 
   # RU-06 衍生｜期末风险量（§4.4②：S0 旧料 4,000=4,000−0−0）
-  - rule_type: derived_property
-    name: 期末风险量
-    upstream: [SlowMovingRisk]
-    logic: "risk_qty: MAX(remaining_qty - reserved_qty - post_period_consumed_qty, 0)"
-    description: 风险量 = max（评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0）；保留与期后消耗不得重复覆盖同一用途，不得凭"以后可能会用"扣减。
+- rule_type: derived_property
+  name: 期末风险量
+  upstream: [SlowMovingRisk]
+  logic: "risk_qty: MAX(remaining_qty - reserved_qty - post_period_consumed_qty, 0)"
+  description: 风险量 = max（评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0）；保留与期后消耗不得重复覆盖同一用途，不得凭"以后可能会用"扣减。
 
   # RU-07 衍生｜风险金额（§11.6：4,000×16 + 1,200×20 = 88,000）
-  - rule_type: derived_property
-    name: 风险金额
-    upstream: [SlowMovingRisk]
-    logic: "risk_amount: risk_qty * material.cost_unit_price"
-    description: 风险金额 = Σ（风险数量 × 对应成本单价）；预计损失另行结合回收价值/处置方式计算，不与风险金额混同；窗口外承诺单独展示（延期≠消除，见 window_later_commit_* 字段）。
+- rule_type: derived_property
+  name: 风险金额
+  upstream: [SlowMovingRisk]
+  logic: "risk_amount: risk_qty * material.cost_unit_price"
+  description: 风险金额 = Σ（风险数量 × 对应成本单价）；预计损失另行结合回收价值/处置方式计算，不与风险金额混同；窗口外承诺单独展示（延期≠消除，见 window_later_commit_* 字段）。
 
   # RU-08 衍生｜建议量取整（§4.3⑤/测试一：8,400/3,600→9,000/4,000）
-  - rule_type: derived_property
-    name: 建议量取整
-    upstream: [SourcingSuggestion]
-    logic: "rounding_extra_qty: suggested_qty - allocated_qty"
-    description: 建议量 = 按订购倍数向上取整〔max（分配量, 最小起订量）〕——向上取整函数超方言白名单，suggested_qty 落为输入侧预处理字段（OQ-02）；DSL 承载可衍生的取整额外数量 = 建议量 − 分配量，单独展示并纳入后续风险评估；交期晚于需要日期不得视为解决当期缺料（eta_meets_demand）。
+- rule_type: derived_property
+  name: 建议量取整
+  upstream: [SourcingSuggestion]
+  logic: "rounding_extra_qty: suggested_qty - allocated_qty"
+  description: 建议量 = 按订购倍数向上取整〔max（分配量, 最小起订量）〕——向上取整函数超方言白名单，suggested_qty 落为输入侧预处理字段（OQ-02）；DSL 承载可衍生的取整额外数量 = 建议量 − 分配量，单独展示并纳入后续风险评估；交期晚于需要日期不得视为解决当期缺料（eta_meets_demand）。
 
   # RU-09 衍生｜待授权数量（§4.3⑥/测试四：18,000−10,000=8,000）
-  - rule_type: derived_property
-    name: 待授权数量
-    upstream: [MaterialAuthorization]
-    logic: "pending_auth_qty: gross_demand_qty - authorized_qty"
-    description: 待授权数量 = 项目物料毛需求 − 已授权覆盖数量；参考金额 = 待授权数量 × 成本单价（查询侧按 material.cost_unit_price 计算，不单列字段）；授权不增减物理供给（授权 v2 后物理缺口仍 15,000）。
+- rule_type: derived_property
+  name: 待授权数量
+  upstream: [MaterialAuthorization]
+  logic: "pending_auth_qty: gross_demand_qty - authorized_qty"
+  description: 待授权数量 = 项目物料毛需求 − 已授权覆盖数量；参考金额 = 待授权数量 × 成本单价（查询侧按 material.cost_unit_price 计算，不单列字段）；授权不增减物理供给（授权 v2 后物理缺口仍 15,000）。
 
   # RU-10 衍生｜还原期末库存（§4.5①：流水核对 8,000=8,000）
-  - rule_type: derived_property
-    name: 还原期末库存
-    upstream: [HistoricalCase]
-    logic: "rebuilt_closing_qty: rebuilt_opening_qty + received_in_qty - consumed_out_qty"
-    description: 期末库存 = 期初库存 + 有效收货及其他入库 − 实际消耗及其他出库；出入库分类互斥、调拨处置不重复计；与记录不一致先列差异（stock_check_diff）不判呆滞；不可取消采购承诺单独核算不混入物理库存。
+- rule_type: derived_property
+  name: 还原期末库存
+  upstream: [HistoricalCase]
+  logic: "rebuilt_closing_qty: rebuilt_opening_qty + received_in_qty - consumed_out_qty"
+  description: 期末库存 = 期初库存 + 有效收货及其他入库 − 实际消耗及其他出库；出入库分类互斥、调拨处置不重复计；与记录不一致先列差异（stock_check_diff）不判呆滞；不可取消采购承诺单独核算不混入物理库存。
 
   # RU-11 衍生｜模拟可减少风险量（§11.7：8,000−2,000=6,000 颗）
-  - rule_type: derived_property
-    name: 模拟可减少风险量
-    upstream: [HistoricalCase]
-    logic: "simulated_reducible_qty: MAX(baseline_risk_qty - intervened_risk_qty, 0)"
-    description: max（不干预风险量 − 干预后风险量, 0）；同评估期间同口径，回到历史决策时点只使用当时已知信息；证据不足时系统能忍住不给确定结论（evidence_status=缺证 时推导标记不可验证）。
+- rule_type: derived_property
+  name: 模拟可减少风险量
+  upstream: [HistoricalCase]
+  logic: "simulated_reducible_qty: MAX(baseline_risk_qty - intervened_risk_qty, 0)"
+  description: max（不干预风险量 − 干预后风险量, 0）；同评估期间同口径，回到历史决策时点只使用当时已知信息；证据不足时系统能忍住不给确定结论（evidence_status=缺证 时推导标记不可验证）。
 
   # RU-12 触发｜呆滞风险触发（§4.4②+§11.7：07-15 未覆盖风险 0→8,000）
-  - rule_type: trigger
-    name: 呆滞风险触发
-    upstream: [SlowMovingRisk]
-    logic:
-      ALL:
-        - {field: risk_qty, operator: ">", value: 0}
-    downstream: notify_slow_moving_risk
-    description: 未覆盖数量 > 0（阈值预先确定，一次有效评估即触发）；风险可先出现在未到货订单上，不等入库。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。
+- rule_type: trigger
+  name: 呆滞风险触发
+  upstream: [SlowMovingRisk]
+  logic:
+    ALL:
+    - {field: risk_qty, operator: ">", value: 0}
+  downstream: notify_slow_moving_risk
+  description: 未覆盖数量 > 0（阈值预先确定，一次有效评估即触发）；风险可先出现在未到货订单上，不等入库。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。
 
   # RU-13 触发｜换料未到货检查（§4.5 末段/§5.4：07-15 已知工程切换、07-22 取消窗口）
-  - rule_type: trigger
-    name: 换料未到货检查
-    upstream: [EcnRecord]
-    logic:
-      ALL:
-        - {field: approve_status, operator: "==", value: 已批准}
-    downstream: check_unarrived_orders_for_ecn
-    description: 已批准的工程变更导致未来旧料需求减少时 → 检查关联的未到货订单，计算无法被需求覆盖的数量，提示可取消数量、办理时间及截止日期；变更已获知且影响能够判断时触发，不等 BOM 正式生效（前置条件以 approve_status=已批准 字段化，"旧料需求减少"的判定明细由下游动作承载）。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。
+- rule_type: trigger
+  name: 换料未到货检查
+  upstream: [EcnRecord]
+  logic:
+    ALL:
+    - {field: approve_status, operator: "==", value: 已批准}
+  downstream: check_unarrived_orders_for_ecn
+  description: 已批准的工程变更导致未来旧料需求减少时 → 检查关联的未到货订单，计算无法被需求覆盖的数量，提示可取消数量、办理时间及截止日期；变更已获知且影响能够判断时触发，不等 BOM 正式生效（前置条件以 approve_status=已批准 字段化，"旧料需求减少"的判定明细由下游动作承载）。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。
 
   # RU-14（分配与归因双约束）不落 rules——登记 open_questions OQ-12 动作域候选，理由见该条。
 
 # =========== 能力问题（12 条，与 charter.md §二一致）==========
 competency_questions:
-  - id: cq-001
-    q: 指定项目与 BOM 类型的前后两个版本之间发生了哪些变化（物料增删/用量/单位/生效日期/替代/授权），各自影响哪些项目、物料、需求和供给？
-    covered_by: [ChangeRecord, ChangeRecord.change_type, ChangeRecord.old_value, ChangeRecord.new_value, ChangeRecord.check_advice, ImpactRecord, ImpactRecord.evidence_refs, ImpactRecord.review_status, BomLine.std_usage_qty]
-  - id: cq-002
-    q: 某项目在某需求日期的物料毛需求是多少，分别是按哪张 BOM（类型/版本/生效范围）展开、按哪条需求口径（覆盖/替换后）汇总的？
-    covered_by: [Demand, Demand.required_qty, Demand.required_date, Demand.is_estimate, BomLine, BomLine.bom_type, BomLine.bom_version, BomLine.valid_from, BomLine.valid_to, BomLine.std_usage_qty, BomLine.lower_level_demand_qty]
-  - id: cq-003
-    q: 某物料当前可分配的供给有多少（可用库存/在途订单，扣冻结），按既定优先级分配后缺口还剩多少？
-    covered_by: [Supply, Supply.supply_type, Supply.qty, Supply.available_date, Supply.open_order_qty, AllocationRecord, AllocationRecord.allocated_qty, AllocationRecord.priority_seq, AllocationRecord.reserved_flag]
-  - id: cq-004
-    q: 哪些（项目×物料）存在授权外需求，待授权数量与参考金额各是多少？授权增加会不会误增物理供给？
-    covered_by: [MaterialAuthorization, MaterialAuthorization.authorized_qty, MaterialAuthorization.pending_auth_qty, MaterialAuthorization.auth_version, Material.cost_unit_price]
-  - id: cq-005
-    q: 每家供应商对某缺口的建议量是多少？按最小起订量与订购倍数取整后多出多少？预计到货能否满足需要日期？
-    covered_by: [SourcingSuggestion, SourcingSuggestion.suggested_qty, SourcingSuggestion.rounding_extra_qty, SourcingSuggestion.eta_meets_demand, SupplierSupplyCondition, SupplierSupplyCondition.moq, SupplierSupplyCondition.order_multiple, SupplierSupplyCondition.lead_time_days, SupplierSupplyCondition.quota_ratio, VendorReferenceList]
-  - id: cq-006
-    q: 评估期末哪些物料存在呆滞风险（风险量=期末剩余−保留−期后消耗）？风险金额（数量×成本单价）与窗口后未消化承诺各是多少？
-    covered_by: [PeriodSupplyDemand, PeriodSupplyDemand.closing_qty, PeriodSupplyDemand.unmet_carry_qty, SlowMovingRisk, SlowMovingRisk.risk_type, SlowMovingRisk.remaining_qty, SlowMovingRisk.reserved_qty, SlowMovingRisk.risk_qty, SlowMovingRisk.risk_amount, SlowMovingRisk.window_later_commit_qty]
-  - id: cq-007
-    q: 对同一风险分别执行取消/延期/替代消耗/转用方案后，剩余风险、行动成本、是否造成缺料各是什么？哪个方案可作为优先复核方案？
-    covered_by: [SolutionPlan, SolutionPlan.action_type, SolutionPlan.action_cost, SolutionPlan.shortage_flag, SolutionPlan.feasible_reason, Supply, Supply.restriction_note]
-  - id: cq-008
-    q: 某历史呆滞案例的呆滞数量是怎样一步步形成的（库存/未到货订单瀑布），风险在哪个时点首次可识别，当时已经知道什么？
-    covered_by: [HistoricalCase, HistoricalCase.rebuilt_closing_qty, HistoricalCase.stock_check_diff, HistoricalMilestone, HistoricalMilestone.milestone_type, HistoricalMilestone.milestone_date, HistoricalMilestone.known_info, StockMovement, StockMovement.movement_type, StockMovement.qty]
-  - id: cq-009
-    q: 回到历史决策时点只使用当时已知信息，及时干预能够减少多少风险量？证据不足时系统能否忍住不给确定结论？
-    covered_by: [HistoricalCase, HistoricalCase.simulated_reducible_qty, HistoricalCase.evidence_status, Supply, Supply.branch]
-  - id: cq-010
-    q: 某历史案例的呆滞总量中，各主要原因归因数量是多少，未归因还剩多少（各原因之和不得超过案例总量）？
-    covered_by: [CauseAttribution, CauseAttribution.cause_type, CauseAttribution.attributed_qty, CauseAttribution.evidence_ref, CauseAttribution.conclusion_level]
-  - id: cq-011
-    q: 某次计算结果是用哪个数据版本、观察时点、规则版本和情景分支（FACT/SIM）算出来的？换一个方案重算时结果能否复算对齐？
-    covered_by: [CalculationRun, CalculationRun.known_at, CalculationRun.data_version, CalculationRun.rule_version, CalculationRun.branch, CalculationRun.scenario_no, CalculationRun.eval_start_date, CalculationRun.eval_end_date]
-  - id: cq-012
-    q: 已批准的工程变更使某旧料未来需求下降时，哪些未到货订单会触发预防规则提示（可取消数量、办理时间、截止日期）？
-    covered_by: [PreventionRule, PreventionRule.rule_content, PreventionRule.trigger_condition, PreventionRule.rule_status, EcnRecord, EcnRecord.approve_status, EcnRecord.effective_date, Supply, Supply.cancel_deadline_date]
+- id: cq-001
+  q: 指定项目与 BOM 类型的前后两个版本之间发生了哪些变化（物料增删/用量/单位/生效日期/替代/授权），各自影响哪些项目、物料、需求和供给？
+  covered_by: [ChangeRecord, ChangeRecord.change_type, ChangeRecord.old_value, ChangeRecord.new_value, ChangeRecord.check_advice, ImpactRecord, ImpactRecord.evidence_refs, ImpactRecord.review_status, BomLine.std_usage_qty]
+- id: cq-002
+  q: 某项目在某需求日期的物料毛需求是多少，分别是按哪张 BOM（类型/版本/生效范围）展开、按哪条需求口径（覆盖/替换后）汇总的？
+  covered_by: [Demand, Demand.required_qty, Demand.required_date, Demand.is_estimate, BomLine, BomLine.bom_type, BomLine.bom_version, BomLine.valid_from, BomLine.valid_to, BomLine.std_usage_qty, BomLine.lower_level_demand_qty]
+- id: cq-003
+  q: 某物料当前可分配的供给有多少（可用库存/在途订单，扣冻结），按既定优先级分配后缺口还剩多少？
+  covered_by: [Supply, Supply.supply_type, Supply.qty, Supply.available_date, Supply.open_order_qty, AllocationRecord, AllocationRecord.allocated_qty, AllocationRecord.priority_seq, AllocationRecord.reserved_flag]
+- id: cq-004
+  q: 哪些（项目×物料）存在授权外需求，待授权数量与参考金额各是多少？授权增加会不会误增物理供给？
+  covered_by: [MaterialAuthorization, MaterialAuthorization.authorized_qty, MaterialAuthorization.pending_auth_qty, MaterialAuthorization.auth_version, Material.cost_unit_price]
+- id: cq-005
+  q: 每家供应商对某缺口的建议量是多少？按最小起订量与订购倍数取整后多出多少？预计到货能否满足需要日期？
+  covered_by: [SourcingSuggestion, SourcingSuggestion.suggested_qty, SourcingSuggestion.rounding_extra_qty, SourcingSuggestion.eta_meets_demand, SupplierSupplyCondition, SupplierSupplyCondition.moq, SupplierSupplyCondition.order_multiple,
+    SupplierSupplyCondition.lead_time_days, SupplierSupplyCondition.quota_ratio, VendorReferenceList]
+- id: cq-006
+  q: 评估期末哪些物料存在呆滞风险（风险量=期末剩余−保留−期后消耗）？风险金额（数量×成本单价）与窗口后未消化承诺各是多少？
+  covered_by: [PeriodSupplyDemand, PeriodSupplyDemand.closing_qty, PeriodSupplyDemand.unmet_carry_qty, SlowMovingRisk, SlowMovingRisk.risk_type, SlowMovingRisk.remaining_qty, SlowMovingRisk.reserved_qty,
+    SlowMovingRisk.risk_qty, SlowMovingRisk.risk_amount, SlowMovingRisk.window_later_commit_qty]
+- id: cq-007
+  q: 对同一风险分别执行取消/延期/替代消耗/转用方案后，剩余风险、行动成本、是否造成缺料各是什么？哪个方案可作为优先复核方案？
+  covered_by: [SolutionPlan, SolutionPlan.action_type, SolutionPlan.action_cost, SolutionPlan.shortage_flag, SolutionPlan.feasible_reason, Supply, Supply.restriction_note]
+- id: cq-008
+  q: 某历史呆滞案例的呆滞数量是怎样一步步形成的（库存/未到货订单瀑布），风险在哪个时点首次可识别，当时已经知道什么？
+  covered_by: [HistoricalCase, HistoricalCase.rebuilt_closing_qty, HistoricalCase.stock_check_diff, HistoricalMilestone, HistoricalMilestone.milestone_type, HistoricalMilestone.milestone_date, HistoricalMilestone.known_info,
+    StockMovement, StockMovement.movement_type, StockMovement.qty]
+- id: cq-009
+  q: 回到历史决策时点只使用当时已知信息，及时干预能够减少多少风险量？证据不足时系统能否忍住不给确定结论？
+  covered_by: [HistoricalCase, HistoricalCase.simulated_reducible_qty, HistoricalCase.evidence_status, Supply, Supply.branch]
+- id: cq-010
+  q: 某历史案例的呆滞总量中，各主要原因归因数量是多少，未归因还剩多少（各原因之和不得超过案例总量）？
+  covered_by: [CauseAttribution, CauseAttribution.cause_type, CauseAttribution.attributed_qty, CauseAttribution.evidence_ref, CauseAttribution.conclusion_level]
+- id: cq-011
+  q: 某次计算结果是用哪个数据版本、观察时点、规则版本和情景分支（FACT/SIM）算出来的？换一个方案重算时结果能否复算对齐？
+  covered_by: [CalculationRun, CalculationRun.known_at, CalculationRun.data_version, CalculationRun.rule_version, CalculationRun.branch, CalculationRun.scenario_no, CalculationRun.eval_start_date, CalculationRun.eval_end_date]
+- id: cq-012
+  q: 已批准的工程变更使某旧料未来需求下降时，哪些未到货订单会触发预防规则提示（可取消数量、办理时间、截止日期）？
+  covered_by: [PreventionRule, PreventionRule.rule_content, PreventionRule.trigger_condition, PreventionRule.rule_status, EcnRecord, EcnRecord.approve_status, EcnRecord.effective_date, Supply, Supply.cancel_deadline_date]
 
 # =========== 待确认问题（人审前必须清零或标记接受；禁止脑补）==========
 open_questions:
-  - id: OQ-01
-    question: 全部字段类型与主键编码规则无正式 DDL，现按演示数据推断（assumptions A-01）
-    missing_from: 客户 SAP/PDM 建表语句或字段字典（intake-log 缺口报告已声明）
-    suggestion: 向客户索取正式字段字典后回写
-  - id: OQ-02
-    question: '"按订购倍数向上取整"超出表达式方言白名单（SUM/COALESCE/MAX）'
-    missing_from: dsl-spec §3.1 引擎方言能力
-    suggestion: 引擎侧裁决扩展 CEILING/ROUND，或维持建议量为输入侧预处理字段（本版已按后者落）
-  - id: OQ-03
-    question: RU-02 多层 BOM 逐级展开属多跳反向聚合，v0.3.4 候选语法待引擎沙箱验证
-    missing_from: 引擎多跳聚合能力（dsl-spec 已注明）
-    suggestion: 本版落单层展开口径（挂载 BomLine，假设 A-08）；沙箱验证通过后升级多层汇总，不支持则逐级衍生
-  - id: OQ-04
-    question: 影响记录与变化记录为多依据 n:m（合并为一条影响、保留多条依据），单外键 links 无法表达
-    missing_from: dsl-spec links 能力（无 n:m）
-    suggestion: POC 以 evidence_refs 字段承载依据清单；n:m 桥表是否引入由 FDE+引擎侧裁决
-  - id: OQ-05
-    question: 前后版本对比的数据形态：V0 旧记录不修改、V1 存变更版本（known_at 双记录并存），查询侧如何配对比较
-    missing_from: 文档未给版本配对查询口径
-    suggestion: 以同 bom 路径 + known_at 最近两版本配对（假设 A-04），FDE 确认
-  - id: OQ-06
-    question: StockMovement 流水类型枚举全集（文档仅给收货/入库/消耗/出库大类）
-    missing_from: 正式数据字典
-    suggestion: 先按大类落（不设 enum_values），阶段⑤后可扩
-  - id: OQ-07
-    question: 物料授权的源系统（卫国策备表）字段结构未给，仅测试四预期值可反推
-    missing_from: 附录无授权字段级表
-    suggestion: 按测试四反推字段（覆盖数量/批准日期/版本），FDE 与客户确认
-  - id: OQ-08
-    question: 预防规则"验证四项"明细在未归位嵌入表（sheet TMAn4S）
-    missing_from: 正文/附录未内联该表内容
-    suggestion: 向资料包补录，或按 §5.4 演示验证描述推断后 FDE 确认
-  - id: OQ-09
-    question: 冻结库存"单列待核查"（1,000 颗/20,000 元）建模位置：现按 Supply 供给类型=质检冻结 + SlowMovingRisk 待核查金额字段承载
-    missing_from: （设计选择，无缺失材料）
-    suggestion: FDE 确认是否需独立标记实体
-  - id: OQ-10
-    question: 良率与损耗系数并存关系："同一损耗不能同时通过良率和损耗系数重复计算"暗示两字段，字段级表未见损耗系数列
-    missing_from: 附录 BOM 行表
-    suggestion: BomLine 先只落 yield_rate；损耗系数字段是否增设由 FDE 裁决
-  - id: OQ-11
-    question: business_owner 为推断值（聂江锋，CIO）
-    missing_from: 文档署名缺失（intake-log）
-    suggestion: 用户确认后回写 brief.yaml 与 governance.owner
-  - id: OQ-12
-    question: RU-14 复合约束的 DSL 形态（阶段⑤决定）——①同一方案内一批供给的累计分配量（跨项目与替代路径合并）≤ 该批可用数量（AllocationRecord）；②各主要原因归因数量之和 ≤ 案例呆滞总量，无法确认部分保留为未归因（CauseAttribution）。两项均为跨行累计校验语义，admission 规则须挂 actions 段声明的动作（lint10），而本 POC 全程只读、无动作域（charter 审批边界①），无法落 admission；建占位 action 违反"不发明语义"
-    missing_from: 本体动作域（actions 段——POC 只读边界内未建；mfg 引擎有 admission 先例但均挂在真实 action 上）
-    suggestion: 登记为动作域候选：动作域建立时以 admission 落地（①校验 Supply 累计分配≤可用量，②校验 HistoricalCase 归因之和≤总量，拦截并提示保留未归因）
+- id: OQ-01
+  question: 全部字段类型与主键编码规则无正式 DDL，现按演示数据推断（assumptions A-01）
+  missing_from: 客户 SAP/PDM 建表语句或字段字典（intake-log 缺口报告已声明）
+  suggestion: 向客户索取正式字段字典后回写
+- id: OQ-02
+  question: '"按订购倍数向上取整"超出表达式方言白名单（SUM/COALESCE/MAX）'
+  missing_from: dsl-spec §3.1 引擎方言能力
+  suggestion: 引擎侧裁决扩展 CEILING/ROUND，或维持建议量为输入侧预处理字段（本版已按后者落）
+- id: OQ-03
+  question: RU-02 多层 BOM 逐级展开属多跳反向聚合，v0.3.4 候选语法待引擎沙箱验证
+  missing_from: 引擎多跳聚合能力（dsl-spec 已注明）
+  suggestion: 本版落单层展开口径（挂载 BomLine，假设 A-08）；沙箱验证通过后升级多层汇总，不支持则逐级衍生
+- id: OQ-04
+  question: 影响记录与变化记录为多依据 n:m（合并为一条影响、保留多条依据），单外键 links 无法表达
+  missing_from: dsl-spec links 能力（无 n:m）
+  suggestion: POC 以 evidence_refs 字段承载依据清单；n:m 桥表是否引入由 FDE+引擎侧裁决
+- id: OQ-05
+  question: 前后版本对比的数据形态：V0 旧记录不修改、V1 存变更版本（known_at 双记录并存），查询侧如何配对比较
+  missing_from: 文档未给版本配对查询口径
+  suggestion: 以同 bom 路径 + known_at 最近两版本配对（假设 A-04），FDE 确认
+- id: OQ-06
+  question: StockMovement 流水类型枚举全集（文档仅给收货/入库/消耗/出库大类）
+  missing_from: 正式数据字典
+  suggestion: 先按大类落（不设 enum_values），阶段⑤后可扩
+- id: OQ-07
+  question: 物料授权的源系统（卫国策备表）字段结构未给，仅测试四预期值可反推
+  missing_from: 附录无授权字段级表
+  suggestion: 按测试四反推字段（覆盖数量/批准日期/版本），FDE 与客户确认
+- id: OQ-08
+  question: 预防规则"验证四项"明细在未归位嵌入表（sheet TMAn4S）
+  missing_from: 正文/附录未内联该表内容
+  suggestion: 向资料包补录，或按 §5.4 演示验证描述推断后 FDE 确认
+- id: OQ-09
+  question: 冻结库存"单列待核查"（1,000 颗/20,000 元）建模位置：现按 Supply 供给类型=质检冻结 + SlowMovingRisk 待核查金额字段承载
+  missing_from: （设计选择，无缺失材料）
+  suggestion: FDE 确认是否需独立标记实体
+- id: OQ-10
+  question: 良率与损耗系数并存关系："同一损耗不能同时通过良率和损耗系数重复计算"暗示两字段，字段级表未见损耗系数列
+  missing_from: 附录 BOM 行表
+  suggestion: BomLine 先只落 yield_rate；损耗系数字段是否增设由 FDE 裁决
+- id: OQ-11
+  question: business_owner 为推断值（聂江锋，CIO）
+  missing_from: 文档署名缺失（intake-log）
+  suggestion: 用户确认后回写 brief.yaml 与 governance.owner
+- id: OQ-12
+  question: RU-14 复合约束的 DSL 形态（阶段⑤决定）——①同一方案内一批供给的累计分配量（跨项目与替代路径合并）≤ 该批可用数量（AllocationRecord）；②各主要原因归因数量之和 ≤ 案例呆滞总量，无法确认部分保留为未归因（CauseAttribution）。两项均为跨行累计校验语义，admission 规则须挂 actions 段声明的动作（lint10），而本 POC
+    全程只读、无动作域（charter 审批边界①），无法落 admission；建占位 action 违反"不发明语义"
+  missing_from: 本体动作域（actions 段——POC 只读边界内未建；mfg 引擎有 admission 先例但均挂在真实 action 上）
+  suggestion: 登记为动作域候选：动作域建立时以 admission 落地（①校验 Supply 累计分配≤可用量，②校验 HistoricalCase 归因之和≤总量，拦截并提示保留未归因）
 
 # =========== 口径冲突（本包三源交叉关键数字全部对齐，无待裁决冲突）==========
 conflicts: []                  # brief.yaml known_conflicts 为空；§4↔§11↔§5 关键数字（30,000/6,000/9,000/88,000/8,000→6,000）一致
 
 # =========== 生成假设（供人审抽查）==========
 assumptions:
-  - A-01: 字段类型全部按演示数据推断（INTEGER 数量 / DOUBLE 金额比例 / DATE 日期 / TIMESTAMP 时点）；阶段⑤补全字段（BomLine 基准数量与生效期、Supply 取消延期条件、SubstitutionPermission 批次与上限、CalculationRun 规则版本与评估期间、SlowMovingRisk 金额承诺待核查、各规则输入字段）同口径推断，枚举值清单取文档明示的封闭集合。
-  - A-02: 不建 DataVersion 实体：V0—V3 数据版本由各记录 known_at 字段 + CalculationRun.data_version 承载。
-  - A-03: PeriodSupplyDemand 期间粒度=月（演示附录 11.6 按月推演），粒度本身为字段不做硬编码。
-  - A-04: 点检前后版本对比=同路径 known_at 最近两版本配对（V0 旧记录不可变）。
-  - A-05: 可用库存/质检冻结/未收货订单统一 Supply 实体 + supply_type 字段（文档统一编号统一表）。
-  - A-06: 输出类实体（策备建议/参考清单/分期供需/风险/方案）用复合自然键（run+业务维度），不用运行时生成编码。
-  - A-07: 历史案例旧料/新料各建一条 links（案例结构为新旧料对比）；多料案例扩展性由 FDE 确认是否改桥表。
-  - A-08: RU-02 挂载实体取 BomLine（fact-cards 候选 AllocationRecord/BomLine 之二）：单层展开口径可静态解析且语义最短路径；多层递归与同物料汇总待 OQ-03 引擎验证。
-  - A-09: Supply 取消/延期条件以三字段承载（cancel_deadline_date / cancellation_fee / restriction_note），延期条件演示数据为文字说明故落 note 字段而非结构化日期。
-  - A-10: RU-12/RU-13 的 downstream 动作名（notify_slow_moving_risk / check_unarrived_orders_for_ecn）为占位命名，引擎侧配置时定名；DSL 无 actions 段（POC 只读），lint 对 trigger 的 downstream 不校验 action 存在性。
-  - A-11: RU-09 的毛需求（gross_demand_qty）为输入侧字段（外部计算依据随运行输入），不在本体内衍生；参考金额=待授权数量×成本单价由查询侧计算，不单列字段（最小属性原则）。
+- A-01: 字段类型全部按演示数据推断（INTEGER 数量 / DOUBLE 金额比例 / DATE 日期 / TIMESTAMP 时点）；阶段⑤补全字段（BomLine 基准数量与生效期、Supply 取消延期条件、SubstitutionPermission 批次与上限、CalculationRun 规则版本与评估期间、SlowMovingRisk 金额承诺待核查、各规则输入字段）同口径推断，枚举值清单取文档明示的封闭集合。
+- A-02: 不建 DataVersion 实体：V0—V3 数据版本由各记录 known_at 字段 + CalculationRun.data_version 承载。
+- A-03: PeriodSupplyDemand 期间粒度=月（演示附录 11.6 按月推演），粒度本身为字段不做硬编码。
+- A-04: 点检前后版本对比=同路径 known_at 最近两版本配对（V0 旧记录不可变）。
+- A-05: 可用库存/质检冻结/未收货订单统一 Supply 实体 + supply_type 字段（文档统一编号统一表）。
+- A-06: 输出类实体（策备建议/参考清单/分期供需/风险/方案）用复合自然键（run+业务维度），不用运行时生成编码。
+- A-07: 历史案例旧料/新料各建一条 links（案例结构为新旧料对比）；多料案例扩展性由 FDE 确认是否改桥表。
+- A-08: RU-02 挂载实体取 BomLine（fact-cards 候选 AllocationRecord/BomLine 之二）：单层展开口径可静态解析且语义最短路径；多层递归与同物料汇总待 OQ-03 引擎验证。
+- A-09: Supply 取消/延期条件以三字段承载（cancel_deadline_date / cancellation_fee / restriction_note），延期条件演示数据为文字说明故落 note 字段而非结构化日期。
+- A-10: RU-12/RU-13 的 downstream 动作名（notify_slow_moving_risk / check_unarrived_orders_for_ecn）为占位命名，引擎侧配置时定名；DSL 无 actions 段（POC 只读），lint 对 trigger 的 downstream 不校验 action 存在性。
+- A-11: RU-09 的毛需求（gross_demand_qty）为输入侧字段（外部计算依据随运行输入），不在本体内衍生；参考金额=待授权数量×成本单价由查询侧计算，不单列字段（最小属性原则）。
+- id: A-12
+  statement: 复合主键实体按平台连线模型（2026-10-15 workspace 999 实测：1侧主键锁定自动填充+N侧单外键、复合主键连线不支持）单列主键化（Palantir 路线，平台先例 list_id）；原复合键成员降普通属性，联合唯一性以 description 语义承载
+  basis: 用户裁决 2026-10-15：参考 Palantir 做法
