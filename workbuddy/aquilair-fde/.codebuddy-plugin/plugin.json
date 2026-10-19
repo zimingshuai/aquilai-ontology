@@ -1,9 +1,10 @@
 {
   "name": "aquilair-fde",
   "version": "0.4.0",
-  "description": "LLM 辅助本体元数据设计 v0.4.0：设计稿确认关卡/拓扑图片+studio-model yaml 双交付/OQ 生命周期/资产回流进化",
+  "description": "Chat-based ontology metadata design: proposal gate, topology + platform yaml delivery, OQ traceability",
   "author": {
-    "name": "ElitesLand Aquilair"
+    "name": "ElitesLand Aquilair",
+    "email": "zishuai@elitesland.com"
   },
   "license": "Proprietary - Aquilair internal distribution, intranet use only",
   "keywords": [
@@ -34,11 +35,11 @@
   },
   "displayDescription": {
     "en": "Designs ontology metadata from business documents: intake and filing, scenario charter, DSL drafting, hard lint, CQ verification, topology and change-set diff, engine-bundle export. Drafts only - human review is the sole authority.",
-    "zh": "从业务资料设计本体元数据：资料摄取归位、场景圈定、DSL 起草、硬校验、CQ 回验、拓扑与变更集 diff、引擎注册格式导出。只产草稿，人工审核是唯一权威。"
+    "zh": "上传业务文档对话式设计本体：设计稿确认、拓扑图与平台导入yaml双交付，异常与待确认问题全程留痕。"
   },
   "defaultInitPrompt": {
-    "zh": "我有一批业务资料（DDL/数据字典/需求与规则文档/访谈记录），帮我从资料包摄取开始，设计一份可审核的本体草稿",
-    "en": "I have a set of business documents (DDL / data dictionary / requirement & rule docs / interviews). Start from brief intake and design a reviewable ontology draft for me."
+    "zh": "帮我从业务资料开始设计一个可审核的本体草稿",
+    "en": "Help me design a reviewable ontology draft from business documents."
   },
   "plugin": "aquilair-fde",
   "tags": [
@@ -68,5 +69,7 @@
       "zh": "校验/评审当前本体是否支撑目标业务场景",
       "en": "Validate and review whether the current ontology supports the target business scenarios."
     }
-  ]
+  ],
+  "categoryId": "12-IndustryConsultant",
+  "avatar": "avatars/expert.png"
 }
