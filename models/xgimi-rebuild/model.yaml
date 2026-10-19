@@ -756,46 +756,68 @@ open_questions:
   question: 全部字段类型与主键编码规则无正式 DDL，现按演示数据推断（assumptions A-01）
   missing_from: 客户 SAP/PDM 建表语句或字段字典（intake-log 缺口报告已声明）
   suggestion: 向客户索取正式字段字典后回写
+  status: resolved-pending-input
+  resolution: 部分同步旧版裁决：类型推断待正式 DDL（业务方）；主键编码规则已按 Palantir 单列化裁决落地（2026-10-16）
 - id: OQ-02
   question: '"按订购倍数向上取整"超出表达式方言白名单（SUM/COALESCE/MAX）'
   missing_from: dsl-spec §3.1 引擎方言能力
   suggestion: 引擎侧裁决扩展 CEILING/ROUND，或维持建议量为输入侧预处理字段（本版已按后者落）
+  status: resolved-pending-engine
+  resolution: 同步旧版 OQ-01 裁决（2026-10-14 用户）：A 方案——引擎方言扩展 CEILING 取整函数；扩展后由 derived 承载
 - id: OQ-03
   question: RU-02 多层 BOM 逐级展开属多跳反向聚合，v0.3.4 候选语法待引擎沙箱验证
   missing_from: 引擎多跳聚合能力（dsl-spec 已注明）
   suggestion: 本版落单层展开口径（挂载 BomLine，假设 A-08）；沙箱验证通过后升级多层汇总，不支持则逐级衍生
+  status: resolved-pending-engine
+  resolution: 同步旧版 OQ-02 裁决：C 方案——多层展开属动作域（算法语义）；引擎接入时按 OQ-12 路径落地，DSL 承载单层（RU-02）
 - id: OQ-04
   question: 影响记录与变化记录为多依据 n:m（合并为一条影响、保留多条依据），单外键 links 无法表达
   missing_from: dsl-spec links 能力（无 n:m）
   suggestion: POC 以 evidence_refs 字段承载依据清单；n:m 桥表是否引入由 FDE+引擎侧裁决
+  status: resolved
+  resolution: 两版拉通裁决参照：多依据关系以 evidence_refs 字段承载（旧版 OQ-04 同类裁决），桥表方案待业务量证实时再评估
 - id: OQ-05
   question: 前后版本对比的数据形态：V0 旧记录不修改、V1 存变更版本（known_at 双记录并存），查询侧如何配对比较
   missing_from: 文档未给版本配对查询口径
   suggestion: 以同 bom 路径 + known_at 最近两版本配对（假设 A-04），FDE 确认
+  status: resolved
+  resolution: '两版拉通裁决 #5（2026-10-16）：known_at 改 STRING 版本号承载"V0 之前"，配对比较由查询侧按版本号排序（平台 SDK ObjectSet 能力）'
 - id: OQ-06
   question: StockMovement 流水类型枚举全集（文档仅给收货/入库/消耗/出库大类）
   missing_from: 正式数据字典
   suggestion: 先按大类落（不设 enum_values），阶段⑤后可扩
+  status: pending-business
+  resolution: 流水类型枚举全集待业务方确认（收货/入库/消耗/出库大类已建，子类是否有遗漏）
 - id: OQ-07
   question: 物料授权的源系统（卫国策备表）字段结构未给，仅测试四预期值可反推
   missing_from: 附录无授权字段级表
   suggestion: 按测试四反推字段（覆盖数量/批准日期/版本），FDE 与客户确认
+  status: pending-business
+  resolution: 卫国策备表字段结构待业务方/源系统方提供（现按测试四预期值反推）
 - id: OQ-08
   question: 预防规则"验证四项"明细在未归位嵌入表（sheet TMAn4S）
   missing_from: 正文/附录未内联该表内容
   suggestion: 向资料包补录，或按 §5.4 演示验证描述推断后 FDE 确认
+  status: pending-business
+  resolution: 预防规则验证四项明细在未归位嵌入表（sheet TMAn4S）——待补拉取或业务方提供
 - id: OQ-09
   question: 冻结库存"单列待核查"（1,000 颗/20,000 元）建模位置：现按 Supply 供给类型=质检冻结 + SlowMovingRisk 待核查金额字段承载
   missing_from: （设计选择，无缺失材料）
   suggestion: FDE 确认是否需独立标记实体
+  status: resolved
+  resolution: '两版拉通裁决 #2：冻结排除已落触发规则（exclude_from_allocation_and_flag），单列待核查由 supply_type+待核查金额承载——平台演示口径齐备'
 - id: OQ-10
   question: 良率与损耗系数并存关系："同一损耗不能同时通过良率和损耗系数重复计算"暗示两字段，字段级表未见损耗系数列
   missing_from: 附录 BOM 行表
   suggestion: BomLine 先只落 yield_rate；损耗系数字段是否增设由 FDE 裁决
+  status: pending-business
+  resolution: 损耗系数字段是否存在待业务方确认（文档红线暗示良率与损耗系数两机制，字段级表未见）
 - id: OQ-11
   question: business_owner 为推断值（聂江锋，CIO）
   missing_from: 文档署名缺失（intake-log）
   suggestion: 用户确认后回写 brief.yaml 与 governance.owner
+  status: pending-business
+  resolution: business_owner 推断值（聂江锋/CIO）待用户/业务方确认
 - id: OQ-12
   question: RU-14 复合约束的 DSL 形态（阶段⑤决定）——①同一方案内一批供给的累计分配量（跨项目与替代路径合并）≤ 该批可用数量（AllocationRecord）；②各主要原因归因数量之和 ≤ 案例呆滞总量，无法确认部分保留为未归因（CauseAttribution）。两项均为跨行累计校验语义，admission 规则须挂 actions 段声明的动作（lint10），而本 POC
     全程只读、无动作域（charter 审批边界①），无法落 admission；建占位 action 违反"不发明语义"
@@ -803,6 +825,8 @@ open_questions:
   suggestion: 登记为动作域候选：动作域建立时以 admission 落地（①校验 Supply 累计分配≤可用量，②校验 HistoricalCase 归因之和≤总量，拦截并提示保留未归因）
 
 # =========== 口径冲突（本包三源交叉关键数字全部对齐，无待裁决冲突）==========
+  status: resolved-pending-engine
+  resolution: '两版拉通裁决 #3（2026-10-16）：维持动作域候选（POC 只读边界）；引擎接入时落地——①分配≤可用挂 allocation 写入动作、②归因≤总量挂 record_cause_attribution（参照旧版 admission 先例 unattributed_qty >= 本次归因量）'
 conflicts: []                  # brief.yaml known_conflicts 为空；§4↔§11↔§5 关键数字（30,000/6,000/9,000/88,000/8,000→6,000）一致
 
 # =========== 生成假设（供人审抽查）==========
