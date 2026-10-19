@@ -66,7 +66,8 @@ entities:
     links:
       supplier: Supplier                          # 简写形态：外键字段 = 目标主键字段名（v0.2 约定不变）
       project: { target: Project, name: 隶属项目 }             # 显式形态：fk 可缺省（视同简写约定），仅声明关系语义名
-      demand: { target: Demand, fk: [demand_id], name: 项目需求 }  # 显式形态：外键 + 关系语义名
+      demand: { target: Demand, fk: [demand_id], name: 项目需求, description: 项目各来源需求（MPS/订单/预测）的挂载 }  # 显式形态：外键+语义名+业务定义
+      # description（v0.3.7，用户实证：关系只有名字没有业务定义，平台侧全部空串）：一句话说清这条关系表达的业务含义/约束
       sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code] }  # 复合外键（桥接引用）
 ```
 

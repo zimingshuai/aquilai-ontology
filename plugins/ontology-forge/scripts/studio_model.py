@@ -51,30 +51,34 @@ def _entity_props(entity: dict[str, Any]) -> dict[str, Any]:
     return entity.get("properties") or {} if isinstance(entity, dict) else {}
 
 
-def link_pair(value: Any) -> Optional[tuple[str, Optional[list[str]], Optional[str]]]:
+def link_pair(value: Any) -> Optional[tuple[str, Optional[list[str]], Optional[str], str]]:
     """解析单个 links 项为 (目标实体, 显式外键列表或 None, 显式关系业务名或 None)。
 
     Args:
         value: links 别名对应的值（目标名字符串，或 {target, fk, name} 映射）。
     Returns:
-        简写 ``alias: Target`` -> (Target, None, None)；
-        显式 ``{target, fk: [f], name: 业务名}`` -> (target, fk 列表, name 或 None)。
+        简写 ``alias: Target`` -> (Target, None, None, "")；
+        显式 ``{target, fk: [f], name: 业务名, description: 业务定义}`` -> (target, fk 列表, name 或 None, description)。
     """
     if isinstance(value, str):
-        return value, None, None
+        return value, None, None, ""
     if isinstance(value, dict) and isinstance(value.get("target"), str):
         fk = value.get("fk")
         # link_name：显式关系业务名（可选 str）；非字符串或缺省按 None（编译器兜底）。
         link_name = value.get("name")
         if not isinstance(link_name, str) or not link_name.strip():
             link_name = None
+        # link_desc：关系业务定义（v0.3.7，可选 str；缺省为空串——平台 description 字段）。
+        link_desc = value.get("description")
+        if not isinstance(link_desc, str):
+            link_desc = ""
         if isinstance(fk, list) and fk and all(isinstance(f, str) and f for f in fk):
-            return value["target"], fk, link_name
-        return value["target"], None, link_name  # fk 缺省视同简写外键约定（lint3 已报告结构问题）
+            return value["target"], fk, link_name, link_desc
+        return value["target"], None, link_name, link_desc  # fk 缺省视同简写外键约定（lint3 已报告结构问题）
     return None
 
 
-def _entity_links(entity: dict[str, Any]) -> dict[str, tuple[str, Optional[list[str]], Optional[str]]]:
+def _entity_links(entity: dict[str, Any]) -> dict[str, tuple[str, Optional[list[str]], Optional[str], str]]:
     """取实体 links 的 {别名: (目标实体, 显式外键列表或 None, 显式关系业务名或 None)}（形态非法项跳过）。
 
     Args: entity 实体定义。Returns: 别名 -> (target, fk, name) 映射。
@@ -147,7 +151,7 @@ def compile_link_types(model: dict[str, Any]) -> tuple[list[dict[str, Any]], lis
     # seen：已生成四元组集合（source, target, sp, tp），同四元组视为同一关系去重。
     seen: set[tuple[str, str, str, str]] = set()
     for holder, ent in entities.items():
-        for alias, (target, fk, link_name) in _entity_links(ent).items():
+        for alias, (target, fk, link_name, link_desc) in _entity_links(ent).items():
             if target not in entities or not isinstance(entities[target], dict):
                 errors.append(f"实体 {holder}.links.{alias} 的目标实体 {target!r} 不存在，该连线已跳过")
                 continue
@@ -180,7 +184,7 @@ def compile_link_types(model: dict[str, Any]) -> tuple[list[dict[str, Any]], lis
             link_display_name = link_name or (entities[target].get("display_name") or "").strip() or target
             links_out.append({
                 "code": _stable_code("rel_", target, holder, fk_field), "source": target, "target": holder,
-                "name": link_display_name, "cardinality": "1:n", "description": "",
+                "name": link_display_name, "cardinality": "1:n", "description": link_desc,
                 "sourcePropertyCode": pk[0], "targetPropertyCode": fk_field,
             })
     return links_out, errors, warnings
@@ -194,10 +198,10 @@ def _plural_names(entities: dict[str, Any]) -> dict[str, set[str]]:
         if isinstance(ent, dict)
     }
     for ent in entities.values():
-        for _alias, (target, _fk, _n) in _entity_links(ent).items():
+        for _alias, (target, _fk, _n, _d) in _entity_links(ent).items():
             names.setdefault(target, set())
     for ent in entities.values():
-        for alias, (target, _fk, _n) in _entity_links(ent).items():
+        for alias, (target, _fk, _n, _d) in _entity_links(ent).items():
             names[target].add(alias + "s")
     return names
 
@@ -227,7 +231,7 @@ def _resolve_tail(segs: list[str], idx: int, entity: str, entities: dict[str, An
     # 反向引用：seg 是某实体的复数名（表名+s / 别名+s），且该实体 links 指向当前实体。
     for holder, holder_names in plural.items():
         if seg in holder_names and any(target == entity
-                                       for target, _fk, _n in _entity_links(entities.get(holder, {})).values()):
+                                       for target, _fk, _n, _d in _entity_links(entities.get(holder, {})).values()):
             tail = _resolve_tail(segs, idx + 1, holder, entities, plural)
             if tail:
                 return tail

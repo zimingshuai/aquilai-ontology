@@ -81,8 +81,8 @@ entities:
       order_multiple: {display_name: 订购倍数, description: 建议量按此向上取整, type: INTEGER, uom: 件, source: '§11.5（1,000）'}
       quota_ratio: {display_name: 分配份额, description: 双供应商配额（演示 100%；测试一 70%/30%）, type: DOUBLE, uom: "%", source: "§4.3⑤/测试一"}
     links:
-      supplier: {target: Supplier, fk: [supplier_code], name: 供货供应商}
-      material: {target: Material, fk: [material_code], name: 适用物料}
+      supplier: {target: Supplier, fk: [supplier_code], name: 供货供应商, description: 供货条件的供应商主体}
+      material: {target: Material, fk: [material_code], name: 适用物料, description: 供货条件覆盖的物料（交期/MOQ/倍数按物料约定）}
 
   UnitConversion:
     display_name: 单位换算
@@ -101,7 +101,7 @@ entities:
       factor: {display_name: 换算系数, description: 1 盒=100 颗, type: DOUBLE, uom: 系数, source: "测试六"}
       approval_status: {display_name: 批准状态, description: 移除换算依据后提示缺证，不将 12 盒当作 12 颗, type: STRING, source: "测试六"}
     links:
-      material: {target: Material, fk: [material_code], name: 换算物料}
+      material: {target: Material, fk: [material_code], name: 换算物料, description: 换算关系适用的物料（颗↔盒等）}
 
   # =========== L2 BOM与变更 ===========
   BomLine:
@@ -127,10 +127,10 @@ entities:
       std_usage_qty: {display_name: 标准用量, description: RU-01 衍生——行用量÷基准数量, type: DOUBLE, uom: 件, derived: true, source: "§4.2/inspection-rules.csv"}
       lower_level_demand_qty: {display_name: 下层物料需求, description: RU-02 衍生（单层展开口径）——上层需求×标准用量÷有效良率；多层递归展开待 OQ-03 引擎验证, type: DOUBLE, uom: 件, derived: true, source: "§4.3②/测试五"}
     links:
-      parent_material: {target: Material, fk: [parent_material_code], name: 父项物料}
-      child_material: {target: Material, fk: [child_material_code], name: 子项物料}
-      project: {target: Project, fk: [project_code], name: 隶属项目}
-      ecn: {target: EcnRecord, fk: [ecn_id], name: 产生于变更}
+      parent_material: {target: Material, fk: [parent_material_code], name: 父项物料, description: BOM 行的父项物料（整机/主板层级，双链取舍见 A7）}
+      child_material: {target: Material, fk: [child_material_code], name: 子项物料, description: BOM 行的子项物料（主关联，与 material 同指不同链路视角）}
+      project: {target: Project, fk: [project_code], name: 隶属项目, description: BOM 行所属的项目/机型（结构清单归属）}
+      ecn: {target: EcnRecord, fk: [ecn_id], name: 产生于变更, description: BOM 行变化驱动的工程变更记录（换料 ECN）}
 
   EcnRecord:
     display_name: 工程变更记录
@@ -179,9 +179,9 @@ entities:
         description: 本需求被哪条已确认需求覆盖（demand_uid）；无覆盖为空
         type: STRING
     links:
-      project: {target: Project, fk: [project_code], name: 归属项目}
-      covered_by: {target: Demand, fk: [covered_by_uid], name: 被需求覆盖}
-      supersedes: {target: Demand, fk: [supersedes_uid], name: 替换历史版本}
+      project: {target: Project, fk: [project_code], name: 归属项目, description: 需求所属项目（各来源需求按项目归集）}
+      covered_by: {target: Demand, fk: [covered_by_uid], name: 被需求覆盖, description: 本需求被哪条已确认需求覆盖（订单/MPS 覆盖关系，避免重复计算）}
+      supersedes: {target: Demand, fk: [supersedes_uid], name: 替换历史版本, description: 本记录替换的上一版本需求（v2 替换 v1 不追加计数）}
 
   MaterialAuthorization:
     display_name: 物料授权
@@ -204,8 +204,8 @@ entities:
       gross_demand_qty: {display_name: 项目物料毛需求, description: '待授权数量的输入侧口径（测试四 18,000）；参考金额=待授权数量×成本单价（查询侧计算，见 RU-09 描述）', type: INTEGER, uom: 件, source: 测试四}
       pending_auth_qty: {display_name: 待授权数量, description: RU-09 衍生——毛需求−已授权覆盖数量；授权不增减物理供给, type: INTEGER, uom: 件, derived: true, source: "§4.3⑥/测试四"}
     links:
-      project: {target: Project, fk: [project_code], name: 授权项目}
-      material: {target: Material, fk: [material_code], name: 授权物料}
+      project: {target: Project, fk: [project_code], name: 授权项目, description: 授权适用的项目（授权按项目+物料下发）}
+      material: {target: Material, fk: [material_code], name: 授权物料, description: 被授权的物料（整机料号采购授权对象）}
 
   Supply:
     display_name: 供给
@@ -230,8 +230,8 @@ entities:
       cancellation_fee: {display_name: 取消费, description: 如 1 元/颗；设计稿 E07 阶段⑤落位字段, type: DOUBLE, uom: 元/颗, source: "§11.3"}
       restriction_note: {display_name: 限制条件说明, description: '如"仅按临时许可使用"/"最多可取消 2,000、可整单延期至 2027-01-15"；设计稿 E07 阶段⑤落位字段', type: STRING, source: "§11.3"}
     links:
-      material: {target: Material, fk: [material_code], name: 供给物料}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      material: {target: Material, fk: [material_code], name: 供给物料, description: 供给记录对应的物料（库存/冻结/在途按物料跟踪）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 供给所属的计算运行（FACT/SIM 分支锚定：模拟供给仅存在于所属情景）}
 
   StockMovement:
     display_name: 库存收发流水
@@ -247,8 +247,8 @@ entities:
       qty: {display_name: 数量, description: 流水数量（带方向由类型承载）, type: INTEGER, uom: 件, source: "§11.7"}
       movement_date: {display_name: 流水日期, description: '如 11-20 收货 3,000', type: DATE, source: 测试八}
     links:
-      material: {target: Material, fk: [material_code], name: 收发物料}
-      source_supply: {target: Supply, fk: [source_supply_id], name: 来源供给}
+      material: {target: Material, fk: [material_code], name: 收发物料, description: 流水涉及的物料（收发按物料跟踪）}
+      source_supply: {target: Supply, fk: [source_supply_id], name: 来源供给, description: 流水来源的供给记录（收货从在途转库存的溯源）}
 
   SubstitutionPermission:
     display_name: 替代与转用许可
@@ -269,9 +269,9 @@ entities:
       approval_cap_qty: {display_name: 批准上限数量, description: 替代计算的批准上限（§4.3④ 检查项）；设计稿 E11 阶段⑤落位字段, type: INTEGER, uom: 件, source: "§4.3④"}
       approve_status: {display_name: 批准状态, description: 失效替代关系保留问题记录但不得参与计算（§4.2 异常处理）, type: STRING, source: "§11.4"}
     links:
-      replaced_material: {target: Material, fk: [replaced_material_code], name: 被替代物料}
-      replacing_material: {target: Material, fk: [replacing_material_code], name: 替代物料}
-      project: {target: Project, fk: [project_code], name: 适用项目}
+      replaced_material: {target: Material, fk: [replaced_material_code], name: 被替代物料, description: 被替代满足的物料需求侧（WiFi6）}
+      replacing_material: {target: Material, fk: [replacing_material_code], name: 替代物料, description: 替代物料关系（SubstitutionPermission → Material）}
+      project: {target: Project, fk: [project_code], name: 适用项目, description: 替代许可适用的项目（许可按项目约束）}
 
   # =========== L4 计算输出 ===========
   CalculationRun:
@@ -313,10 +313,10 @@ entities:
         description: 指向物料授权（MaterialAuthorization）主键 auth_id 的外键
         type: STRING
     links:
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
-      bom_line: {target: BomLine, fk: [bom_line_id], name: 涉及BOM行}
-      substitution: {target: SubstitutionPermission, fk: [permission_id], name: 涉及替代关系}
-      authorization: {target: MaterialAuthorization, fk: [auth_id], name: 涉及授权}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 所属运行关系（ChangeRecord → CalculationRun）}
+      bom_line: {target: BomLine, fk: [bom_line_id], name: 涉及BOM行, description: 变化涉及的 BOM 行}
+      substitution: {target: SubstitutionPermission, fk: [permission_id], name: 涉及替代关系, description: 变化涉及的替代关系}
+      authorization: {target: MaterialAuthorization, fk: [auth_id], name: 涉及授权, description: 变化涉及的物料授权}
 
   ImpactRecord:
     display_name: 影响记录
@@ -333,9 +333,9 @@ entities:
       review_status: {display_name: 复核状态, description: 待复核/已收处理依据/关闭（任务收到处理依据后才能关闭）, type: STRING, enum_values: [待复核, 已收处理依据, 关闭], source: "§4.2④"}
       impact_scope: {display_name: 影响范围, description: 波及对象范围说明, type: STRING, source: "§4.2③"}
     links:
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
-      project: {target: Project, fk: [project_code], name: 受影响项目}
-      material: {target: Material, fk: [material_code], name: 受影响物料}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 所属运行关系（ImpactRecord → CalculationRun）}
+      project: {target: Project, fk: [project_code], name: 受影响项目, description: 受影响项目关系（ImpactRecord → Project）}
+      material: {target: Material, fk: [material_code], name: 受影响物料, description: 受影响的物料}
 
   AllocationRecord:
     display_name: 供需分配记录
@@ -358,10 +358,10 @@ entities:
         description: 指向需求（Demand）主键 demand_uid 的外键
         type: STRING
     links:
-      demand: {target: Demand, fk: [demand_uid], name: 分配需求}
-      supply: {target: Supply, fk: [supply_id], name: 分配供给}
-      substitution: {target: SubstitutionPermission, fk: [permission_id], name: 依据替代许可}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      demand: {target: Demand, fk: [demand_uid], name: 分配需求, description: 分配满足的需求（供给×需求行级分配）}
+      supply: {target: Supply, fk: [supply_id], name: 分配供给, description: 分配使用的供给（同批累计分配≤可用）}
+      substitution: {target: SubstitutionPermission, fk: [permission_id], name: 依据替代许可, description: 依据替代许可关系（AllocationRecord → SubstitutionPermission）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 所属运行关系（AllocationRecord → CalculationRun）}
 
   SourcingSuggestion:
     display_name: 策备建议
@@ -387,10 +387,10 @@ entities:
         description: 指向供应商参考清单（VendorReferenceList）主键 list_id 的外键
         type: STRING
     links:
-      material: {target: Material, fk: [material_code], name: 建议物料}
-      supplier: {target: Supplier, fk: [supplier_code], name: 建议供应商}
-      ref_list: {target: VendorReferenceList, fk: [list_id], name: 列入参考清单}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      material: {target: Material, fk: [material_code], name: 建议物料, description: 建议采购的物料}
+      supplier: {target: Supplier, fk: [supplier_code], name: 建议供应商, description: 建议下达的供应商（按资格/份额分配）}
+      ref_list: {target: VendorReferenceList, fk: [list_id], name: 列入参考清单, description: 列入参考清单关系（SourcingSuggestion → VendorReferenceList）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 策备建议所属的计算运行}
 
   VendorReferenceList:
     display_name: 供应商参考清单
@@ -409,8 +409,8 @@ entities:
       list_status: {display_name: 清单状态, description: 草稿/内部审核；默认不外发, type: STRING, enum_values: [草稿, 内部审核], source: "§3.2③/§5.3.3"}
       review_note: {display_name: 审核备注, description: 内部审核意见（内部批准≠可用供给）, type: STRING, source: "§4.3 异常处理"}
     links:
-      supplier: {target: Supplier, fk: [supplier_code], name: 面向供应商}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      supplier: {target: Supplier, fk: [supplier_code], name: 面向供应商, description: 清单面向的供应商（按供应商整理供内部审核）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 参考清单所属的计算运行}
 
   PeriodSupplyDemand:
     display_name: 分期供需
@@ -436,8 +436,8 @@ entities:
       closing_qty: {display_name: 期末量, description: RU-04 衍生——期初+有效到货+其他流入−满足−其他流出；本期期初=上期期末（递归结转语义见规则描述）, type: INTEGER, uom: 件, derived: true, source: "§4.4①"}
       unmet_carry_qty: {display_name: 未满足结转, description: RU-05 衍生——本期应满足−实际满足；保留为逾期需求，结转不重复累计, type: INTEGER, uom: 件, derived: true, source: "§4.4①"}
     links:
-      material: {target: Material, fk: [material_code], name: 供需物料}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      material: {target: Material, fk: [material_code], name: 供需物料, description: 分期平衡的物料（期初/期末/未满足按物料分列）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 分期供需所属的计算运行}
 
   SlowMovingRisk:
     display_name: 呆滞风险
@@ -463,8 +463,8 @@ entities:
       window_later_commit_amount: {display_name: 窗口后未消化承诺金额, description: '如 S2 旧料 64,000 元；设计稿 E20 阶段⑤落位字段', type: DOUBLE, uom: 元, source: "§11.6"}
       pending_check_amount: {display_name: 待核查金额, description: '冻结库存单列待核查（1,000 颗/20,000 元，不认定为零风险或全额损失，OQ-09）；设计稿 E20 阶段⑤落位字段', type: DOUBLE, uom: 元, source: "§11.6"}
     links:
-      material: {target: Material, fk: [material_code], name: 风险物料}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      material: {target: Material, fk: [material_code], name: 风险物料, description: 风险物料（剩余量与风险金额的跟踪对象）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 呆滞风险所属的计算运行（风险随运行参数重算）}
 
   SolutionPlan:
     display_name: 处理方案
@@ -491,9 +491,9 @@ entities:
         description: 指向呆滞风险（SlowMovingRisk）主键 risk_id 的外键
         type: STRING
     links:
-      risk: {target: SlowMovingRisk, fk: [risk_id], name: 处置风险}
-      adjusted_supply: {target: Supply, fk: [adjusted_supply_id], name: 调整供给}
-      run: {target: CalculationRun, fk: [run_id], name: 所属运行}
+      risk: {target: SlowMovingRisk, fk: [risk_id], name: 处置风险, description: 处置风险关系（SolutionPlan → SlowMovingRisk）}
+      adjusted_supply: {target: Supply, fk: [adjusted_supply_id], name: 调整供给, description: 调整供给关系（SolutionPlan → Supply）}
+      run: {target: CalculationRun, fk: [run_id], name: 所属运行, description: 处理方案所属的计算运行}
 
   # =========== L5 历史分析 ===========
   HistoricalCase:
@@ -520,9 +520,9 @@ entities:
       intervened_risk_qty: {display_name: 干预后风险量, description: 'RU-11 输入——及时干预情景的风险量（2,000）', type: INTEGER, uom: 件, source: "§4.5③/§11.7"}
       simulated_reducible_qty: {display_name: 模拟可减少风险量, description: RU-11 衍生——max(不干预−干预后, 0)；同评估期间同口径，只用当时已知信息，证据不足不输出确定值: null, type: INTEGER, uom: 件, derived: true, source: "§4.5③/§11.7"}
     links:
-      project: {target: Project, fk: [project_code], name: 历史项目}
-      old_material: {target: Material, fk: [old_material_code], name: 案例旧料}
-      new_material: {target: Material, fk: [new_material_code], name: 案例新料}
+      project: {target: Project, fk: [project_code], name: 历史项目, description: 历史案例涉及的项目（X8 类停产案例）}
+      old_material: {target: Material, fk: [old_material_code], name: 案例旧料, description: 案例旧料关系（HistoricalCase → Material）}
+      new_material: {target: Material, fk: [new_material_code], name: 案例新料, description: 案例新料关系（HistoricalCase → Material）}
 
   HistoricalMilestone:
     display_name: 历史关键时点
@@ -541,7 +541,7 @@ entities:
       milestone_date: {display_name: 时点日期, description: 如 2025-07-15 工程切换/07-22 最晚启动取消/09-30 核实, type: DATE, source: "§11.7"}
       known_info: {display_name: 当时已知信息, description: 回到该时点只使用当时已知信息（缺证版本忍住不给确定结论）, type: STRING, source: "§4.5③"}
     links:
-      case: {target: HistoricalCase, fk: [case_id], name: 归属案例}
+      case: {target: HistoricalCase, fk: [case_id], name: 归属案例, description: 时点归属的历史案例}
 
   CauseAttribution:
     display_name: 原因归因
@@ -561,7 +561,7 @@ entities:
       evidence_ref: {display_name: 证据引用, description: 该归因行的证据出处, type: STRING, source: "§5.4"}
       conclusion_level: {display_name: 结论层级, description: 能确认的事实/待核实/不可下结论（枚举分级：主因/次因/待核实，非数值量）, type: STRING, enum_values: [可确认事实, 待核实, 不可下结论], source: "§5.4"}
     links:
-      case: {target: HistoricalCase, fk: [case_id], name: 归属案例}
+      case: {target: HistoricalCase, fk: [case_id], name: 归属案例, description: 归因记录归属的历史案例}
 
   PreventionRule:
     display_name: 预防规则
@@ -576,7 +576,7 @@ entities:
       trigger_condition: {display_name: 触发条件, description: 变更已获知且影响能够判断时触发，不等 BOM 正式生效, type: STRING, source: "§5.4"}
       rule_status: {display_name: 规则状态, description: 草案→审核→试运行→启用（审核试运行后才启用）, type: STRING, enum_values: [草案, 审核, 试运行, 启用], source: "§4.5 输出"}
     links:
-      source_case: {target: HistoricalCase, fk: [source_case_id], name: 源自案例}
+      source_case: {target: HistoricalCase, fk: [source_case_id], name: 源自案例, description: 预防规则沉淀自的历史案例（教训来源）}
 
 # =========== 规则（14 条设计口径 → 13 条 DSL + RU-14 落 OQ-12）==========
 rules:

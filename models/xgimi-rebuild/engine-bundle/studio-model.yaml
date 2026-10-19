@@ -1867,7 +1867,7 @@ link_types:
   target: SupplierSupplyCondition
   name: 供货供应商
   cardinality: 1:n
-  description: ''
+  description: 供货条件的供应商主体
   sourcePropertyCode: supplier_code
   targetPropertyCode: supplier_code
 - code: rel_cbe08085
@@ -1875,7 +1875,7 @@ link_types:
   target: SupplierSupplyCondition
   name: 适用物料
   cardinality: 1:n
-  description: ''
+  description: 供货条件覆盖的物料（交期/MOQ/倍数按物料约定）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_3ca51511
@@ -1883,7 +1883,7 @@ link_types:
   target: UnitConversion
   name: 换算物料
   cardinality: 1:n
-  description: ''
+  description: 换算关系适用的物料（颗↔盒等）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_fb63e040
@@ -1891,7 +1891,7 @@ link_types:
   target: BomLine
   name: 父项物料
   cardinality: 1:n
-  description: ''
+  description: BOM 行的父项物料（整机/主板层级，双链取舍见 A7）
   sourcePropertyCode: material_code
   targetPropertyCode: parent_material_code
 - code: rel_49eaaf16
@@ -1899,7 +1899,7 @@ link_types:
   target: BomLine
   name: 子项物料
   cardinality: 1:n
-  description: ''
+  description: BOM 行的子项物料（主关联，与 material 同指不同链路视角）
   sourcePropertyCode: material_code
   targetPropertyCode: child_material_code
 - code: rel_a2a1ccbb
@@ -1907,7 +1907,7 @@ link_types:
   target: BomLine
   name: 隶属项目
   cardinality: 1:n
-  description: ''
+  description: BOM 行所属的项目/机型（结构清单归属）
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
 - code: rel_a6d7db64
@@ -1915,7 +1915,7 @@ link_types:
   target: BomLine
   name: 产生于变更
   cardinality: 1:n
-  description: ''
+  description: BOM 行变化驱动的工程变更记录（换料 ECN）
   sourcePropertyCode: ecn_id
   targetPropertyCode: ecn_id
 - code: rel_1c93fc78
@@ -1923,7 +1923,7 @@ link_types:
   target: Demand
   name: 归属项目
   cardinality: 1:n
-  description: ''
+  description: 需求所属项目（各来源需求按项目归集）
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
 - code: rel_bf1db796
@@ -1931,7 +1931,7 @@ link_types:
   target: Demand
   name: 被需求覆盖
   cardinality: 1:n
-  description: ''
+  description: 本需求被哪条已确认需求覆盖（订单/MPS 覆盖关系，避免重复计算）
   sourcePropertyCode: demand_uid
   targetPropertyCode: covered_by_uid
 - code: rel_1988059c
@@ -1939,7 +1939,7 @@ link_types:
   target: Demand
   name: 替换历史版本
   cardinality: 1:n
-  description: ''
+  description: 本记录替换的上一版本需求（v2 替换 v1 不追加计数）
   sourcePropertyCode: demand_uid
   targetPropertyCode: supersedes_uid
 - code: rel_f9742ef0
@@ -1947,7 +1947,7 @@ link_types:
   target: MaterialAuthorization
   name: 授权项目
   cardinality: 1:n
-  description: ''
+  description: 授权适用的项目（授权按项目+物料下发）
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
 - code: rel_fa88b8f7
@@ -1955,7 +1955,7 @@ link_types:
   target: MaterialAuthorization
   name: 授权物料
   cardinality: 1:n
-  description: ''
+  description: 被授权的物料（整机料号采购授权对象）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_6e112c67
@@ -1963,7 +1963,7 @@ link_types:
   target: Supply
   name: 供给物料
   cardinality: 1:n
-  description: ''
+  description: 供给记录对应的物料（库存/冻结/在途按物料跟踪）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_99cc9782
@@ -1971,7 +1971,7 @@ link_types:
   target: Supply
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 供给所属的计算运行（FACT/SIM 分支锚定：模拟供给仅存在于所属情景）
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_baed278c
@@ -1979,7 +1979,7 @@ link_types:
   target: StockMovement
   name: 收发物料
   cardinality: 1:n
-  description: ''
+  description: 流水涉及的物料（收发按物料跟踪）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_e452736a
@@ -1987,7 +1987,7 @@ link_types:
   target: StockMovement
   name: 来源供给
   cardinality: 1:n
-  description: ''
+  description: 流水来源的供给记录（收货从在途转库存的溯源）
   sourcePropertyCode: supply_id
   targetPropertyCode: source_supply_id
 - code: rel_735b4734
@@ -1995,7 +1995,7 @@ link_types:
   target: SubstitutionPermission
   name: 被替代物料
   cardinality: 1:n
-  description: ''
+  description: 被替代满足的物料需求侧（WiFi6）
   sourcePropertyCode: material_code
   targetPropertyCode: replaced_material_code
 - code: rel_2c91ff9f
@@ -2003,7 +2003,7 @@ link_types:
   target: SubstitutionPermission
   name: 替代物料
   cardinality: 1:n
-  description: ''
+  description: 替代物料关系（SubstitutionPermission → Material）
   sourcePropertyCode: material_code
   targetPropertyCode: replacing_material_code
 - code: rel_29131961
@@ -2011,7 +2011,7 @@ link_types:
   target: SubstitutionPermission
   name: 适用项目
   cardinality: 1:n
-  description: ''
+  description: 替代许可适用的项目（许可按项目约束）
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
 - code: rel_79a327ee
@@ -2019,7 +2019,7 @@ link_types:
   target: ChangeRecord
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 所属运行关系（ChangeRecord → CalculationRun）
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_8c72cf24
@@ -2027,7 +2027,7 @@ link_types:
   target: ChangeRecord
   name: 涉及BOM行
   cardinality: 1:n
-  description: ''
+  description: 变化涉及的 BOM 行
   sourcePropertyCode: bom_line_id
   targetPropertyCode: bom_line_id
 - code: rel_29c6677e
@@ -2035,7 +2035,7 @@ link_types:
   target: ChangeRecord
   name: 涉及替代关系
   cardinality: 1:n
-  description: ''
+  description: 变化涉及的替代关系
   sourcePropertyCode: permission_id
   targetPropertyCode: permission_id
 - code: rel_7ae0a816
@@ -2043,7 +2043,7 @@ link_types:
   target: ChangeRecord
   name: 涉及授权
   cardinality: 1:n
-  description: ''
+  description: 变化涉及的物料授权
   sourcePropertyCode: auth_id
   targetPropertyCode: auth_id
 - code: rel_d1e5939d
@@ -2051,7 +2051,7 @@ link_types:
   target: ImpactRecord
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 所属运行关系（ImpactRecord → CalculationRun）
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_debb1826
@@ -2059,7 +2059,7 @@ link_types:
   target: ImpactRecord
   name: 受影响项目
   cardinality: 1:n
-  description: ''
+  description: 受影响项目关系（ImpactRecord → Project）
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
 - code: rel_2c69aafa
@@ -2067,7 +2067,7 @@ link_types:
   target: ImpactRecord
   name: 受影响物料
   cardinality: 1:n
-  description: ''
+  description: 受影响的物料
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_da6f0d07
@@ -2075,7 +2075,7 @@ link_types:
   target: AllocationRecord
   name: 分配需求
   cardinality: 1:n
-  description: ''
+  description: 分配满足的需求（供给×需求行级分配）
   sourcePropertyCode: demand_uid
   targetPropertyCode: demand_uid
 - code: rel_bb9581b1
@@ -2083,7 +2083,7 @@ link_types:
   target: AllocationRecord
   name: 分配供给
   cardinality: 1:n
-  description: ''
+  description: 分配使用的供给（同批累计分配≤可用）
   sourcePropertyCode: supply_id
   targetPropertyCode: supply_id
 - code: rel_a1bcee02
@@ -2091,7 +2091,7 @@ link_types:
   target: AllocationRecord
   name: 依据替代许可
   cardinality: 1:n
-  description: ''
+  description: 依据替代许可关系（AllocationRecord → SubstitutionPermission）
   sourcePropertyCode: permission_id
   targetPropertyCode: permission_id
 - code: rel_45c5529e
@@ -2099,7 +2099,7 @@ link_types:
   target: AllocationRecord
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 所属运行关系（AllocationRecord → CalculationRun）
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_70386539
@@ -2107,7 +2107,7 @@ link_types:
   target: SourcingSuggestion
   name: 建议物料
   cardinality: 1:n
-  description: ''
+  description: 建议采购的物料
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_3401e2be
@@ -2115,7 +2115,7 @@ link_types:
   target: SourcingSuggestion
   name: 建议供应商
   cardinality: 1:n
-  description: ''
+  description: 建议下达的供应商（按资格/份额分配）
   sourcePropertyCode: supplier_code
   targetPropertyCode: supplier_code
 - code: rel_35f2e654
@@ -2123,7 +2123,7 @@ link_types:
   target: SourcingSuggestion
   name: 列入参考清单
   cardinality: 1:n
-  description: ''
+  description: 列入参考清单关系（SourcingSuggestion → VendorReferenceList）
   sourcePropertyCode: list_id
   targetPropertyCode: list_id
 - code: rel_7b7433f2
@@ -2131,7 +2131,7 @@ link_types:
   target: SourcingSuggestion
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 策备建议所属的计算运行
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_7d04e7ac
@@ -2139,7 +2139,7 @@ link_types:
   target: VendorReferenceList
   name: 面向供应商
   cardinality: 1:n
-  description: ''
+  description: 清单面向的供应商（按供应商整理供内部审核）
   sourcePropertyCode: supplier_code
   targetPropertyCode: supplier_code
 - code: rel_1b2d54e4
@@ -2147,7 +2147,7 @@ link_types:
   target: VendorReferenceList
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 参考清单所属的计算运行
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_be27184c
@@ -2155,7 +2155,7 @@ link_types:
   target: PeriodSupplyDemand
   name: 供需物料
   cardinality: 1:n
-  description: ''
+  description: 分期平衡的物料（期初/期末/未满足按物料分列）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_3361aa1a
@@ -2163,7 +2163,7 @@ link_types:
   target: PeriodSupplyDemand
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 分期供需所属的计算运行
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_54f83795
@@ -2171,7 +2171,7 @@ link_types:
   target: SlowMovingRisk
   name: 风险物料
   cardinality: 1:n
-  description: ''
+  description: 风险物料（剩余量与风险金额的跟踪对象）
   sourcePropertyCode: material_code
   targetPropertyCode: material_code
 - code: rel_819d4e00
@@ -2179,7 +2179,7 @@ link_types:
   target: SlowMovingRisk
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 呆滞风险所属的计算运行（风险随运行参数重算）
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_652d2991
@@ -2187,7 +2187,7 @@ link_types:
   target: SolutionPlan
   name: 处置风险
   cardinality: 1:n
-  description: ''
+  description: 处置风险关系（SolutionPlan → SlowMovingRisk）
   sourcePropertyCode: risk_id
   targetPropertyCode: risk_id
 - code: rel_858fca76
@@ -2195,7 +2195,7 @@ link_types:
   target: SolutionPlan
   name: 调整供给
   cardinality: 1:n
-  description: ''
+  description: 调整供给关系（SolutionPlan → Supply）
   sourcePropertyCode: supply_id
   targetPropertyCode: adjusted_supply_id
 - code: rel_e3cf2a48
@@ -2203,7 +2203,7 @@ link_types:
   target: SolutionPlan
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 处理方案所属的计算运行
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_7a92993b
@@ -2211,7 +2211,7 @@ link_types:
   target: HistoricalCase
   name: 历史项目
   cardinality: 1:n
-  description: ''
+  description: 历史案例涉及的项目（X8 类停产案例）
   sourcePropertyCode: project_code
   targetPropertyCode: project_code
 - code: rel_e49e5481
@@ -2219,7 +2219,7 @@ link_types:
   target: HistoricalCase
   name: 案例旧料
   cardinality: 1:n
-  description: ''
+  description: 案例旧料关系（HistoricalCase → Material）
   sourcePropertyCode: material_code
   targetPropertyCode: old_material_code
 - code: rel_df1ac2f7
@@ -2227,7 +2227,7 @@ link_types:
   target: HistoricalCase
   name: 案例新料
   cardinality: 1:n
-  description: ''
+  description: 案例新料关系（HistoricalCase → Material）
   sourcePropertyCode: material_code
   targetPropertyCode: new_material_code
 - code: rel_e24cebd5
@@ -2235,7 +2235,7 @@ link_types:
   target: HistoricalMilestone
   name: 归属案例
   cardinality: 1:n
-  description: ''
+  description: 时点归属的历史案例
   sourcePropertyCode: case_id
   targetPropertyCode: case_id
 - code: rel_0f255887
@@ -2243,7 +2243,7 @@ link_types:
   target: CauseAttribution
   name: 归属案例
   cardinality: 1:n
-  description: ''
+  description: 归因记录归属的历史案例
   sourcePropertyCode: case_id
   targetPropertyCode: case_id
 - code: rel_90554ae2
@@ -2251,7 +2251,7 @@ link_types:
   target: PreventionRule
   name: 源自案例
   cardinality: 1:n
-  description: ''
+  description: 预防规则沉淀自的历史案例（教训来源）
   sourcePropertyCode: case_id
   targetPropertyCode: source_case_id
 rule_types:

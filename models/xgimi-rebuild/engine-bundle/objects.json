@@ -1,0 +1,1573 @@
+{
+  "Project": {
+    "display_name": "项目",
+    "table_name": "project",
+    "description": "机型/产品线，需求和 BOM 的挂载主体（E01）",
+    "properties": {
+      "project_code": {
+        "display_name": "项目编码",
+        "description": "如 100-Z9001",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "project_name": {
+        "display_name": "项目代号",
+        "description": "如 P-Z9",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "model": {
+        "display_name": "机型",
+        "description": "如 Z9 / Z9S",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "stage": {
+        "display_name": "项目阶段",
+        "description": "演示值 量产MP/NPI-DVT/停产",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "bom_status_desc": {
+        "display_name": "BOM状态描述",
+        "description": "项目视角的 BOM 状态说明",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "Material": {
+    "display_name": "物料",
+    "table_name": "material",
+    "description": "最小跟踪单位（WiFi、SoC、主板、整机），汇总与库存跟踪的锚点（E02）",
+    "properties": {
+      "material_code": {
+        "display_name": "物料编码",
+        "description": "如 300-W6A01 / 200-Z9PCB / 100-Z9001（整机同为物料）",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "material_name": {
+        "display_name": "物料名称",
+        "description": "如 WiFi6 模组 / Z9 主板",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "base_uom": {
+        "display_name": "基本计量单位",
+        "description": "如 颗",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "cost_unit_price": {
+        "display_name": "成本单价",
+        "description": "演示成本单价（WiFi5 16 元/颗、WiFi6 20 元/颗）",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "Supplier": {
+    "display_name": "供应商",
+    "table_name": "supplier",
+    "description": "具备供货资格的供应商主体（E09）",
+    "properties": {
+      "supplier_code": {
+        "display_name": "供应商编码",
+        "description": "如 V-WLINK",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "supplier_name": {
+        "display_name": "供应商名称",
+        "description": "供应商主体名",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "purchase_group": {
+        "display_name": "采购组",
+        "description": "如 206",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "SupplierSupplyCondition": {
+    "display_name": "供应商供货条件",
+    "table_name": "supplier_supply_condition",
+    "description": "交期/最小起订量/订购倍数/配额约定（E10）",
+    "properties": {
+      "condition_id": {
+        "display_name": "供货条件ID",
+        "description": "供应商-物料供货条件的唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "supplier_code": {
+        "display_name": "供应商编码",
+        "description": "条件归属供应商；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "适用物料编码",
+        "description": "条件按物料生效；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "lead_time_days": {
+        "display_name": "交期",
+        "description": "日历周口径的供货交期",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "moq": {
+        "display_name": "最小起订量",
+        "description": "如 5,000",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "order_multiple": {
+        "display_name": "订购倍数",
+        "description": "建议量按此向上取整",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "quota_ratio": {
+        "display_name": "分配份额",
+        "description": "双供应商配额（演示 100%；测试一 70%/30%）",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "supplier": "Supplier",
+      "material": "Material"
+    }
+  },
+  "UnitConversion": {
+    "display_name": "单位换算",
+    "table_name": "unit_conversion",
+    "description": "已确认的计量单位换算关系，原始值保留计算用换算（E12）",
+    "properties": {
+      "conversion_id": {
+        "display_name": "换算关系ID",
+        "description": "物料单位换算关系的唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "material_code": {
+        "display_name": "换算物料编码",
+        "description": "如 UNIT-M（基本单位颗）；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "alt_unit": {
+        "display_name": "备选单位",
+        "description": "如 盒；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "factor": {
+        "display_name": "换算系数",
+        "description": "1 盒=100 颗",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "approval_status": {
+        "display_name": "批准状态",
+        "description": "移除换算依据后提示缺证，不将 12 盒当作 12 颗",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "material": "Material"
+    }
+  },
+  "BomLine": {
+    "display_name": "BOM 行",
+    "table_name": "bom_line",
+    "description": "机型结构清单行：类型/版本/层级用量/良率/生效期，点检与展开的载体（E03）",
+    "properties": {
+      "bom_line_id": {
+        "display_name": "BOM行标识",
+        "description": "如 L-Z9-02-new",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "bom_type": {
+        "display_name": "BOM类型",
+        "description": "标准/风险/维修（Z10 仅风险 BOM v0.9、SRV-Z9 维修 BOM）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "bom_version": {
+        "display_name": "BOM版本",
+        "description": "如 整机 v3.2/主板 v2.2",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "parent_material_code": {
+        "display_name": "父项物料编码",
+        "description": "该行描述父项的一个组件构成",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "child_material_code": {
+        "display_name": "子项物料编码",
+        "description": "该行挂载被使用的子项物料",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "project_code": {
+        "display_name": "隶属项目编码",
+        "description": "BOM 行归属机型项目",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "ecn_id": {
+        "display_name": "来源变更单号",
+        "description": "行的增改（换料新旧行）由哪次 ECN 驱动，可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "line_qty": {
+        "display_name": "行用量",
+        "description": "该行单位用量（演示各层 1:1）",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "base_qty": {
+        "display_name": "基准数量",
+        "description": "标准用量计算的分母（演示各层 1）；设计稿 E03 阶段⑤补全字段",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "yield_rate": {
+        "display_name": "良率",
+        "description": "有效良率（主案例 1，测试五 0.98/0.99）；无损耗取 1；损耗系数是否增设见 OQ-10",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "valid_from": {
+        "display_name": "生效起始日期",
+        "description": "如 2026-11-01 起；设计稿 E03 阶段⑤补全字段",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "valid_to": {
+        "display_name": "生效截止日期",
+        "description": "如 至 2026-10-31；设计稿 E03 阶段⑤补全字段",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "known_at": {
+        "display_name": "版本可见时间",
+        "description": "该行记录何时进入数据版本（V0 之前/V1）；版本由各记录 known_at 承载（假设 A-02）",
+        "data_type": "TIMESTAMP",
+        "is_primary": false
+      },
+      "std_usage_qty": {
+        "display_name": "标准用量",
+        "description": "RU-01 衍生——行用量÷基准数量",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "lower_level_demand_qty": {
+        "display_name": "下层物料需求",
+        "description": "RU-02 衍生（单层展开口径）——上层需求×标准用量÷有效良率；多层递归展开待 OQ-03 引擎验证",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "parent_material": "Material",
+      "child_material": "Material",
+      "project": "Project",
+      "ecn": "EcnRecord"
+    }
+  },
+  "EcnRecord": {
+    "display_name": "工程变更记录",
+    "table_name": "ecn_record",
+    "description": "换料等工程变更的发布与批准记录，BOM 版本变化的驱动源（E04）",
+    "properties": {
+      "ecn_id": {
+        "display_name": "变更单号",
+        "description": "如 Z9 换料 ECN / H-ECN-01",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "ecn_desc": {
+        "display_name": "变更描述",
+        "description": "变更内容摘要",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "publish_time": {
+        "display_name": "发布时间",
+        "description": "如 V1 2026-09-29 09:00",
+        "data_type": "TIMESTAMP",
+        "is_primary": false
+      },
+      "effective_date": {
+        "display_name": "生效日期",
+        "description": "如 2026-11-01",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "approve_status": {
+        "display_name": "批准状态",
+        "description": "演示口径\"已批准的工程切换\"；枚举全集未给（不脑补），RU-13 触发条件使用",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "evidence_status": {
+        "display_name": "证据状态",
+        "description": "完整/缺失（缺证版本保留引用编号但批准文件缺失）",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "Demand": {
+    "display_name": "需求",
+    "table_name": "demand",
+    "description": "各项目需要数量与日期（MPS/客户订单/预测/维修），覆盖与替换关系明确（E05）",
+    "properties": {
+      "demand_uid": {
+        "display_name": "需求实例UID",
+        "description": "需求实例唯一标识（demand_id+版本联合定位的业务实例）",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "demand_id": {
+        "display_name": "需求编号",
+        "description": "如 DEM-Z9-NOV / ORD-Z9-NOV / FCST-Z9-NOV；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "record_version": {
+        "display_name": "记录版本",
+        "description": "如 v1/v2，新版本替换旧版本不追加计数；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "demand_type": {
+        "display_name": "需求类型",
+        "description": "已确认MPS/客户订单/早期预测/维修",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "project_code": {
+        "display_name": "归属项目编码",
+        "description": "需求按项目归口汇总",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "required_qty": {
+        "display_name": "需求数量",
+        "description": "台/颗口径的需要数量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "required_date": {
+        "display_name": "需要日期",
+        "description": "物料可用日，非客户交货日",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "is_estimate": {
+        "display_name": "估算标记",
+        "description": "true=估算，不进入确定需求（测试二）",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "covered_demand_id": {
+        "display_name": "被覆盖需求编号",
+        "description": "上位需求编号（ORD 被 DEM 覆盖），可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "covered_demand_version": {
+        "display_name": "被覆盖需求版本",
+        "description": "与 covered_demand_id 组成复合外键",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "superseded_demand_id": {
+        "display_name": "被替换需求编号",
+        "description": "旧版本需求编号（v2 替换 v1），可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "superseded_demand_version": {
+        "display_name": "被替换需求版本",
+        "description": "与 superseded_demand_id 组成复合外键",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "supersedes_uid": {
+        "display_name": "替换目标UID",
+        "description": "本记录替换的上一版本需求实例（demand_uid）；无前版为空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "covered_by_uid": {
+        "display_name": "被覆盖需求UID",
+        "description": "本需求被哪条已确认需求覆盖（demand_uid）；无覆盖为空",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "project": "Project",
+      "covered_by": "Demand",
+      "supersedes": "Demand"
+    }
+  },
+  "MaterialAuthorization": {
+    "display_name": "物料授权",
+    "table_name": "material_authorization",
+    "description": "整机料号采购授权记录（策备表域），授权覆盖量与物理供给分开核算（E06）",
+    "properties": {
+      "auth_id": {
+        "display_name": "授权ID",
+        "description": "物料授权记录唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "project_code": {
+        "display_name": "授权项目编码",
+        "description": "整机料号；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "授权物料编码",
+        "description": "被授权物料；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "auth_version": {
+        "display_name": "授权版本",
+        "description": "v2 替换 v1；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "authorized_qty": {
+        "display_name": "授权覆盖数量",
+        "description": "覆盖台数/颗数（v1 10,000 → v2 6,000）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "approve_date": {
+        "display_name": "批准日期",
+        "description": "如 10-01 批准 v2",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "status": {
+        "display_name": "授权状态",
+        "description": "授权状态说明（全集未给）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "gross_demand_qty": {
+        "display_name": "项目物料毛需求",
+        "description": "待授权数量的输入侧口径（测试四 18,000）；参考金额=待授权数量×成本单价（查询侧计算，见 RU-09 描述）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "pending_auth_qty": {
+        "display_name": "待授权数量",
+        "description": "RU-09 衍生——毛需求−已授权覆盖数量；授权不增减物理供给",
+        "data_type": "INTEGER",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "project": "Project",
+      "material": "Material"
+    }
+  },
+  "Supply": {
+    "display_name": "供给",
+    "table_name": "supply",
+    "description": "可用库存/质检冻结/已确认未收货订单的统一供给记录，含取消与延期条件（E07）",
+    "properties": {
+      "supply_id": {
+        "display_name": "供给编号",
+        "description": "如 PS-1001…PS-3002 / SIM-W6-9000",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "supply_type": {
+        "display_name": "供给类型",
+        "description": "可用库存/质检冻结库存/已确认未收货订单（文档统一编号统一表，假设 A-05）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "供给物料编码",
+        "description": "每条供给对应一颗物料",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "run_id": {
+        "display_name": "所属运行编号",
+        "description": "FACT/SIM 分支归属（模拟供给不写入 FACT）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "qty": {
+        "display_name": "数量",
+        "description": "供给数量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "available_date": {
+        "display_name": "可用或到货日",
+        "description": "库存可用日/订单到货日",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "branch": {
+        "display_name": "分支",
+        "description": "事实与模拟分开保存",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "order_qty": {
+        "display_name": "订单数量",
+        "description": "未收货订单类型的订单总量（测试八 8",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "received_qty": {
+        "display_name": "累计有效收货量",
+        "description": "已收货转入库存部分（测试八 3",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "cancelled_qty": {
+        "display_name": "已取消量",
+        "description": "已办理取消的数量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "closed_unreceived_qty": {
+        "display_name": "已关闭未收余量",
+        "description": "订单关闭时仍未收货的余量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "open_order_qty": {
+        "display_name": "订单未收货量",
+        "description": "RU-03 衍生——max(订单数量−累计有效收货量−已取消量−已关闭未收余量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "cancel_deadline_date": {
+        "display_name": "取消截止日",
+        "description": "如 10-15；设计稿 E07 阶段⑤落位字段",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "cancellation_fee": {
+        "display_name": "取消费",
+        "description": "如 1 元/颗；设计稿 E07 阶段⑤落位字段",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "restriction_note": {
+        "display_name": "限制条件说明",
+        "description": "如\"仅按临时许可使用\"/\"最多可取消 2,000、可整单延期至 2027-01-15\"；设计稿 E07 阶段⑤落位字段",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "material": "Material",
+      "run": "CalculationRun"
+    }
+  },
+  "StockMovement": {
+    "display_name": "库存收发流水",
+    "table_name": "stock_movement",
+    "description": "收货/入库/消耗/出库事实流水（分类互斥），waterfall 核对与收货转库存的依据（E08）",
+    "properties": {
+      "movement_id": {
+        "display_name": "流水编号",
+        "description": "如 ST-R1 关联流水",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "movement_type": {
+        "display_name": "流水类型",
+        "description": "有效收货及其他入库/实际消耗及其他出库（分类互斥）；枚举全集未给，先按大类落（OQ-06）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "收发物料编码",
+        "description": "流水按物料核对",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "source_supply_id": {
+        "display_name": "来源供给编号",
+        "description": "收货流水把未收货订单量转入库存（PO-R1→ST-R1），防止重复计入；非订单流水可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "qty": {
+        "display_name": "数量",
+        "description": "流水数量（带方向由类型承载）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "movement_date": {
+        "display_name": "流水日期",
+        "description": "如 11-20 收货 3,000",
+        "data_type": "DATE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "material": "Material",
+      "source_supply": "Supply"
+    }
+  },
+  "SubstitutionPermission": {
+    "display_name": "替代与转用许可",
+    "table_name": "substitution_permission",
+    "description": "物料间可替换规则及批准条件（临时许可替代/售后转用），替代计算准入门槛（E11）",
+    "properties": {
+      "permission_id": {
+        "display_name": "许可编号",
+        "description": "如 SUB-01/SUB-02",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "permission_type": {
+        "display_name": "许可类型",
+        "description": "临时许可替代/售后转用",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "replaced_material_code": {
+        "display_name": "被替代物料编码",
+        "description": "需求侧被补偿的物料（如 WiFi6 需求）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "replacing_material_code": {
+        "display_name": "替代物料编码",
+        "description": "供给侧用于替代的物料（如 WiFi5 指定批次）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "project_code": {
+        "display_name": "适用项目编码",
+        "description": "许可只对指定项目生效（仅 Z9）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "conversion_ratio": {
+        "display_name": "换算比例",
+        "description": "如 1:1",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "valid_from": {
+        "display_name": "有效起始日期",
+        "description": "如 2026-11-01（12-01 生效为售后转用通道）",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "valid_to": {
+        "display_name": "有效截止日期",
+        "description": "如 2026-11-30",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "batch_limit_note": {
+        "display_name": "批次限定说明",
+        "description": "如\"指定库存批次共 6,000 颗\"；设计稿 E11 阶段⑤落位字段",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "approval_cap_qty": {
+        "display_name": "批准上限数量",
+        "description": "替代计算的批准上限（§4.3④ 检查项）；设计稿 E11 阶段⑤落位字段",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "approve_status": {
+        "display_name": "批准状态",
+        "description": "失效替代关系保留问题记录但不得参与计算（§4.2 异常处理）",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "replaced_material": "Material",
+      "replacing_material": "Material",
+      "project": "Project"
+    }
+  },
+  "CalculationRun": {
+    "display_name": "计算运行",
+    "table_name": "calculation_run",
+    "description": "一次计算的运行身份：观察时点/数据版本/规则版本/情景分支，追溯与复算的锚（E13）",
+    "properties": {
+      "run_id": {
+        "display_name": "运行编号",
+        "description": "如 V2 策备运行快照",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "known_at": {
+        "display_name": "观察时点",
+        "description": "如 2026-09-30 09:00",
+        "data_type": "TIMESTAMP",
+        "is_primary": false
+      },
+      "data_version": {
+        "display_name": "数据版本",
+        "description": "V0—V3（版本由各记录 known_at 承载，假设 A-02）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "rule_version": {
+        "display_name": "规则版本",
+        "description": "每次运行保存规则版本；设计稿 E13 阶段⑤落位字段",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "branch": {
+        "display_name": "分支",
+        "description": "事实记录与模拟记录分别保存",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "scenario_no": {
+        "display_name": "情景编号",
+        "description": "方案/情景编号（如 S0/S1/S2 重算分支）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "eval_start_date": {
+        "display_name": "评估期间起",
+        "description": "如 2026-11-01；设计稿 E13 阶段⑤落位字段",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "eval_end_date": {
+        "display_name": "评估期间止",
+        "description": "如 2026-12-31；设计稿 E13 阶段⑤落位字段",
+        "data_type": "DATE",
+        "is_primary": false
+      }
+    },
+    "links": {}
+  },
+  "ChangeRecord": {
+    "display_name": "变化记录",
+    "table_name": "change_record",
+    "description": "点检对比产出的单条变化（物料增删/用量/单位/生效日期/替代/授权六类判断）（E14）",
+    "properties": {
+      "change_id": {
+        "display_name": "变化编号",
+        "description": "点检输出唯一编号",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "change_type": {
+        "display_name": "变化类型",
+        "description": "六类判断（inspection-rules.csv 全量）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "old_value": {
+        "display_name": "变化前值",
+        "description": "对比基准版本取值",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "new_value": {
+        "display_name": "变化后值",
+        "description": "对比目标版本取值",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "check_advice": {
+        "display_name": "后续检查",
+        "description": "变化附带的后续检查建议",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "run_id": {
+        "display_name": "所属运行编号",
+        "description": "点检对比也在某次运行身份下留存",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "bom_line_id": {
+        "display_name": "涉及BOM行标识",
+        "description": "增删/用量/单位/生效日期四类变化指向的 BOM 行，可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "permission_id": {
+        "display_name": "涉及许可编号",
+        "description": "替代关系变化指向的许可记录，可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "project_code": {
+        "display_name": "涉及授权项目编码",
+        "description": "授权数量变化指向的授权记录（复合外键成员），可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "涉及授权物料编码",
+        "description": "授权数量变化指向的授权记录（复合外键成员），可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "auth_version": {
+        "display_name": "涉及授权版本",
+        "description": "授权数量变化指向的授权记录（复合外键成员），可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "auth_id": {
+        "display_name": "关联物料授权",
+        "description": "指向物料授权（MaterialAuthorization）主键 auth_id 的外键",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "run": "CalculationRun",
+      "bom_line": "BomLine",
+      "substitution": "SubstitutionPermission",
+      "authorization": "MaterialAuthorization"
+    }
+  },
+  "ImpactRecord": {
+    "display_name": "影响记录",
+    "table_name": "impact_record",
+    "description": "变化波及对象的合并明细（多条依据合并一条），复核任务及处理状态载体（E15）",
+    "properties": {
+      "impact_id": {
+        "display_name": "影响编号",
+        "description": "合并后唯一编号",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "run_id": {
+        "display_name": "所属运行编号",
+        "description": "影响明细归属运行",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "project_code": {
+        "display_name": "受影响项目编码",
+        "description": "变化波及的项目，可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "受影响物料编码",
+        "description": "变化波及的物料",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "evidence_refs": {
+        "display_name": "判断依据引用",
+        "description": "多条依据以字段清单承载（n:m 由 OQ-04 裁决是否建桥表）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "review_status": {
+        "display_name": "复核状态",
+        "description": "待复核/已收处理依据/关闭（任务收到处理依据后才能关闭）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "impact_scope": {
+        "display_name": "影响范围",
+        "description": "波及对象范围说明",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "run": "CalculationRun",
+      "project": "Project",
+      "material": "Material"
+    }
+  },
+  "AllocationRecord": {
+    "display_name": "供需分配记录",
+    "table_name": "allocation_record",
+    "description": "一批供给对一个需求（含替代路径）的分配明细，累计不超可用、可展开复算（E16）",
+    "properties": {
+      "allocation_id": {
+        "display_name": "分配编号",
+        "description": "分配明细唯一编号",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "demand_id": {
+        "display_name": "分配需求编号",
+        "description": "本次分配满足的需求（复合外键成员）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "demand_version": {
+        "display_name": "分配需求版本",
+        "description": "复合外键成员",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "supply_id": {
+        "display_name": "分配供给编号",
+        "description": "被占用的供给批次",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "permission_id": {
+        "display_name": "依据许可编号",
+        "description": "替代路径分配的批准依据，可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "run_id": {
+        "display_name": "所属运行编号",
+        "description": "分配结果可追溯到运行",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "allocated_qty": {
+        "display_name": "分配数量",
+        "description": "实际分配量（累计分配量≤该批可用数量，RU-14① 约束）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "priority_seq": {
+        "display_name": "分配优先顺序",
+        "description": "相同日期按项目编码、供给可用日期和供给ID稳定排序",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "reserved_flag": {
+        "display_name": "预留标记",
+        "description": "true=为当前需求预留的供给计入已覆盖量",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "demand_uid": {
+        "display_name": "关联需求",
+        "description": "指向需求（Demand）主键 demand_uid 的外键",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "demand": "Demand",
+      "supply": "Supply",
+      "substitution": "SubstitutionPermission",
+      "run": "CalculationRun"
+    }
+  },
+  "SourcingSuggestion": {
+    "display_name": "策备建议",
+    "table_name": "sourcing_suggestion",
+    "description": "对剩余缺口的采购建议量：MOQ/倍数取整、取整额外量、交期满足检查（E17）",
+    "properties": {
+      "suggestion_id": {
+        "display_name": "建议ID",
+        "description": "策备建议唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "run_id": {
+        "display_name": "运行编号",
+        "description": "建议归属运行（V2 快照）；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "建议物料编码",
+        "description": "建议针对的物料；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "supplier_code": {
+        "display_name": "建议供应商编码",
+        "description": "建议面向的供应商；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "allocated_qty": {
+        "display_name": "分配量",
+        "description": "建议基于的已分配量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "suggested_qty": {
+        "display_name": "建议量",
+        "description": "按订购倍数向上取整〔max(分配量,最小起订量)〕——向上取整超方言白名单，落为输入侧预处理字段（OQ-02）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "rounding_extra_qty": {
+        "display_name": "取整额外数量",
+        "description": "RU-08 衍生——建议量−分配量；单独展示并纳入后续风险评估",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "eta_meets_demand": {
+        "display_name": "交期满足",
+        "description": "false=到货晚于需求日期，不得视为解决当期缺料（测试十）",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "list_id": {
+        "display_name": "关联供应商参考清单",
+        "description": "指向供应商参考清单（VendorReferenceList）主键 list_id 的外键",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "material": "Material",
+      "supplier": "Supplier",
+      "ref_list": "VendorReferenceList",
+      "run": "CalculationRun"
+    }
+  },
+  "VendorReferenceList": {
+    "display_name": "供应商参考清单",
+    "table_name": "vendor_reference_list",
+    "description": "按供应商整理的建议参考清单，供内部审核；不等同采购订单、默认不外发（E18）",
+    "properties": {
+      "list_id": {
+        "display_name": "清单ID",
+        "description": "供应商参考清单唯一标识（平台先例命名）",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "run_id": {
+        "display_name": "运行编号",
+        "description": "清单归属运行；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "supplier_code": {
+        "display_name": "面向供应商编码",
+        "description": "清单按供应商整理；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "list_status": {
+        "display_name": "清单状态",
+        "description": "草稿/内部审核；默认不外发",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "review_note": {
+        "display_name": "审核备注",
+        "description": "内部审核意见（内部批准≠可用供给）",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "supplier": "Supplier",
+      "run": "CalculationRun"
+    }
+  },
+  "PeriodSupplyDemand": {
+    "display_name": "分期供需",
+    "table_name": "period_supply_demand",
+    "description": "按评估期逐期推演的供需行（期初/到货/流入/满足/流出/期末/未满足结转）（E19）",
+    "properties": {
+      "balance_id": {
+        "display_name": "平衡记录ID",
+        "description": "分期供需记录唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "run_id": {
+        "display_name": "运行编号",
+        "description": "分期数据随方案运行独立成套；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "供需物料编码",
+        "description": "分期推演按物料；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "period": {
+        "display_name": "期间",
+        "description": "演示粒度为月（假设 A-03），粒度本身为字段不硬编码",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "opening_qty": {
+        "display_name": "期初量",
+        "description": "第一期期初量取观察时间的可用库存（初始库存只计一次）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "arrival_qty": {
+        "display_name": "本期有效到货",
+        "description": "本期内有效到货量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "other_inflow_qty": {
+        "display_name": "其他有效流入",
+        "description": "到货之外的有效流入",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "required_qty": {
+        "display_name": "本期应满足需求",
+        "description": "本期应满足的需求量（含逾期结转，不重复累计）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "fulfilled_qty": {
+        "display_name": "实际满足需求量",
+        "description": "本期实际满足量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "other_outflow_qty": {
+        "display_name": "其他有效流出",
+        "description": "满足需求之外的有效流出",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "closing_qty": {
+        "display_name": "期末量",
+        "description": "RU-04 衍生——期初+有效到货+其他流入−满足−其他流出；本期期初=上期期末（递归结转语义见规则描述）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "unmet_carry_qty": {
+        "display_name": "未满足结转",
+        "description": "RU-05 衍生——本期应满足−实际满足；保留为逾期需求，结转不重复累计",
+        "data_type": "INTEGER",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "material": "Material",
+      "run": "CalculationRun"
+    }
+  },
+  "SlowMovingRisk": {
+    "display_name": "呆滞风险",
+    "table_name": "slow_moving_risk",
+    "description": "评估期末无法消耗的剩余风险（区分库存与未到货订单风险），含窗口后承诺与待核查项（E20）",
+    "properties": {
+      "risk_id": {
+        "display_name": "风险ID",
+        "description": "呆滞风险记录唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "run_id": {
+        "display_name": "运行编号",
+        "description": "风险归属运行；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "风险物料编码",
+        "description": "风险按物料计量；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "risk_type": {
+        "display_name": "风险类型",
+        "description": "库存风险/未到货订单风险（风险可先出现在未到货订单上，不等入库）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "remaining_qty": {
+        "display_name": "期末剩余量",
+        "description": "评估期末剩余数量",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "reserved_qty": {
+        "display_name": "经确认保留量",
+        "description": "保留与期后消耗不得重复覆盖同一用途，不得凭\"以后可能会用\"扣减",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "post_period_consumed_qty": {
+        "display_name": "经证实的期后消耗量",
+        "description": "期后已证实消耗",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "risk_qty": {
+        "display_name": "风险量",
+        "description": "RU-06 衍生——max(期末剩余−保留−期后消耗",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "risk_amount": {
+        "display_name": "风险金额",
+        "description": "RU-07 衍生——风险量×成本单价；预计损失另行结合回收价值/处置方式计算，不与风险金额混同",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "window_later_commit_qty": {
+        "display_name": "窗口后未消化承诺数量",
+        "description": "如 S2 旧料 4,000 颗（延期≠消除）；设计稿 E20 阶段⑤落位字段",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "window_later_commit_amount": {
+        "display_name": "窗口后未消化承诺金额",
+        "description": "如 S2 旧料 64,000 元；设计稿 E20 阶段⑤落位字段",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "pending_check_amount": {
+        "display_name": "待核查金额",
+        "description": "冻结库存单列待核查（1,000 颗/20,000 元，不认定为零风险或全额损失，OQ-09）；设计稿 E20 阶段⑤落位字段",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "material": "Material",
+      "run": "CalculationRun"
+    }
+  },
+  "SolutionPlan": {
+    "display_name": "处理方案",
+    "table_name": "solution_plan",
+    "description": "对呆滞风险的取消/减量/延期/替代消耗/转用方案（含不处理基线），调整后同套公式重算（E21）",
+    "properties": {
+      "plan_id": {
+        "display_name": "方案ID",
+        "description": "处理方案唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "run_id": {
+        "display_name": "运行编号",
+        "description": "方案重算在独立运行分支（同时为处置风险的复合外键成员）；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "plan_code": {
+        "display_name": "方案编号",
+        "description": "如 S0/S1/S2；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "action_type": {
+        "display_name": "动作类型",
+        "description": "不处理/取消或减量/延期/替代消耗/跨项目转用（同一批数量不能重复用于多个措施）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "material_code": {
+        "display_name": "处置风险物料编码",
+        "description": "与 run_id 组合指向被处置的呆滞风险记录（复合外键成员）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "adjusted_supply_id": {
+        "display_name": "调整供给编号",
+        "description": "取消/延期所调整的供给批次，可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "action_cost": {
+        "display_name": "行动成本",
+        "description": "如 S1 2,000 元",
+        "data_type": "DOUBLE",
+        "is_primary": false
+      },
+      "shortage_flag": {
+        "display_name": "是否缺料",
+        "description": "方案执行后是否造成缺料",
+        "data_type": "BOOLEAN",
+        "is_primary": false
+      },
+      "feasible_reason": {
+        "display_name": "可行性说明",
+        "description": "可行/不可行原因（含推荐标记，如 S1 可作为优先复核方案）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "risk_id": {
+        "display_name": "关联呆滞风险",
+        "description": "指向呆滞风险（SlowMovingRisk）主键 risk_id 的外键",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "risk": "SlowMovingRisk",
+      "adjusted_supply": "Supply",
+      "run": "CalculationRun"
+    }
+  },
+  "HistoricalCase": {
+    "display_name": "历史呆滞案例",
+    "table_name": "historical_case",
+    "description": "已发生呆滞的独立分析案例（独立数据包不混算）：还原/归因/可干预结论的宿主（E22）",
+    "properties": {
+      "case_id": {
+        "display_name": "案例编号",
+        "description": "如 X8 案例包",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "project_code": {
+        "display_name": "历史项目编码",
+        "description": "案例归属独立历史项目（P-X8）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "old_material_code": {
+        "display_name": "案例旧料编码",
+        "description": "案例中被替代/呆滞的旧料（H-WIFI-OLD）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "new_material_code": {
+        "display_name": "案例新料编码",
+        "description": "案例中切换后的新料（H-WIFI-NEW）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "observation_start": {
+        "display_name": "观察起始日期",
+        "description": "如 2025-07-01",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "observation_end": {
+        "display_name": "观察截止日期",
+        "description": "如 2025-09-30",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "future_demand_check_end": {
+        "display_name": "未来需求检查至",
+        "description": "如 12-31",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "evidence_status": {
+        "display_name": "证据状态",
+        "description": "完整/缺证（缺证推导标记为不可验证）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "rebuilt_opening_qty": {
+        "display_name": "还原期初库存",
+        "description": "RU-10 输入——观察期初库存",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "received_in_qty": {
+        "display_name": "有效收货及其他入库",
+        "description": "RU-10 输入——出入库分类互斥，调拨处置不重复计",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "consumed_out_qty": {
+        "display_name": "实际消耗及其他出库",
+        "description": "RU-10 输入——实际消耗与出库合计",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "rebuilt_closing_qty": {
+        "display_name": "还原期末库存",
+        "description": "RU-10 衍生——期初+有效收货及其他入库−实际消耗及其他出库；不可取消采购承诺单独核算不混入物理库存",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "stock_check_diff": {
+        "display_name": "核对差异",
+        "description": "还原值与记录不一致先列差异不判呆滞",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "baseline_risk_qty": {
+        "display_name": "不干预风险量",
+        "description": "RU-11 输入——不干预情景的风险量（8,000）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "intervened_risk_qty": {
+        "display_name": "干预后风险量",
+        "description": "RU-11 输入——及时干预情景的风险量（2,000）",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "simulated_reducible_qty": {
+        "display_name": "模拟可减少风险量",
+        "description": "RU-11 衍生——max(不干预−干预后",
+        "data_type": "INTEGER",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "project": "Project",
+      "old_material": "Material",
+      "new_material": "Material"
+    }
+  },
+  "HistoricalMilestone": {
+    "display_name": "历史关键时点",
+    "table_name": "historical_milestone",
+    "description": "案例时间线锚点（风险形成/取消窗口/观察决策/结果核实），回答何时已知什么（E23）",
+    "properties": {
+      "milestone_id": {
+        "display_name": "时点ID",
+        "description": "历史关键时点唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "case_id": {
+        "display_name": "案例编号",
+        "description": "时点归属案例；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "milestone_type": {
+        "display_name": "时点类型",
+        "description": "本例三个时点，其他案例不必相同（时点数可变）；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "milestone_date": {
+        "display_name": "时点日期",
+        "description": "如 2025-07-15 工程切换/07-22 最晚启动取消/09-30 核实",
+        "data_type": "DATE",
+        "is_primary": false
+      },
+      "known_info": {
+        "display_name": "当时已知信息",
+        "description": "回到该时点只使用当时已知信息（缺证版本忍住不给确定结论）",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "case": "HistoricalCase"
+    }
+  },
+  "CauseAttribution": {
+    "display_name": "原因归因",
+    "table_name": "cause_attribution",
+    "description": "呆滞案例原因结论行：归因数量受总量上限约束，余量保留未归因（E24）",
+    "properties": {
+      "attribution_id": {
+        "display_name": "归因ID",
+        "description": "原因归因记录唯一标识",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "case_id": {
+        "display_name": "案例编号",
+        "description": "归因行归属案例；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "cause_type": {
+        "display_name": "原因类型",
+        "description": "如 停采过晚/未归因（不应把全部 8；与原复合键其余成员联合唯一（业务唯一性语义保留）",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "attributed_qty": {
+        "display_name": "归因数量",
+        "description": "各原因之和≤案例呆滞总量（RU-14② 约束），无法确认部分保留为未归因",
+        "data_type": "INTEGER",
+        "is_primary": false
+      },
+      "evidence_ref": {
+        "display_name": "证据引用",
+        "description": "该归因行的证据出处",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "conclusion_level": {
+        "display_name": "结论层级",
+        "description": "能确认的事实/待核实/不可下结论（枚举分级：主因/次因/待核实，非数值量）",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "case": "HistoricalCase"
+    }
+  },
+  "PreventionRule": {
+    "display_name": "预防规则",
+    "table_name": "prevention_rule",
+    "description": "历史教训沉淀的检查规则，经审核并试运行后启用；变更已获知且影响可判断时触发（E25）",
+    "properties": {
+      "rule_id": {
+        "display_name": "规则编号",
+        "description": "规则草案唯一编号",
+        "data_type": "STRING",
+        "is_primary": true
+      },
+      "source_case_id": {
+        "display_name": "证据来源案例编号",
+        "description": "规则草案的证据来源案例（完整证据案例），可空",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "rule_content": {
+        "display_name": "规则内容",
+        "description": "如\"已批准的工程变更导致未来旧料需求减少时，检查关联的未到货订单…\"",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "trigger_condition": {
+        "display_name": "触发条件",
+        "description": "变更已获知且影响能够判断时触发，不等 BOM 正式生效",
+        "data_type": "STRING",
+        "is_primary": false
+      },
+      "rule_status": {
+        "display_name": "规则状态",
+        "description": "草案→审核→试运行→启用（审核试运行后才启用）",
+        "data_type": "STRING",
+        "is_primary": false
+      }
+    },
+    "links": {
+      "source_case": "HistoricalCase"
+    }
+  }
+}

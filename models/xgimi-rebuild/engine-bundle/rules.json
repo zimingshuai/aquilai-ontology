@@ -1,0 +1,150 @@
+{
+  "rules": [
+    {
+      "rule_type": "derived_property",
+      "name": "标准用量",
+      "upstream": [
+        "BomLine"
+      ],
+      "logic": "std_usage_qty: line_qty / base_qty",
+      "downstream": "Computed Property",
+      "description": "标准用量 = BOM 行用量 ÷ BOM 基准数量（演示各层 1:1 → 标准用量 1）；点检用量比较与下层展开的基准口径。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "下层物料需求",
+      "upstream": [
+        "BomLine"
+      ],
+      "logic": "lower_level_demand_qty: SUM(project.demands.required_qty) * std_usage_qty / COALESCE(yield_rate, 1)",
+      "downstream": "Computed Property",
+      "description": "下层物料需求 = 上层需求 × 标准用量 ÷ 有效良率。本 DSL 落单层展开口径（挂载 BomLine，fact-cards 候选之一，假设 A-08）：取隶属项目需求合计×标准用量÷良率（良率仅计明确适用层级，无损耗取 1，COALESCE 兜底；同一损耗不得经良率与损耗系数重复计）；多层逐层展开后同物料汇总属多跳反向聚合（OQ-03 引擎沙箱验证，不支持则逐级衍生）；替代料不作为额外必需组件重复展开。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "订单未收货量",
+      "upstream": [
+        "Supply"
+      ],
+      "logic": "open_order_qty: MAX(order_qty - received_qty - cancelled_qty - closed_unreceived_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "max（订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0）；收货转库存后不再按原未收数量重复计（配套 StockMovement.source_supply 溯源）。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "分期期末量",
+      "upstream": [
+        "PeriodSupplyDemand"
+      ],
+      "logic": "closing_qty: opening_qty + arrival_qty + other_inflow_qty - fulfilled_qty - other_outflow_qty",
+      "downstream": "Computed Property",
+      "description": "本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；本期期初量 = 上期期末量、初始库存只计一次（跨期递归结转由运行侧逐期推演承载，字段级公式如上）。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "分期未满足需求",
+      "upstream": [
+        "PeriodSupplyDemand"
+      ],
+      "logic": "unmet_carry_qty: required_qty - fulfilled_qty",
+      "downstream": "Computed Property",
+      "description": "本期未满足需求 = 本期应满足需求 − 实际满足需求量；未满足保留为逾期需求，后续结转时不得重复累计。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "期末风险量",
+      "upstream": [
+        "SlowMovingRisk"
+      ],
+      "logic": "risk_qty: MAX(remaining_qty - reserved_qty - post_period_consumed_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "风险量 = max（评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0）；保留与期后消耗不得重复覆盖同一用途，不得凭\"以后可能会用\"扣减。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "风险金额",
+      "upstream": [
+        "SlowMovingRisk"
+      ],
+      "logic": "risk_amount: risk_qty * material.cost_unit_price",
+      "downstream": "Computed Property",
+      "description": "风险金额 = Σ（风险数量 × 对应成本单价）；预计损失另行结合回收价值/处置方式计算，不与风险金额混同；窗口外承诺单独展示（延期≠消除，见 window_later_commit_* 字段）。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "建议量取整",
+      "upstream": [
+        "SourcingSuggestion"
+      ],
+      "logic": "rounding_extra_qty: suggested_qty - allocated_qty",
+      "downstream": "Computed Property",
+      "description": "建议量 = 按订购倍数向上取整〔max（分配量, 最小起订量）〕——向上取整函数超方言白名单，suggested_qty 落为输入侧预处理字段（OQ-02）；DSL 承载可衍生的取整额外数量 = 建议量 − 分配量，单独展示并纳入后续风险评估；交期晚于需要日期不得视为解决当期缺料（eta_meets_demand）。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "待授权数量",
+      "upstream": [
+        "MaterialAuthorization"
+      ],
+      "logic": "pending_auth_qty: gross_demand_qty - authorized_qty",
+      "downstream": "Computed Property",
+      "description": "待授权数量 = 项目物料毛需求 − 已授权覆盖数量；参考金额 = 待授权数量 × 成本单价（查询侧按 material.cost_unit_price 计算，不单列字段）；授权不增减物理供给（授权 v2 后物理缺口仍 15,000）。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "还原期末库存",
+      "upstream": [
+        "HistoricalCase"
+      ],
+      "logic": "rebuilt_closing_qty: rebuilt_opening_qty + received_in_qty - consumed_out_qty",
+      "downstream": "Computed Property",
+      "description": "期末库存 = 期初库存 + 有效收货及其他入库 − 实际消耗及其他出库；出入库分类互斥、调拨处置不重复计；与记录不一致先列差异（stock_check_diff）不判呆滞；不可取消采购承诺单独核算不混入物理库存。"
+    },
+    {
+      "rule_type": "derived_property",
+      "name": "模拟可减少风险量",
+      "upstream": [
+        "HistoricalCase"
+      ],
+      "logic": "simulated_reducible_qty: MAX(baseline_risk_qty - intervened_risk_qty, 0)",
+      "downstream": "Computed Property",
+      "description": "max（不干预风险量 − 干预后风险量, 0）；同评估期间同口径，回到历史决策时点只使用当时已知信息；证据不足时系统能忍住不给确定结论（evidence_status=缺证 时推导标记不可验证）。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "呆滞风险触发",
+      "upstream": [
+        "SlowMovingRisk"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "risk_qty",
+            "operator": ">",
+            "value": 0
+          }
+        ]
+      },
+      "downstream": "notify_slow_moving_risk",
+      "description": "未覆盖数量 > 0（阈值预先确定，一次有效评估即触发）；风险可先出现在未到货订单上，不等入库。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。"
+    },
+    {
+      "rule_type": "trigger",
+      "name": "换料未到货检查",
+      "upstream": [
+        "EcnRecord"
+      ],
+      "logic": {
+        "ALL": [
+          {
+            "field": "approve_status",
+            "operator": "==",
+            "value": "已批准"
+          }
+        ]
+      },
+      "downstream": "check_unarrived_orders_for_ecn",
+      "description": "已批准的工程变更导致未来旧料需求减少时 → 检查关联的未到货订单，计算无法被需求覆盖的数量，提示可取消数量、办理时间及截止日期；变更已获知且影响能够判断时触发，不等 BOM 正式生效（前置条件以 approve_status=已批准 字段化，\"旧料需求减少\"的判定明细由下游动作承载）。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。"
+    }
+  ]
+}

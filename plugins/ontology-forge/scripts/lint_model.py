@@ -261,6 +261,11 @@ def _check_links(entities: dict, report: Report) -> None:
                 report.warn("lint13 关系语义名", where,
                             "缺少关系业务语义名（name）——只表达'有指向'未说清是什么关系，"
                             "建议显式形态声明 name（如 订购物料/隶属项目）")
+            # lint13b：关系业务定义缺失（v0.3.7，用户实证平台侧全空串）
+            has_desc = isinstance(raw, dict) and isinstance(raw.get("description"), str) and raw["description"].strip()
+            if not has_desc:
+                report.warn("lint13 关系语义名", where,
+                            "缺少关系业务定义（description）——一句话说明该关系表达的业务含义/约束，进平台关系的业务定义字段")
     for key in _DUP_KEYS:
         report.err("lint3 links", "YAML 结构", f"重复键 {key!r}（links 别名/字段名必须实体内唯一）")
 
