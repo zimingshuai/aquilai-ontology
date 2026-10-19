@@ -34,6 +34,18 @@
 - **种子是唯一分发资产**：随插件分发；`seeds/` 的任何增长都意味着插件能力的进化（记得升版本号）
 - **同域更新走增量**（target_engine 指向既有域），禁止从零重跑（命名漂移防护，glossary 是数据源）
 
+## 分发（给别的智能体用）
+
+**分发单元 = `plugins/ontology-forge/` 一个目录**（自包含：manifest+技能+脚本+种子+离线缓存），仓库其余部分是工厂资产不分发。
+
+| 目标智能体 | 给什么 | 安装方式 |
+|---|---|---|
+| ZCode | `plugins/` 文件夹或 zip | Marketplace → Add 指向目录 → Install |
+| WorkBuddy | `workbuddy/aquilair-fde/` 镜像 | WorkBuddy Expert 安装（镜像不含 scripts，从源仓库取） |
+| Claude Code 兼容 | 同 ZCode | manifest 探测链兼容 |
+
+打包：`git archive HEAD plugins/ontology-forge -o ontology-forge-<版本>.zip`。运行依赖：Python 3.10+ 与 pyyaml（图片另需 Playwright）。
+
 ## 快速链接
 
 - 使用手册：`plugins/ontology-forge/docs/user-guide.md`
