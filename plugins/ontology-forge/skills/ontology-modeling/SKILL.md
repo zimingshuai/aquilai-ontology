@@ -30,7 +30,11 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 6. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——13 条确定性检查。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
 7. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 8. **交付初版候选本体（两大核心交付物）**：`render_topology.py --image both` 产出 **topology.png/svg**（完整版拓扑）；`compile_model.py --target studio-model` 产出 **studio-model.yaml**。**你不执行任何生产写入**；`--target engine` 仅用户明确需要时可选导出。产物标注 draft 版本，进入人审（ontology-review 技能）。
-9. **导入平台后自检 / 沉淀回流（可选闭环）**：用户导入平台成功后，下载该工作区 SDK 存档为 `models/<domain>/platform-sdk.py`，跑 `check_platform_sync.py` 四维比对（平台手改当场现形，实证：xgimi 曾抓到 Material 主键被改），差异按用户裁决写回；人审通过后将口径/术语沉淀回域知识库（红线：本体 DSL 唯一权威，知识库只是沉淀层）。
+9. **导入平台后自检 / 资产沉淀回流（v0.4.0 起为域闭环标准动作）**：域定稿（人审通过）后执行两项资产回流——
+   - **glossary 回流**：该域全部实体命名登记进 `seeds/glossary.md`（附域版本戳），同域重跑/增量从此自动复用命名（受控词表 lint9 生效的数据源）；
+   - **seeds 域速查回流**：从定稿 DSL 生成 `seeds/<domain>-entities.md`（实体名/表名/展示名/主键/links/属性数——对齐 fnb/mfg 速查格式），成为该域后续增量建模与跨域对齐的既有资产参照。
+   原有知识库沉淀（口径/术语进 aquilair-knowledge）并行可选。**红线不变**：本体 DSL 唯一权威，glossary/seeds/知识库都是资产层。
+   导入平台自检（check_platform_sync + SDK 存证）同前。：用户导入平台成功后，下载该工作区 SDK 存档为 `models/<domain>/platform-sdk.py`，跑 `check_platform_sync.py` 四维比对（平台手改当场现形，实证：xgimi 曾抓到 Material 主键被改），差异按用户裁决写回；人审通过后将口径/术语沉淀回域知识库（红线：本体 DSL 唯一权威，知识库只是沉淀层）。
 
 M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲突拒绝）、diff 拓扑（`render_topology.py --diff`）、studio-model 双格式编译与模板 lint（`compile_model.py --target both` / `lint_studio_model.py`）、ontology-review 评审技能。M3 起追加：action 骨架生成（`gen_action_skeleton.py`）、WorkBuddy 侧平移。
 
