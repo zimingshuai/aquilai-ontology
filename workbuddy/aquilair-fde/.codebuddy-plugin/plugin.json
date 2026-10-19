@@ -1,7 +1,7 @@
 {
   "name": "aquilair-fde",
-  "version": "0.1.0",
-  "description": "Aquilair FDE ontology expert: turns business documents (DDL, data dictionaries, requirement/rule docs, interviews) into reviewable ontology metadata DSL drafts with hard lint, CQ verification, topology visualization and engine-registration-format export. AI only produces drafts; human review is the sole authority gate. Phase 1 runs as local scripts + file export (Studio MCP hook-up reserved for phase 2).",
+  "version": "0.4.0",
+  "description": "LLM 辅助本体元数据设计 v0.4.0：设计稿确认关卡/拓扑图片+studio-model yaml 双交付/OQ 生命周期/资产回流进化",
   "author": {
     "name": "ElitesLand Aquilair"
   },

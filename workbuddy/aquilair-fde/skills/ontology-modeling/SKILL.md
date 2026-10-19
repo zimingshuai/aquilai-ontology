@@ -4,7 +4,7 @@ description: 本体建模主技能——十步流水线编排核心（M1 版覆�
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.7），修改请改源侧后重新平移。
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.4.0），修改请改源侧后重新平移。
 
 # 本体建模主技能（ontology-modeling）
 
@@ -22,6 +22,7 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 
 1. **场景圈定**：读 brief.yaml + B_scenarios → 产出 **Scenario Charter**（业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ **5~10 条能力问题 CQ**（写法见 references/cq-guide.md）。**Charter 未经用户确认，不进入抽取**。
 2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（`fact-cards.md`，markdown 表格载体：候选/来源/置信度/状态/三源交叉列）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。
+   **规则抽取强制扫描区（v0.3.8，两版对照实证：触发规则最密集的区域恰恰不在正文公式段）**：逐节扫描文档的 ①异常处理/异常小节 ②处理步骤里的"当…则…"句式 ③设计红线/约束段 ④附录表格的限制列与注释（如 PS-1002"未获放行不参与供给"）⑤演示案例中"系统应识别/应拒绝"的期望行为——产出**异常语义→规则映射表**（每条异常语义注明落到的规则或"不建规则的理由"），随 fact-cards 呈现，不允许静默跳过。
 3. **★设计稿合成（确认点①与②的呈审材料）**：从事实卡片合成呈审材料包——
    - **design-proposal.md**（模板见 [`references/design-proposal-template.md`](references/design-proposal-template.md)）：实体表（名称/展示名/主键/关键字段/来源）、关系表（A→B/语义名/基数/来源）、规则表（类型/口径/来源）、CQ 映射、open_questions/conflicts——纯自然语言+表格，FDE 不需要懂任何格式规范就能审；
    - **交互式拓扑**（核心呈审图）：骨架 DSL（实体+links[语义名]+主键与名称字段+layer 分层）→ `render_topology.py --interactive` 产出**自包含 HTML**（分层+点击聚焦+全部关系名开关，浏览器直接打开）+ `--image both` 出静态 PNG/SVG（发人或存档两用）；
@@ -31,13 +32,18 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 6. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——13 条确定性检查。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
 7. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 8. **交付初版候选本体（两大核心交付物）**：`render_topology.py --image both` 产出 **topology.png/svg**（完整版拓扑）；`compile_model.py --target studio-model` 产出 **studio-model.yaml**。**你不执行任何生产写入**；`--target engine` 仅用户明确需要时可选导出。产物标注 draft 版本，进入人审（ontology-review 技能）。
-9. **导入平台后自检 / 沉淀回流（可选闭环）**：用户导入平台成功后，下载该工作区 SDK 存档为 `models/<domain>/platform-sdk.py`，跑 `check_platform_sync.py` 四维比对（平台手改当场现形，实证：xgimi 曾抓到 Material 主键被改），差异按用户裁决写回；人审通过后将口径/术语沉淀回域知识库（红线：本体 DSL 唯一权威，知识库只是沉淀层）。
+9. **导入平台后自检 / 资产沉淀回流（v0.4.0 起为域闭环标准动作）**：域定稿（人审通过）后执行两项资产回流——
+   - **glossary 回流**：该域全部实体命名登记进 `seeds/glossary.md`（附域版本戳），同域重跑/增量从此自动复用命名（受控词表 lint9 生效的数据源）；
+   - **seeds 域速查回流**：从定稿 DSL 生成 `seeds/<domain>-entities.md`（实体名/表名/展示名/主键/links/属性数——对齐 fnb/mfg 速查格式），成为该域后续增量建模与跨域对齐的既有资产参照。
+   原有知识库沉淀（口径/术语进 aquilair-knowledge）并行可选。**红线不变**：本体 DSL 唯一权威，glossary/seeds/知识库都是资产层。
+   导入平台自检（check_platform_sync + SDK 存证）同前。：用户导入平台成功后，下载该工作区 SDK 存档为 `models/<domain>/platform-sdk.py`，跑 `check_platform_sync.py` 四维比对（平台手改当场现形，实证：xgimi 曾抓到 Material 主键被改），差异按用户裁决写回；人审通过后将口径/术语沉淀回域知识库（红线：本体 DSL 唯一权威，知识库只是沉淀层）。
 
 M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲突拒绝）、diff 拓扑（`render_topology.py --diff`）、studio-model 双格式编译与模板 lint（`compile_model.py --target both` / `lint_studio_model.py`）、ontology-review 评审技能。M3 起追加：action 骨架生成（`gen_action_skeleton.py`）、WorkBuddy 侧平移。
 
 ## 四、建模铁律（违背即违规）
 
 1. **不脑补**：资料包没说的信息一律进 `open_questions`（含 missing_from 指明缺在哪份材料），人审前必须清零或标记接受；禁止用常识/记忆补齐。
+   **OQ 生命周期（v0.3.9 沉淀，xgimi 实战验证）**：生成（抽取中随手登记）→ 分类（四态：等引擎/等业务方/已解决/待输入——裁决时不删原文只加 resolution）→ **pending-business 类汇总成业务问询单**（按【问什么/为什么问/不回复的影响/期望答复形态】组织，业务方零技术门槛可答，模板见 references/business-inquiry-template.md）→ 回复后补 DSL 并改 status → 定稿前 OQ 清零报告（全部 resolved 或显式接受风险）。增量建模时继承上版 OQ 不得丢失。
 2. **增量优先复用**：brief.yaml 的 target_engine 为 fnb/mfg 时，先读 `seeds/` 既有实体速查，复用既有实体与术语，只建差异；禁止重复建模已有对象。
 3. **LLM 不写自由 YAML**：起草时先在内部形成结构化 JSON（遵循 dsl-spec），再落为 YAML 文件；落盘后必须过 lint。
 4. **分步确认**：Charter 确认（点①）→ **设计稿逐表确认（点②，硬关卡：design-proposal.md + 骨架拓扑未经确认禁止生成完整 DSL）** → DSL/CQ 产物呈审；不一次吐全量。

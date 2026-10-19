@@ -18,7 +18,13 @@ entities: { ... }             # 实体（见 §2），必填
 rules: [ ... ]                # 规则（见 §3），可空
 actions: [ ... ]              # 动作（见 §4），一期不含，保留槽位
 competency_questions: [ ... ] # 能力问题（见 §5）
-open_questions: [ ... ]       # 待确认问题（禁止脑补，人审前必须清零或标记接受）
+open_questions:                # 待确认问题（v0.3.9 固化 schema——OQ 是建模质量的核心承载，禁止脑补铁律的落点）
+  - id: OQ-NN                  #   域内唯一编号
+    q: <string>                #   问题原文（一句话）
+    missing_from: <string>     #   缺在哪份材料/哪个环节（可空——方言边界类缺的是引擎能力而非材料）
+    status: resolved | pending-engine | pending-business | resolved-pending-input
+                               #   四态：已解决 / 等引擎侧 / 等业务方 / 已解决但待输入佐证
+    resolution: <string>       #   裁决留痕（已解决/已归类时必填：裁决内容+日期+裁决人；原文永不删除）
 conflicts:                    # 口径冲突记录（v0.3 固化 schema，结构漂移=不合规）
   - topic: <string>           #   冲突主题（术语/口径名）
     side_a: { claim: <定义>, source: <来源文档#位置> }
@@ -66,7 +72,8 @@ entities:
     links:
       supplier: Supplier                          # 简写形态：外键字段 = 目标主键字段名（v0.2 约定不变）
       project: { target: Project, name: 隶属项目 }             # 显式形态：fk 可缺省（视同简写约定），仅声明关系语义名
-      demand: { target: Demand, fk: [demand_id], name: 项目需求 }  # 显式形态：外键 + 关系语义名
+      demand: { target: Demand, fk: [demand_id], name: 项目需求, description: 项目各来源需求（MPS/订单/预测）的挂载 }  # 显式形态：外键+语义名+业务定义
+      # description（v0.3.7，用户实证：关系只有名字没有业务定义，平台侧全部空串）：一句话说清这条关系表达的业务含义/约束
       sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code] }  # 复合外键（桥接引用）
 ```
 
@@ -168,6 +175,8 @@ actions:
 **编译目标**：`engine-bundle/actions.json`——结构对齐 mfg 引擎 get_meta_actions 实测：`{actions: [{action_name, description, parameters, supports_sandbox, body: <body_ref 文件内容字符串>}], sandbox_execution: {parameter: "sandbox", accepts: ..., usage: ...}}`。
 
 **平台关系的完整字段要求（SDK RelationDefinition 实证）**：code / source / target / cardinality（1:1、1:N、N:1、N:N 四种）/ source_name 与 target_name（正反向访问名）/ source_field 与 target_field——**全部非空**。yaml 模板的 link_types 需 code/source/target/name/cardinality/sourcePropertyCode/targetPropertyCode 非空（name 必填为 2026-10-14 导入平台实证踩坑）；正反向名与 N:N 由平台 metadata-service 在生成 SDK 时承载，DSL 侧维持单 name + 桥表建模。
+
+**平台连线模型（2026-10-15 workspace 999 浏览器实测，决定性）**：平台"新建关系"表单只收 关系名称/源实体/目标实体/基数；保存后详情面板的关联属性区——**1 侧自动填充为目标实体主键且禁改（"主键自动填充"），N 侧选单外键字段（必填，未完善弹"请先完善必填项"告警）**。**平台连线 = 单字段对硬约束，不支持复合主键连线**——复合主键实体必须单列主键化（Palantir 路线：独立业务编码主键，平台先例 list_id）才能进平台；复合键的联合唯一性以普通属性 + description 语义承载。
 
 **lint 新增（第 10-11 条）**：admission 规则的 upstream 引用的 action 必须在 actions 中声明；admission 的 `@param:` 引用必须对应 action parameters 的参数名。
 

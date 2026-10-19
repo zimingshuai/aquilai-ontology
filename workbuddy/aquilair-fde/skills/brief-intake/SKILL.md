@@ -4,7 +4,7 @@ description: 建模资料包摄取技能——本体建模任务的统一入口�
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
-> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.3.7），修改请改源侧后重新平移。
+> **镜像注记**：镜像自 ZCode 侧 plugins/ontology-forge（v0.4.0），修改请改源侧后重新平移。
 
 # 建模资料摄取（brief-intake）
 
@@ -27,6 +27,21 @@ models/<domain>/modeling-brief/
 ```
 
 判型细则见 [`references/intake-rules.md`](references/intake-rules.md)。
+
+## 一点五、资产目录自动初始化（v0.4.0，空白场景零准备开工）
+
+新域首次触达（models/ 下无该域名目录）时，**第一步先自动创建标准资产树**（不要求用户做任何准备）：
+
+```text
+models/<domain>/
+├── modeling-brief/
+│   ├── A_schema/  B_scenarios/  C_interviews/  D_reference/   # 四类归位区
+│   └── brief.yaml                                                # 摄取中生成
+├── design-proposal.md / model.yaml / topology.*                  # 流水线后续产物位
+└── README.md            # 自动生成：本域资产说明（域名/场景/owner/当前版本/OQ 状态）
+```
+
+已初始化的域再次进入时**继承不重建**（增量资料追加归位，既有产物与 OQ 不丢失）。域 README 随流水线里程碑更新（设计稿确认/定稿/终版时刷新状态行）。
 
 ## 二、六步摄取流程（强制顺序）
 
