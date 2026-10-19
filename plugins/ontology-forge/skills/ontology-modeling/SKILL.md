@@ -20,6 +20,7 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 
 1. **场景圈定**：读 brief.yaml + B_scenarios → 产出 **Scenario Charter**（业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ **5~10 条能力问题 CQ**（写法见 references/cq-guide.md）。**Charter 未经用户确认，不进入抽取**。
 2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（`fact-cards.md`，markdown 表格载体：候选/来源/置信度/状态/三源交叉列）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。
+   **规则抽取强制扫描区（v0.3.8，两版对照实证：触发规则最密集的区域恰恰不在正文公式段）**：逐节扫描文档的 ①异常处理/异常小节 ②处理步骤里的"当…则…"句式 ③设计红线/约束段 ④附录表格的限制列与注释（如 PS-1002"未获放行不参与供给"）⑤演示案例中"系统应识别/应拒绝"的期望行为——产出**异常语义→规则映射表**（每条异常语义注明落到的规则或"不建规则的理由"），随 fact-cards 呈现，不允许静默跳过。
 3. **★设计稿合成（确认点①与②的呈审材料）**：从事实卡片合成呈审材料包——
    - **design-proposal.md**（模板见 [`references/design-proposal-template.md`](references/design-proposal-template.md)）：实体表（名称/展示名/主键/关键字段/来源）、关系表（A→B/语义名/基数/来源）、规则表（类型/口径/来源）、CQ 映射、open_questions/conflicts——纯自然语言+表格，FDE 不需要懂任何格式规范就能审；
    - **交互式拓扑**（核心呈审图）：骨架 DSL（实体+links[语义名]+主键与名称字段+layer 分层）→ `render_topology.py --interactive` 产出**自包含 HTML**（分层+点击聚焦+全部关系名开关，浏览器直接打开）+ `--image both` 出静态 PNG/SVG（发人或存档两用）；
