@@ -1,4 +1,4 @@
-# 本体拓扑：xgimi-rebuild（0.2.0-draft.2）
+# 本体拓扑：xgimi-rebuild（1.0.0-draft.1）
 
 > 由 render_topology.py 从 DSL 自动生成；仅含实体 + links + 规则三要素，不含能力问题（CQ）。
 > 图例：🔑 = 主键；关联线 `目标 "1" --> "*" 持有方 : 别名` = 持有方实体的 links 别名持有指向目标的引用；
@@ -53,7 +53,7 @@
         +yield_rate : DOUBLE
         +valid_from : DATE
         +valid_to : DATE
-        +known_at : TIMESTAMP
+        +known_at : STRING
         +std_usage_qty : DOUBLE
         +lower_level_demand_qty : DOUBLE
     }
@@ -132,7 +132,7 @@
     }
     class CalculationRun {
         +run_id : STRING 🔑
-        +known_at : TIMESTAMP
+        +known_at : STRING
         +data_version : STRING
         +rule_version : STRING
         +branch : STRING
@@ -274,13 +274,14 @@
         +rule_status : STRING
     }
     note for BomLine "【衍生】std_usage_qty: line_qty / base_qty<br/>【衍生】lower_level_demand_qty: SUM(project.demands.required_qty) * std_usage_qty / COALESCE(yield_rate, 1)"
-    note for Supply "【衍生】open_order_qty: MAX(order_qty - received_qty - cancelled_qty - closed_unreceived_qty, 0)"
+    note for Supply "【衍生】open_order_qty: MAX(order_qty - received_qty - cancelled_qty - closed_unreceived_qty, 0)<br/>【触发】冻结供给排除待核查: supply_type == 质检冻结库存"
     note for PeriodSupplyDemand "【衍生】closing_qty: opening_qty + arrival_qty + other_inflow_qty - fulfilled_qty - other_outflow_qty<br/>【衍生】unmet_carry_qty: required_qty - fulfilled_qty"
     note for SlowMovingRisk "【衍生】risk_qty: MAX(remaining_qty - reserved_qty - post_period_consumed_qty, 0)<br/>【衍生】risk_amount: risk_qty * material.cost_unit_price<br/>【触发】呆滞风险触发: risk_qty ＞ 0"
     note for SourcingSuggestion "【衍生】rounding_extra_qty: suggested_qty - allocated_qty"
     note for MaterialAuthorization "【衍生】pending_auth_qty: gross_demand_qty - authorized_qty"
     note for HistoricalCase "【衍生】rebuilt_closing_qty: rebuilt_opening_qty + received_in_qty - consumed_out_qty<br/>【衍生】simulated_reducible_qty: MAX(baseline_risk_qty - intervened_risk_qty, 0)"
-    note for EcnRecord "【触发】换料未到货检查: approve_status == 已批准"
+    note for EcnRecord "【触发】换料未到货检查: approve_status == 已批准 且 evidence_status == 完整"
+    note for ChangeRecord "【触发】授权数量变化重核算: change_type == 授权变化<br/>【触发】替代关系变化复核分配: change_type == 替代关系变化"
     Supplier "1" --> "*" SupplierSupplyCondition : 供货供应商
     Material "1" --> "*" SupplierSupplyCondition : 适用物料
     Material "1" --> "*" UnitConversion : 换算物料

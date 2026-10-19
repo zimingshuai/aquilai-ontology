@@ -5,7 +5,7 @@
 # 规则形态说明：RU-01~RU-11 落 derived_property（表达式按 dsl-spec §3.1 方言白名单）；RU-12/RU-13 落 trigger；
 # RU-14（复合约束）登记 OQ-12 动作域候选（admission 须挂 actions 段声明的动作，本 POC 只读无动作域）。
 ontology: xgimi-rebuild
-version: 0.2.0-draft.2
+version: 1.0.0-draft.1
 base_version:                           # 从零建库，无引擎快照基线
 governance:
   owner: 聂江锋（推断，OQ-11 待确认）     # business_owner 推断值，用户确认后回写
@@ -123,7 +123,7 @@ entities:
       yield_rate: {display_name: 良率, description: 有效良率（主案例 1，测试五 0.98/0.99）；无损耗取 1；损耗系数是否增设见 OQ-10, type: DOUBLE, uom: 比率, source: "测试五"}
       valid_from: {display_name: 生效起始日期, description: 如 2026-11-01 起；设计稿 E03 阶段⑤补全字段, type: DATE, source: "§11.2"}
       valid_to: {display_name: 生效截止日期, description: 如 至 2026-10-31；设计稿 E03 阶段⑤补全字段, type: DATE, source: "§11.2"}
-      known_at: {display_name: 版本可见时间, description: 该行记录何时进入数据版本（V0 之前/V1）；版本由各记录 known_at 承载（假设 A-02）, type: TIMESTAMP, source: "§11.2/§11.1"}
+      known_at: {display_name: 版本可见时间, description: 该行记录何时进入数据版本（V0 之前/V1）；版本由各记录 known_at 承载（假设 A-02）（两版拉通裁决#5：TIMESTAMP→STRING——附录 BOM 行表存在"V0 之前"取值无法日期化，版本号口径承载；与旧版 OQ-12 裁决对齐）, type: STRING, source: "§11.2/§11.1"}
       std_usage_qty: {display_name: 标准用量, description: RU-01 衍生——行用量÷基准数量, type: DOUBLE, uom: 件, derived: true, source: "§4.2/inspection-rules.csv"}
       lower_level_demand_qty: {display_name: 下层物料需求, description: RU-02 衍生（单层展开口径）——上层需求×标准用量÷有效良率；多层递归展开待 OQ-03 引擎验证, type: DOUBLE, uom: 件, derived: true, source: "§4.3②/测试五"}
     links:
@@ -282,7 +282,7 @@ entities:
     provenance: {doc: "xgimi-poc-doc §4.1/§11.1；fact-cards FC-E-13", reviewed: false}
     properties:
       run_id: {display_name: 运行编号, description: 如 V2 策备运行快照, type: STRING, primary: true, source: "§11.1"}
-      known_at: {display_name: 观察时点, description: 如 2026-09-30 09:00, type: TIMESTAMP, source: "§11.1"}
+      known_at: {display_name: 观察时点, description: 如 2026-09-30 09:00（两版拉通裁决#5：TIMESTAMP→STRING——附录 BOM 行表存在"V0 之前"取值无法日期化，版本号口径承载；与旧版 OQ-12 裁决对齐）, type: STRING, source: "§11.1"}
       data_version: {display_name: 数据版本, description: V0—V3（版本由各记录 known_at 承载，假设 A-02）, type: STRING, source: "§11.1"}
       rule_version: {display_name: 规则版本, description: 每次运行保存规则版本；设计稿 E13 阶段⑤落位字段, type: STRING, source: "§4.1"}
       branch: {display_name: 分支, description: 事实记录与模拟记录分别保存, type: STRING, enum_values: [FACT, SIM], source: "§11.1"}
@@ -673,13 +673,42 @@ rules:
   upstream: [EcnRecord]
   logic:
     ALL:
-    - {field: approve_status, operator: "==", value: 已批准}
+    - {field: approve_status, operator: ==, value: 已批准}
+    - {field: evidence_status, operator: ==, value: 完整}
   downstream: check_unarrived_orders_for_ecn
-  description: 已批准的工程变更导致未来旧料需求减少时 → 检查关联的未到货订单，计算无法被需求覆盖的数量，提示可取消数量、办理时间及截止日期；变更已获知且影响能够判断时触发，不等 BOM 正式生效（前置条件以 approve_status=已批准 字段化，"旧料需求减少"的判定明细由下游动作承载）。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。
+  description: 已批准的工程变更导致未来旧料需求减少时 → 检查关联的未到货订单，计算无法被需求覆盖的数量，提示可取消数量、办理时间及截止日期；变更已获知且影响能够判断时触发，不等 BOM 正式生效（前置条件以 approve_status=已批准 字段化，"旧料需求减少"的判定明细由下游动作承载）。downstream 为占位动作名（假设 A-10），引擎侧配置时定名。（两版拉通裁决#1
+    2026-10-16：采纳旧版双条件——证据不足时不得触发检查，对齐文档红线"证据不足只输出能确认的事实"；缺证版 ECN 案例实证此条件必要）
 
   # RU-14（分配与归因双约束）不落 rules——登记 open_questions OQ-12 动作域候选，理由见该条。
 
 # =========== 能力问题（12 条，与 charter.md §二一致）==========
+- rule_type: trigger
+  name: 授权数量变化重核算
+  upstream:
+  - ChangeRecord
+  logic:
+    ALL:
+    - {field: change_type, operator: ==, value: 授权变化}
+  downstream: recompute_pending_authorization
+  description: 授权数量变化时重算待授权口径（两版拉通裁决#2：采纳旧版触发——§4.2 点检异常处理"授权变化→重新计算相关需求"）
+- rule_type: trigger
+  name: 替代关系变化复核分配
+  upstream:
+  - ChangeRecord
+  logic:
+    ALL:
+    - {field: change_type, operator: ==, value: 替代关系变化}
+  downstream: review_allocation_validity
+  description: 替代关系变化时复核既有分配方案有效性（两版拉通裁决#2：采纳旧版触发——失效替代"保留问题记录不参与计算"，分配需复核；§11.4 PS-3002 语义）
+- rule_type: trigger
+  name: 冻结供给排除待核查
+  upstream:
+  - Supply
+  logic:
+    ALL:
+    - {field: supply_type, operator: ==, value: 质检冻结库存}
+  downstream: exclude_from_allocation_and_flag
+  description: 质检冻结供给不参与分配并单列待核查（两版拉通裁决#2：采纳旧版触发——§11.3 PS-1002"未获放行不参与供给，单列待核查数量"；20,000 元冻结库存单列演示实证）
 competency_questions:
 - id: cq-001
   q: 指定项目与 BOM 类型的前后两个版本之间发生了哪些变化（物料增删/用量/单位/生效日期/替代/授权），各自影响哪些项目、物料、需求和供给？
@@ -792,3 +821,7 @@ assumptions:
 - id: A-12
   statement: 复合主键实体按平台连线模型（2026-10-15 workspace 999 实测：1侧主键锁定自动填充+N侧单外键、复合主键连线不支持）单列主键化（Palantir 路线，平台先例 list_id）；原复合键成员降普通属性，联合唯一性以 description 语义承载
   basis: 用户裁决 2026-10-15：参考 Palantir 做法
+- id: A-13
+  statement: 两版拉通裁决（2026-10-16，用户授权按推荐整合）：#1 RU-13 双条件（批准AND证据齐全）；#2 补 3 条触发（授权变化重算/替代关系复核/冻结排除，旧版口径回流）；#3 RU-14 维持 OQ-12 动作域候选（POC 只读边界，引擎接入时落地）；#4 汇总口径接受行级明细+查询聚合路线（不回建 MaterialRequirement 汇总实体，平台 SDK
+    ObjectSet.union 承载聚合）；#6 复合键已 Palantir 单列化（平台 49/49 连线实证）；#7 CQ 保留 rebuild 版（验证型措辞更细，确认点①已批）
+  basis: 用户指令"两版拉通裁决出定稿"2026-10-16；对照分析 rebuild-vs-old.md §六

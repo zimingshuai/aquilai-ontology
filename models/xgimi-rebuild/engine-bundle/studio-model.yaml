@@ -320,11 +320,11 @@ object_types:
     isDerived: false
   - code: known_at
     name: 版本可见时间
-    type: datetime
+    type: string
     required: false
     isKey: false
     defaultValue: ''
-    description: 该行记录何时进入数据版本（V0 之前/V1）；版本由各记录 known_at 承载（假设 A-02）
+    description: 该行记录何时进入数据版本（V0 之前/V1）；版本由各记录 known_at 承载（假设 A-02）（两版拉通裁决#5：TIMESTAMP→STRING——附录 BOM 行表存在"V0 之前"取值无法日期化，版本号口径承载；与旧版 OQ-12 裁决对齐）
     isDerived: false
   - code: std_usage_qty
     name: 标准用量
@@ -875,11 +875,11 @@ object_types:
     isDerived: false
   - code: known_at
     name: 观察时点
-    type: datetime
+    type: string
     required: false
     isKey: false
     defaultValue: ''
-    description: 如 2026-09-30 09:00
+    description: 如 2026-09-30 09:00（两版拉通裁决#5：TIMESTAMP→STRING——附录 BOM 行表存在"V0 之前"取值无法日期化，版本号口径承载；与旧版 OQ-12 裁决对齐）
     isDerived: false
   - code: data_version
     name: 数据版本
