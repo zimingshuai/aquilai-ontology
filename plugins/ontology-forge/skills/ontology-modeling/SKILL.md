@@ -37,6 +37,7 @@ M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲�
 ## 四、建模铁律（违背即违规）
 
 1. **不脑补**：资料包没说的信息一律进 `open_questions`（含 missing_from 指明缺在哪份材料），人审前必须清零或标记接受；禁止用常识/记忆补齐。
+   **OQ 生命周期（v0.3.9 沉淀，xgimi 实战验证）**：生成（抽取中随手登记）→ 分类（四态：等引擎/等业务方/已解决/待输入——裁决时不删原文只加 resolution）→ **pending-business 类汇总成业务问询单**（按【问什么/为什么问/不回复的影响/期望答复形态】组织，业务方零技术门槛可答，模板见 references/business-inquiry-template.md）→ 回复后补 DSL 并改 status → 定稿前 OQ 清零报告（全部 resolved 或显式接受风险）。增量建模时继承上版 OQ 不得丢失。
 2. **增量优先复用**：brief.yaml 的 target_engine 为 fnb/mfg 时，先读 `seeds/` 既有实体速查，复用既有实体与术语，只建差异；禁止重复建模已有对象。
 3. **LLM 不写自由 YAML**：起草时先在内部形成结构化 JSON（遵循 dsl-spec），再落为 YAML 文件；落盘后必须过 lint。
 4. **分步确认**：Charter 确认（点①）→ **设计稿逐表确认（点②，硬关卡：design-proposal.md + 骨架拓扑未经确认禁止生成完整 DSL）** → DSL/CQ 产物呈审；不一次吐全量。

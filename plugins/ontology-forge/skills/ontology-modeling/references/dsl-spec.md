@@ -18,7 +18,13 @@ entities: { ... }             # 实体（见 §2），必填
 rules: [ ... ]                # 规则（见 §3），可空
 actions: [ ... ]              # 动作（见 §4），一期不含，保留槽位
 competency_questions: [ ... ] # 能力问题（见 §5）
-open_questions: [ ... ]       # 待确认问题（禁止脑补，人审前必须清零或标记接受）
+open_questions:                # 待确认问题（v0.3.9 固化 schema——OQ 是建模质量的核心承载，禁止脑补铁律的落点）
+  - id: OQ-NN                  #   域内唯一编号
+    q: <string>                #   问题原文（一句话）
+    missing_from: <string>     #   缺在哪份材料/哪个环节（可空——方言边界类缺的是引擎能力而非材料）
+    status: resolved | pending-engine | pending-business | resolved-pending-input
+                               #   四态：已解决 / 等引擎侧 / 等业务方 / 已解决但待输入佐证
+    resolution: <string>       #   裁决留痕（已解决/已归类时必填：裁决内容+日期+裁决人；原文永不删除）
 conflicts:                    # 口径冲突记录（v0.3 固化 schema，结构漂移=不合规）
   - topic: <string>           #   冲突主题（术语/口径名）
     side_a: { claim: <定义>, source: <来源文档#位置> }
