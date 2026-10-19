@@ -232,7 +232,7 @@ link_types:
 - code: rel_d4301b95
   source: Supplier
   target: PurchaseContract
-  name: ''
+  name: 供应商
   cardinality: 1:n
   description: ''
   sourcePropertyCode: supplier_code
@@ -240,7 +240,7 @@ link_types:
 - code: rel_ec1c7c1a
   source: PurchaseContract
   target: DeliveryRecord
-  name: ''
+  name: 采购合同
   cardinality: 1:n
   description: ''
   sourcePropertyCode: contract_nr
@@ -248,7 +248,7 @@ link_types:
 - code: rel_6cd9e0a1
   source: Supplier
   target: ReconciliationStatement
-  name: ''
+  name: 供应商
   cardinality: 1:n
   description: ''
   sourcePropertyCode: supplier_code
