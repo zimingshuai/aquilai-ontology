@@ -11,12 +11,15 @@ Aquilair 本体建模插件（ontology-forge）在 **WorkBuddy 侧的平移镜�
 aquilair-fde/
 ├── .codebuddy-plugin/plugin.json   # WorkBuddy 清单（expertType: agent；quickPrompts 恰好 3 条）
 ├── agents/aquilair-fde.md          # 总控提示词（权威边界/十步流程/建模边界/脚本使用规则/八件套）
+├── avatars/expert.png              # 专家头像（512x512，平台必填）
 ├── skills/                         # 3 技能（镜像自 ZCode 侧，头部带镜像注记）
 │   ├── brief-intake/               #   建模统一入口：文档判型归位 + brief.yaml + 缺口报告
 │   │   └── references/intake-rules.md
 │   ├── ontology-modeling/          #   建模主技能：十步流水线编排
-│   │   └── references/（modeling-guide / dsl-spec / input-templates / cq-guide）
+│   │   └── references/（modeling-guide / dsl-spec / input-templates / cq-guide / design-proposal-template / business-inquiry-template）
 │   └── ontology-review/            #   评审技能：12 项 checklist + 变更集影响分析
+├── seeds/                          # 种子资产（镜像自 ZCode 侧：glossary / mfg-entities / fnb-entities）
+├── docs/user-guide.md              # FDE 使用手册（镜像自 ZCode 侧）
 └── README.md                       # 本文件
 ```
 
@@ -30,8 +33,10 @@ aquilair-fde/
 | WorkBuddy（镜像） | `workbuddy/aquilair-fde/`（本目录） | Expert 形态包装：plugin.json + 总控提示词 + 技能镜像 |
 
 - 镜像侧每份 SKILL.md 头部带注记：`镜像自 ZCode 侧 plugins/ontology-forge，修改请改源侧后重新平移`——**修改一律改源侧，然后重新平移**，禁止双头编辑。
+- **平移物**（改 ZCode 源侧后重新平移）：`skills/`、`seeds/`、`docs/user-guide.md`。
+- **镜像专属形态文件**（ZCode 源侧无对应物，源头在本目录，直接改镜像侧）：`.codebuddy-plugin/plugin.json`、`agents/aquilair-fde.md`（总控提示词，骨架来自楠总 × Codex 蓝图）、`avatars/`、本 README。
 - 与源侧的预期差异仅有两类：镜像注记行、脚本路径的 WorkBuddy 通用表述；除此之外应与源侧逐字一致（可用 `diff -r` 校验）。
-- ZCode 侧的 `commands/`（斜杠命令）、`models/`（产物样例）、`seeds/`、`evals/` 不平移——WorkBuddy Expert 用 quickPrompts + 总控提示词承载入口，产物落用户工作区。
+- ZCode 侧的 `commands/`（斜杠命令）、`models/`（产物样例）、`evals/` 不平移——WorkBuddy Expert 用 quickPrompts + 总控提示词承载入口，产物落用户工作区。
 
 ## 三、quickPrompts 规则
 
