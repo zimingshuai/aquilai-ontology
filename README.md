@@ -12,7 +12,7 @@
 | `evals/` | 回归测试（行为样例 + 机械断言，改插件必跑） | 工程资产 |
 | `docs/` | 设计决策记录（方案/调研/对照报告/转交文档）——插件为什么这样设计 | 工程资产 |
 | `poc/` | M0 验证资产（round-trip/盲测基准，格式演进的对账锚点） | 工程资产 |
-| `workbuddy/aquilair-fde/` | WorkBuddy 侧镜像（修改一律改 plugins/ 源侧后重新平移） | 发布镜像 |
+| `workbuddy/` | WorkBuddy 构建产物区（`pack_workbuddy.py` 生成的上传 zip，可随时重建） | 构建产物 |
 
 ## 资产流转规则
 
@@ -36,15 +36,18 @@
 
 ## 分发（给别的智能体用）
 
-**分发单元 = `plugins/ontology-forge/` 一个目录**（自包含：manifest+技能+脚本+种子+离线缓存），仓库其余部分是工厂资产不分发。
+**分发单元 = `plugins/ontology-forge/` 一个目录**（自包含：多平台清单+技能+总控提示词+脚本+种子+头像），仓库其余部分是工厂资产不分发。**单内容多清单架构**：插件内容只有一份，四个平台清单并存引用（`.zcode-plugin` / `.codebuddy-plugin` / `.claude-plugin` / `.codex-plugin`，版本保持一致），不存在镜像/平移——改任何内容直接改插件根，然后按目标平台安装。
 
-| 目标智能体 | 给什么 | 安装方式 |
+| 目标智能体 | 清单 | 安装方式 |
 |---|---|---|
-| ZCode | `plugins/` 文件夹或 zip | Marketplace → Add 指向目录 → Install |
-| WorkBuddy | `workbuddy/aquilair-fde/` 镜像 | WorkBuddy Expert 安装（镜像不含 scripts，从源仓库取） |
-| Claude Code 兼容 | 同 ZCode | manifest 探测链兼容 |
+| ZCode | `.zcode-plugin/plugin.json` | 插件市场添加 `plugins/marketplace.json` 后安装 |
+| WorkBuddy | `.codebuddy-plugin/plugin.json` | 开放平台上传 `workbuddy/aquilair-fde-<版本>.zip`（`python plugins/ontology-forge/scripts/pack_workbuddy.py` 构建，含 scripts/——WorkBuddy 有 Bash 可直接执行） |
+| Claude Code | `.claude-plugin/plugin.json` | `/plugin marketplace add <仓库>/plugins` 后安装 |
+| Codex | `.codex-plugin/plugin.json` | `codex plugin marketplace add <仓库>/plugins` 后安装 |
 
-打包：`git archive HEAD plugins/ontology-forge -o ontology-forge-<版本>.zip`。运行依赖：Python 3.10+ 与 pyyaml（图片另需 Playwright）。
+**发布门禁**：`python plugins/ontology-forge/scripts/check_dist.py`——四清单版本一致、WorkBuddy 清单 16 项合规、agent frontmatter 必填、SKILL.md frontmatter、zip 结构与版本新鲜度逐项断言，任一失败退出码 1（先跑 `pack_workbuddy.py` 再跑门禁做发布前全检）。
+
+其他平台整目录分发：`git archive HEAD plugins/ontology-forge -o ontology-forge-<版本>.zip`。运行依赖：Python 3.10+ 与 pyyaml（图片另需 Playwright）。
 
 ## 快速链接
 

@@ -1,0 +1,18 @@
+{
+  "name": "ontology-forge",
+  "version": "0.4.1",
+  "description": "LLM 辅助本体元数据设计：摄取归位/DSL 起草/13条lint/CQ回验/拓扑/双格式编译(引擎JSON+studio-model)/变更集diff/action骨架/评审技能",
+  "author": {
+    "name": "ElitesLand Aquilair"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Ontology Forge 本体锻造",
+    "shortDescription": "上传业务文档对话式设计本体：设计稿确认关卡、拓扑图与平台导入 yaml 双交付、待确认问题全程留痕。",
+    "longDescription": "源自 aquilair-ontology 仓库 plugins/ontology-forge（与 Claude Code / ZCode / WorkBuddy 插件清单同源派生，单内容多清单架构）：建模统一入口（brief-intake）+ 十步建模流水线（ontology-modeling）+ 人审门评审（ontology-review），配套 13 条 lint、CQ 覆盖回验、Mermaid 拓扑、studio-model/引擎 JSON 双格式编译与变更集 diff 脚本。只产草稿，人工审核是唯一发布权威。",
+    "developerName": "ElitesLand Aquilair",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "帮我从业务资料开始设计一个可审核的本体草稿"
+  }
+}
