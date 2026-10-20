@@ -1,7 +1,8 @@
-"""分发结构门禁：多平台清单合规 + frontmatter 必填 + zip 结构断言。
+"""分发结构门禁：多平台清单合规 + frontmatter 必填 + 渲染缓存与版本锁 + zip 结构断言。
 
 用途：发布/打包前自检（教训沉淀：WorkBuddy 首次上传因缺 avatars 与 description
-     两次被平台拒收，均属"机器可判定"的合规项——本脚本把它们固化为断言闸门）。
+     两次被平台拒收，均属"机器可判定"的合规项——本脚本把它们固化为断言闸门；
+     另含 mermaid 缓存随包与版本锁一致性，避免断网兜底失效与跨端渲染漂移）。
 主要 Input：无必填参数（插件根按脚本位置自定位）。
 主要 Output：stdout 中文逐项检查报告；退出码 0=全部通过，1=任一断言失败
      （含"zip 产物版本落后于清单"的过期检查——防止旧包被误传平台）。
@@ -32,6 +33,12 @@ SKILLS_DIR = PLUGIN_ROOT / "skills"
 WORKBUDDY_DIR = PLUGIN_ROOT.parent.parent / "workbuddy"
 # AGENT_FRONTMATTER_REQUIRED：总控提示词 frontmatter 必填键
 AGENT_FRONTMATTER_REQUIRED = ("name", "displayName", "description", "profession", "maxTurns", "skills")
+# RENDER_IMAGE_PY：mermaid 版本锁所在模块——只读源文本做断言，不 import（避免拉入 playwright 依赖）
+RENDER_IMAGE_PY = PLUGIN_ROOT / "scripts" / "render_image.py"
+# MERMAID_ASSET：--image 断网兜底的本地渲染缓存，必须随包分发才有意义
+MERMAID_ASSET = PLUGIN_ROOT / "assets" / "mermaid.min.js"
+# MERMAID_ASSET_MIN_BYTES：缓存体量下限（UMD 单文件实测 3.4MB；占位/截断文件同样会让兜底失效）
+MERMAID_ASSET_MIN_BYTES = 1_000_000
 
 
 # ===========一、检查框架==========
@@ -201,7 +208,50 @@ def check_skills(report: Report) -> None:
               f"name={meta.get('name')}")
 
 
-# ===========三、zip 产物检查==========
+# ===========三、渲染缓存与版本锁检查==========
+def check_mermaid(report: Report) -> None:
+    """渲染缓存存在性与 mermaid 版本锁一致性断言。
+
+    断网兜底要成立，缓存必须同时满足"在位 + 体量正常 + 与锁定版本同版"；
+    只钉 major（mermaid@11）会让联网侧浮动到最新 11.x、断网侧固定缓存版本，
+    同一份 DSL 两种环境渲染版式可能不同——拓扑 diff 图跨端不可复现。
+
+    Args:
+        report: 结果收集器。
+    Returns:
+        None（结果记入 report）。
+    """
+    #   1. 缓存文件在位且体量正常
+    exists = MERMAID_ASSET.is_file()
+    size = MERMAID_ASSET.stat().st_size if exists else 0
+    check(report, "渲染缓存 assets/mermaid.min.js 存在", exists,
+          f"缺 {MERMAID_ASSET.relative_to(PLUGIN_ROOT)}——WorkBuddy 包内 --image 断网无兜底")
+    check(report, f"渲染缓存体量正常（{size // 1024}KB）", size >= MERMAID_ASSET_MIN_BYTES,
+          "疑似占位或截断文件，断网兜底不可用")
+
+    #   2. 版本锁声明与实际缓存版本一致
+    if not RENDER_IMAGE_PY.is_file():
+        report.fail("版本锁可读取", f"缺 {RENDER_IMAGE_PY.relative_to(PLUGIN_ROOT)}")
+        return
+    source = RENDER_IMAGE_PY.read_text(encoding="utf-8")
+    version_match = re.search(r'^MERMAID_VERSION\s*=\s*"([^"]+)"', source, re.M)
+    pinned = version_match.group(1) if version_match else ""
+    check(report, "版本锁：MERMAID_VERSION 已声明", bool(pinned), "render_image.py 未定义 MERMAID_VERSION")
+    if pinned and exists:
+        cached = set(re.findall(r'version:"(\d+\.\d+\.\d+)"',
+                                MERMAID_ASSET.read_text(encoding="utf-8", errors="ignore")))
+        check(report, f"版本锁：缓存版本与锁定版本一致（{pinned}）", pinned in cached,
+              f"缓存内版本 {sorted(cached)} 与锁定 {pinned} 不一致——同 DSL 断网/联网版式会漂移")
+
+    #   3. CDN 地址必须由锁定版本拼出，不得残留浮动 major
+    cdn_match = re.search(r'^MERMAID_CDN_URL\s*=\s*f?"([^"]+)"', source, re.M)
+    cdn = cdn_match.group(1) if cdn_match else ""
+    floating = re.search(r"mermaid@\d+(?![\d.])", cdn)
+    check(report, "版本锁：CDN 未使用浮动 major", bool(cdn) and not floating, f"CDN={cdn}")
+    check(report, "版本锁：CDN 模板引用 MERMAID_VERSION", "mermaid@{MERMAID_VERSION}" in cdn, f"CDN={cdn}")
+
+
+# ===========四、zip 产物检查==========
 def check_zip(report: Report) -> None:
     """WorkBuddy zip 产物存在性、新鲜度与结构断言。
 
@@ -222,15 +272,23 @@ def check_zip(report: Report) -> None:
           f"清单已升 v{cb_manifest['version']}，zip 仍为 v{zip_version}——重跑 pack_workbuddy.py")
     #   2. 结构断言：关键文件在位、无缓存目录、路径全正斜杠
     with zipfile.ZipFile(zip_path) as zf:
-        names = zf.namelist()
-    for required in (".codebuddy-plugin/plugin.json", "agents/aquilair-fde.md", "avatars/expert.png"):
+        infos = zf.infolist()
+    names = [info.filename for info in infos]
+    sizes = {info.filename: info.file_size for info in infos}
+    for required in (".codebuddy-plugin/plugin.json", "agents/aquilair-fde.md",
+                     "avatars/expert.png", "assets/mermaid.min.js"):
         check(report, f"zip 结构：{required} 在位", f"aquilair-fde/{required}" in names)
+    # 渲染缓存必须真的进包，否则 WorkBuddy 分发形态下 --image 断网只剩 CDN 单路径
+    asset_entry = "aquilair-fde/assets/mermaid.min.js"
+    check(report, "zip 结构：渲染缓存非空（断网兜底生效）",
+          sizes.get(asset_entry, 0) >= MERMAID_ASSET_MIN_BYTES,
+          f"包内 {asset_entry} 缺失或仅 {sizes.get(asset_entry, 0)} 字节")
     check(report, "zip 结构：无 __pycache__", not any("__pycache__" in n for n in names))
     check(report, "zip 结构：路径全正斜杠", not any("\\" in n for n in names))
     check(report, "zip 结构：含 scripts/（宿主通用）", any(n.startswith("aquilair-fde/scripts/") for n in names))
 
 
-# ===========四、模块入口==========
+# ===========五、模块入口==========
 def main() -> int:
     """命令行入口：跑全部分发结构检查。
 
@@ -243,6 +301,7 @@ def main() -> int:
     check_manifests(report)
     check_agent_frontmatter(report)
     check_skills(report)
+    check_mermaid(report)
     check_zip(report)
     print(report.summary())
     return 0 if report.done else 1

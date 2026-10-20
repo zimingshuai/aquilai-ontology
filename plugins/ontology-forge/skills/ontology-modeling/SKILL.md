@@ -13,7 +13,7 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ## 二、脚本定位与产物根目录（先读，避免摩擦）
 
 - **脚本定位**：脚本随插件分发于**插件根的 `scripts/` 目录**。优先以插件根的绝对路径调用（本机源仓库为 `D:\documents\elitesland-workspace\aquilair-ontology\plugins\ontology-forge\scripts\`；安装缓存路径以运行环境为准——技能目录的上级即插件根）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
-- **图片渲染依赖**：`--image` 需要 Playwright（首次使用：`pip install playwright` + `python -m playwright install chromium`，一次性）；mermaid 走 CDN、断网自动用本地缓存 `scripts/assets/mermaid.min.js`。环境不满足时如实告知用户装依赖，**不静默退化为只出 Mermaid 代码**（除非用户同意）。
+- **图片渲染依赖**：`--image` 需要 Playwright（首次使用：`pip install playwright` + `python -m playwright install chromium`，一次性）；mermaid 走 CDN（版本由 `scripts/render_image.py` 的 `MERMAID_VERSION` 锁定）、断网自动用本地缓存 `assets/mermaid.min.js`（插件根，同版本）。环境不满足时如实告知用户装依赖，**不静默退化为只出 Mermaid 代码**（除非用户同意）。
 - **产物根目录**：`models/<domain>/` 相对**当前会话工作区**落位。会话工作区不是专门的本体仓库时，先向用户确认产物根目录（团队协作场景应落到统一仓库），不要静默散落到默认工作区。
 
 ## 三、流水线（v0.3.6 九步，强制顺序——设计稿确认为硬关卡）

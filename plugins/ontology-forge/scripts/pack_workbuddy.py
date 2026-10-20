@@ -5,7 +5,7 @@
      版本号读 .codebuddy-plugin/plugin.json，输出到仓库 workbuddy/ 目录。
 主要 Input：无必填参数（插件根按脚本位置自定位；--out 可选指定输出目录）。
 主要 Output：workbuddy/aquilair-fde-<version>.zip——zip 内根目录为 aquilair-fde/，
-     含 WorkBuddy 清单/总控提示词/头像/技能/种子/手册/scripts；条目路径统一
+     含 WorkBuddy 清单/总控提示词/头像/渲染缓存(assets)/技能/种子/手册/scripts；条目路径统一
      正斜杠（避免 Windows 反斜杠导致平台解析失败）；排除 __pycache__ 与
      其他平台清单（.zcode-plugin/.claude-plugin/.codex-plugin）。
 """
@@ -27,13 +27,19 @@ INCLUDE_ITEMS = (
     ".codebuddy-plugin",
     "agents",
     "avatars",
+    "assets",
     "skills",
     "seeds",
     "docs",
     "scripts",
 )
 # REQUIRED_ITEMS：必需项——缺一即失败（ WorkBuddy 平台解析的硬依赖）
-REQUIRED_ITEMS = (".codebuddy-plugin", "agents", "avatars", "skills")
+# assets 属硬依赖：SKILL.md 承诺 --image 断网走本地缓存兜底，缓存不进包则该承诺在
+# WorkBuddy 分发形态下不成立（曾因此漏发 assets/mermaid.min.js）。
+REQUIRED_ITEMS = (".codebuddy-plugin", "agents", "avatars", "assets", "skills")
+# REQUIRED_FILES：必需文件——按相对路径逐个断言。目录在位不代表关键文件在：
+# assets/ 尚存但缓存被误删时，只查目录仍会打出断网兜底失效的包。
+REQUIRED_FILES = ("assets/mermaid.min.js",)
 # EXCLUDED_DIRS：排除目录——Python 编译缓存不进分发包
 EXCLUDED_DIRS = {"__pycache__"}
 # EXCLUDED_FILES：scripts 内排除的工程性文件（脚本文档属仓库工程资产，不随包膨胀）
@@ -65,8 +71,13 @@ def collect_files() -> list[str]:
     Returns:
         相对插件根的正斜杠文件路径列表（已排序，保证 zip 内容可复现）。
     Raises:
-        FileNotFoundError: 任一必需项缺失。
+        FileNotFoundError: 任一必需项/必需文件缺失。
     """
+    #   1. 必需文件逐个断言（目录存在不代表关键文件在）
+    missing_files = [rel for rel in REQUIRED_FILES if not (PLUGIN_ROOT / rel).is_file()]
+    if missing_files:
+        raise FileNotFoundError(f"打包必需文件缺失: {', '.join(missing_files)}")
+
     collected: list[str] = []
     for item in INCLUDE_ITEMS:
         target = PLUGIN_ROOT / item

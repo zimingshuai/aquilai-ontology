@@ -1,10 +1,11 @@
-"""Mermaid 源码 -> PNG/SVG 图片渲染模块（Playwright 无头浏览器 + mermaid@11）。
+"""Mermaid 源码 -> PNG/SVG 图片渲染模块（Playwright 无头浏览器 + mermaid 锁定版本）。
 
 主要 Input：Mermaid 源码字符串（render_topology.py 从 topology.md 的 ```mermaid 块提取）
 + 输出基底路径（如 topology）+ 格式 png|svg|both。
 主要 Output：topology.png（白底、宽度自适应图幅、2x 缩放保证清晰度）与 topology.svg（原始 SVG 落盘）。
 资源加载链（不静默降级）：CDN ESM 优先 -> 本地缓存 assets/mermaid.min.js（UMD 单文件）降级
--> 两者皆不可用时抛中文错误并提示缓存方案。
+-> 两者皆不可用时抛中文错误并提示缓存方案。两侧版本由 MERMAID_VERSION 统一锁定，
+保证同一份 DSL 在联网/断网下渲染版式一致。
 """
 
 # 标准库导入
@@ -21,9 +22,13 @@ from playwright.sync_api import sync_playwright
 
 
 # ===========一、常量（CDN 地址 / 缓存路径 / 页面模板）==========
-# MERMAID_CDN_URL：mermaid@11 官方推荐的 CDN ESM 入口（浏览器 import() 直接可用，子 chunk 由 CDN 解析）。
-MERMAID_CDN_URL = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs"
-# ASSET_CACHE_PATH：CDN 不可达时的本地降级缓存（mermaid@11 UMD 单文件，含全部图型；插件根 assets/ 标准资源位）。
+# MERMAID_VERSION：mermaid 版本锁——CDN 与本地缓存必须同版本。
+# 只钉 major（如 mermaid@11）会让联网侧浮动到最新 11.x、断网侧固定缓存版本，
+# 同一份 DSL 在两种环境下可能渲染出不同版式，拓扑 diff 图跨端不可复现。
+MERMAID_VERSION = "11.17.2"
+# MERMAID_CDN_URL：按锁定版本拼 CDN ESM 入口（浏览器 import() 直接可用，子 chunk 由 CDN 解析）。
+MERMAID_CDN_URL = f"https://cdn.jsdelivr.net/npm/mermaid@{MERMAID_VERSION}/dist/mermaid.esm.min.mjs"
+# ASSET_CACHE_PATH：CDN 不可达时的本地降级缓存（同版本 UMD 单文件，含全部图型；插件根 assets/ 标准资源位）。
 ASSET_CACHE_PATH = Path(__file__).parent.parent / "assets" / "mermaid.min.js"
 # ASSET_URL_PATH：页面内引用本地缓存的 URL 路径（由本模块内置 HTTP 服务提供）。
 ASSET_URL_PATH = "/assets/mermaid.min.js"
@@ -193,7 +198,7 @@ def _load_and_render(browser: Any, url: str, scale: float) -> tuple[Any, Any, di
         raise RuntimeError(
             "====mermaid 资源加载失败====: CDN 不可达（"
             f"{MERMAID_CDN_URL}），且本地缓存 {ASSET_CACHE_PATH} 不存在或不可用。"
-            "请联网后重试，或将 mermaid@11 UMD 单文件（dist/mermaid.min.js）"
+            "请联网后重试，或将 mermaid@" + MERMAID_VERSION + " UMD 单文件（dist/mermaid.min.js）"
             "下载放置到上述缓存路径后再试。")
     if err:
         context.close()
