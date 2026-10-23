@@ -1,6 +1,6 @@
 ---
 name: ontology-modeling
-description: 本体建模主技能——十步流水线编排核心（M1 版覆盖前七步：场景圈定→术语抽取→DSL 起草→lint→CQ 回验→拓扑可视化→引擎格式导出）。Use when 建模资料包（modeling-brief）已由 brief-intake 就绪、需要从业务资料设计本体元数据 DSL，或对既有本体做增量修改、生成引擎注册格式与拓扑图时使用。not for：资料包摄取整理（走 brief-intake）、生产发布与审批（人工审核唯一权威，本技能不越权）。
+description: 本体建模主技能——九步流水线编排核心（场景圈定→术语抽取→设计稿合成与硬关卡确认→DSL 起草→lint 硬校验→CQ 回验→拓扑与双格式交付→平台自检与资产回流）。Use when 建模资料包（modeling-brief）已由 brief-intake 就绪、需要从业务资料设计本体元数据 DSL，或对既有本体做增量修改、生成引擎注册格式与拓扑图时使用。not for：资料包摄取整理（走 brief-intake）、生产发布与审批（人工审核唯一权威，本技能不越权）。
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 ---
 
@@ -16,7 +16,7 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
 - **图片渲染依赖**：`--image` 需要 Playwright（首次使用：`pip install playwright` + `python -m playwright install chromium`，一次性）；mermaid 走 CDN（版本由 `scripts/render_image.py` 的 `MERMAID_VERSION` 锁定）、断网自动用本地缓存 `assets/mermaid.min.js`（插件根，同版本）。环境不满足时如实告知用户装依赖，**不静默退化为只出 Mermaid 代码**（除非用户同意）。
 - **产物根目录**：`models/<domain>/` 相对**当前会话工作区**落位。会话工作区不是专门的本体仓库时，先向用户确认产物根目录（团队协作场景应落到统一仓库），不要静默散落到默认工作区。
 
-## 三、流水线（v0.3.6 九步，强制顺序——设计稿确认为硬关卡）
+## 三、流水线（九步，强制顺序——设计稿确认为硬关卡；**本节是全插件唯一的"建模流水线"步数口径，其他文档提及步数一律以本节为准**）
 
 1. **场景圈定**：读 brief.yaml + B_scenarios → 产出 **Scenario Charter**（业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ **5~10 条能力问题 CQ**（写法见 references/cq-guide.md）。**Charter 未经用户确认，不进入抽取**。
 2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（`fact-cards.md`，markdown 表格载体：候选/来源/置信度/状态/三源交叉列）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。

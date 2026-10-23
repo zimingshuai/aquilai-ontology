@@ -251,7 +251,25 @@ def check_mermaid(report: Report) -> None:
     check(report, "版本锁：CDN 模板引用 MERMAID_VERSION", "mermaid@{MERMAID_VERSION}" in cdn, f"CDN={cdn}")
 
 
-# ===========四、zip 产物检查==========
+# ===========四、文档口径检查==========
+def check_pipeline_wording(report: Report) -> None:
+    """全插件 Markdown 的流水线步数口径断言（教训：七/九/十步并存致宿主 AI 口径打架）。
+
+    Args:
+        report: 结果收集器。
+    Returns:
+        None（结果记入 report）。
+    """
+    # forbidden：禁止的步数连写——建模流水线唯一口径是"九步"（ontology-modeling SKILL.md §三）
+    forbidden = ("七步流水线", "十步流水线")
+    md_files = [p for p in PLUGIN_ROOT.rglob("*.md") if "__pycache__" not in p.parts]
+    hits = [f"{path.relative_to(PLUGIN_ROOT)} 含「{phrase}」"
+            for path in md_files for phrase in forbidden
+            if phrase in path.read_text(encoding="utf-8")]
+    check(report, "文档口径：流水线步数统一（无七步/十步残留）", not hits, "；".join(hits))
+
+
+# ===========五、zip 产物检查==========
 def check_zip(report: Report) -> None:
     """WorkBuddy zip 产物存在性、新鲜度与结构断言。
 
@@ -288,7 +306,7 @@ def check_zip(report: Report) -> None:
     check(report, "zip 结构：含 scripts/（宿主通用）", any(n.startswith("aquilair-fde/scripts/") for n in names))
 
 
-# ===========五、模块入口==========
+# ===========六、模块入口==========
 def main() -> int:
     """命令行入口：跑全部分发结构检查。
 
@@ -302,6 +320,7 @@ def main() -> int:
     check_agent_frontmatter(report)
     check_skills(report)
     check_mermaid(report)
+    check_pipeline_wording(report)
     check_zip(report)
     print(report.summary())
     return 0 if report.done else 1
