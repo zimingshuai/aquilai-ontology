@@ -188,6 +188,12 @@ def check_agent_frontmatter(report: Report) -> None:
           + ("" if not missing else f"（缺 {missing}）"), not missing, f"缺失键：{missing}")
     desc = str(meta.get("description", ""))
     check(report, "agent description 含触发句式（Use when）", "use when" in desc.lower(), "平台靠 description 判断激活时机")
+    body = AGENT_MD.read_text(encoding="utf-8")
+    check(report, "agent 子代理派发模式节存在（到达即停/确认声明）",
+          "子代理派发模式" in body and "确认声明只认主代理" in body,
+          "派发形态的确认关卡规则缺失——ZCode/Claude subagent 将无法正确停卡")
+    check(report, "agents/README.md 接入指南存在",
+          (AGENT_MD.parent / "README.md").is_file())
 
 
 def check_skills(report: Report) -> None:

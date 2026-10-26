@@ -45,7 +45,9 @@
 | Claude Code | `.claude-plugin/plugin.json` | `/plugin marketplace add <仓库>/plugins` 后安装 |
 | Codex | `.codex-plugin/plugin.json` | `codex plugin marketplace add <仓库>/plugins` 后安装 |
 
-**发布门禁**：`python plugins/ontology-forge/scripts/check_dist.py`——四清单版本一致、WorkBuddy 清单 16 项合规、agent frontmatter 必填、SKILL.md frontmatter、zip 结构与版本新鲜度逐项断言，任一失败退出码 1（先跑 `pack_workbuddy.py` 再跑门禁做发布前全检）。
+**发布门禁**：`python plugins/ontology-forge/scripts/check_dist.py`——四清单版本一致、WorkBuddy 清单 16 项合规、agent frontmatter 必填、SKILL.md frontmatter、文档口径、zip 结构与版本新鲜度逐项断言，任一失败退出码 1（先跑 `pack_workbuddy.py` 再跑门禁做发布前全检）。
+
+**子代理（subagent）**：`agents/aquilair-fde.md` 在 ZCode / Claude Code 侧**随插件安装自动注册**（插件根 agents/ 目录自动发现，无需清单字段）——主代理可经 Agent 工具派发建模任务；派发形态下确认关卡"到达即停"，分段约定见 `plugins/ontology-forge/agents/README.md`。
 
 其他平台整目录分发：`git archive HEAD plugins/ontology-forge -o ontology-forge-<版本>.zip`。运行依赖：Python 3.10+ 与 pyyaml（图片另需 Playwright）。
 
