@@ -315,7 +315,41 @@ def build_case9(results: list) -> None:
     assert_case(results, "case9", "平台漂移检出", drift_detected)
 
 
-# ===========八、主流程==========
+# ===========八、case10：CQ 勾选呈审组件生成（确定性产物固化）==========
+def build_case10(results: list) -> None:
+    """case10 断言：render_cq_checklist 对真实 DSL 生成含三态交互的完整 HTML，坏输入如实报错。"""
+    cq_script = SCRIPTS_DIR / "render_cq_checklist.py"
+    xgimi_model = REPO_ROOT / "models" / "xgimi-rebuild" / "model.yaml"
+    if not all(p.exists() for p in (cq_script, xgimi_model)):
+        results.append(("case10", "前置就绪检测", "SKIP（render_cq_checklist 或 xgimi-rebuild 模型未就绪）"))
+        return
+
+    def gen_ok():
+        import tempfile
+        import pathlib
+        with tempfile.TemporaryDirectory() as td:
+            out = pathlib.Path(td) / "cq-checklist.html"
+            proc = run_cmd([cq_script, xgimi_model, "--domain", "case10", "-o", out])
+            assert proc.returncode == 0, f"生成应退出码 0: {proc.stdout[-200:]}"
+            html = out.read_text(encoding="utf-8")
+            assert "cq-001" in html and "cq-012" in html, "HTML 缺 xgimi 12 条 CQ"
+            assert "__CQ_DATA__" not in html and "__DOMAIN__" not in html, "占位符未替换（坏件）"
+            assert "真业务" in html and "要改" in html and "删除" in html, "HTML 缺三态勾选控件"
+
+    def bad_input_rejected():
+        import tempfile
+        import pathlib
+        with tempfile.TemporaryDirectory() as td:
+            bad = pathlib.Path(td) / "bad.yaml"
+            bad.write_text("entities: {}\n", encoding="utf-8")  # 无 CQ 段的 DSL
+            proc = run_cmd([cq_script, bad])
+            assert proc.returncode == 1, f"无 CQ 输入应退出码 1，实际 {proc.returncode}"
+
+    assert_case(results, "case10", "CQ 呈审 HTML 生成完整（12 CQ+占位符替换+三态）", gen_ok)
+    assert_case(results, "case10", "无 CQ 输入如实报错", bad_input_rejected)
+
+
+# ===========九、主流程==========
 def main() -> int:
     """执行全部机械断言并输出结果表。
 
@@ -330,6 +364,7 @@ def main() -> int:
     build_case7(results)
     build_case8(results)
     build_case9(results)
+    build_case10(results)
     print("\n====evals 回归结果====")
     for case, name, status in results:
         print(f"[{case}] {name}: {status}")

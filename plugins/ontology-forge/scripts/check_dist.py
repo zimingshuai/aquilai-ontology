@@ -245,6 +245,16 @@ def check_mermaid(report: Report) -> None:
     check(report, f"渲染缓存体量正常（{size // 1024}KB）", size >= MERMAID_ASSET_MIN_BYTES,
           "疑似占位或截断文件，断网兜底不可用")
 
+    #   2. CQ 勾选呈审模板在位且占位符齐全（render_cq_checklist.py 的代入依赖）
+    cq_tpl = PLUGIN_ROOT / "assets" / "cq-checklist.html"
+    if cq_tpl.is_file():
+        tpl_text = cq_tpl.read_text(encoding="utf-8")
+        holders_ok = all(h in tpl_text for h in ("__DOMAIN__", "__GENERATED_AT__", "__CQ_DATA__"))
+        check(report, "CQ 呈审模板在位且占位符齐全", holders_ok,
+              "assets/cq-checklist.html 缺占位符——render_cq_checklist.py 会产出坏件")
+    else:
+        report.fail("CQ 呈审模板在位且占位符齐全", "缺 assets/cq-checklist.html")
+
     #   2. 版本锁声明与实际缓存版本一致
     if not RENDER_IMAGE_PY.is_file():
         report.fail("版本锁可读取", f"缺 {RENDER_IMAGE_PY.relative_to(PLUGIN_ROOT)}")

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!-- CQ 勾选呈审模板（确定性产物源）——由 scripts/render_cq_checklist.py 代入 __DOMAIN__/__GENERATED_AT__/__CQ_DATA__ 占位符后输出。
+     零外部依赖自包含：浏览器直接打开即可勾选批复；内联渲染宿主（ZCode Gen UI 等）呈审同一份文件。
+     回传通道为「生成批复文本 → 复制回贴对话」（任何宿主 100% 可用）；勾选状态同时挂 window.__cqState__ 供宿主桥接扩展。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CQ 勾选呈审 · __DOMAIN__</title>
+<style>
+  /* 基调：清爽呈审表单风（浅底/藏蓝主色/三态色标） */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f7fa; color: #24292f; padding: 24px; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 20px; color: #1a3a5c; margin-bottom: 4px; }
+  .meta { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+  .guide { background: #eef4fb; border-left: 4px solid #1a6fc4; padding: 10px 14px; font-size: 13px; line-height: 1.7; border-radius: 4px; margin-bottom: 16px; }
+  .cq-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .cq-card.rejected { background: #fef5f5; border-color: #f3c1c1; }
+  .cq-card.revised { background: #fffbf0; border-color: #f0dcae; }
+  .cq-q { font-size: 14px; line-height: 1.65; margin-bottom: 10px; }
+  .cq-id { display: inline-block; font-size: 11px; font-weight: 600; color: #1a6fc4; background: #e8f1fb; border-radius: 4px; padding: 1px 7px; margin-right: 8px; vertical-align: 1px; }
+  /* 三态按钮组（radio 语义：互斥，再点同态可取消回未选） */
+  .states { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .state-btn { border: 1.5px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 5px 14px; font-size: 13px; cursor: pointer; user-select: none; transition: all .12s; }
+  .state-btn:hover { border-color: #1a6fc4; }
+  .state-btn.on-keep { background: #e6f7ec; border-color: #2da44e; color: #1a7f37; font-weight: 600; }
+  .state-btn.on-revise { background: #fff8e6; border-color: #d4a72c; color: #9a6700; font-weight: 600; }
+  .state-btn.on-drop { background: #fdebec; border-color: #cf222e; color: #a40e26; font-weight: 600; }
+  .note { width: 100%; margin-top: 8px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 10px; font-size: 13px; display: none; }
+  .note.show { display: block; }
+  textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6; resize: vertical; background: #fff; }
+  .section-t { font-size: 14px; font-weight: 600; margin: 18px 0 8px; color: #1a3a5c; }
+  .actions { margin-top: 18px; display: flex; gap: 10px; }
+  .btn-main { background: #1a6fc4; color: #fff; border: none; border-radius: 6px; padding: 9px 22px; font-size: 14px; cursor: pointer; }
+  .btn-main:hover { background: #155a9f; }
+  .btn-copy { background: #fff; color: #1a6fc4; border: 1.5px solid #1a6fc4; border-radius: 6px; padding: 9px 22px; font-size: 14px; cursor: pointer; }
+  .btn-copy:hover { background: #e8f1fb; }
+  .result { display: none; margin-top: 16px; }
+  .result pre { background: #0d2137; color: #d8e6f3; border-radius: 8px; padding: 14px 16px; font-size: 12.5px; line-height: 1.7; overflow-x: auto; white-space: pre-wrap; }
+  .warn { color: #a40e26; font-size: 12px; margin-top: 6px; display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CQ 勾选呈审 · __DOMAIN__</h1>
+  <div class="meta">生成时间：__GENERATED_AT__ ｜ ontology-forge 确定性呈审产物</div>
+  <div class="guide">
+    逐条勾选：<b>✅ 真业务</b>（确认是真问题，保留）｜<b>✏️ 要改</b>（问题真实但表述/口径要改，备注里写改法）｜<b>❌ 删除</b>（不是本场景要回答的问题）。<br>
+    有遗漏的业务问题写在底部"补充 CQ"框（一行一条）。完成后点<b>「生成批复」</b>，复制批复文本回贴给建模 agent。
+  </div>
+
+  <div class="section-t">CQ 清单</div>
+  <div id="cq-list"></div>
+
+  <div class="section-t">补充 CQ（一行一条，可留空）</div>
+  <textarea id="extra" rows="3" placeholder="例如：某物料替代料被启用时，原主料的需求如何自动转移？"></textarea>
+
+  <div class="actions">
+    <button class="btn-main" onclick="genVerdict()">生成批复</button>
+    <button class="btn-copy" id="copy-btn" onclick="copyVerdict()" style="display:none">复制批复</button>
+  </div>
+  <div class="warn" id="warn">存在未勾选的 CQ——请逐条勾选后再生成（或明确留空将按"未批复"呈报）。</div>
+  <div class="result" id="result">
+    <div class="section-t">批复文本（复制回贴给 agent）</div>
+    <pre id="verdict"></pre>
+  </div>
+</div>
+
+<script>
+// CQS：CQ 清单数据（由 render_cq_checklist.py 注入，结构 [{id, q}]）
+const CQS = __CQ_DATA__;
+
+// 状态存储：state[id] ∈ {keep, revise, drop, undefined}；note[id] 为备注文本
+const state = {}, note = {};
+
+// ===========一、清单渲染==========
+function renderList() {
+  // listEl：CQ 卡片容器
+  const listEl = document.getElementById('cq-list');
+  listEl.innerHTML = CQS.map((cq, i) => `
+    <div class="cq-card" id="card-${i}">
+      <div class="cq-q"><span class="cq-id">${cq.id}</span>${escapeHtml(cq.q)}</div>
+      <div class="states">
+        <button class="state-btn" data-i="${i}" data-s="keep"  onclick="toggle(${i},'keep')">✅ 真业务</button>
+        <button class="state-btn" data-i="${i}" data-s="revise" onclick="toggle(${i},'revise')">✏️ 要改</button>
+        <button class="state-btn" data-i="${i}" data-s="drop"  onclick="toggle(${i},'drop')">❌ 删除</button>
+      </div>
+      <input class="note" id="note-${i}" placeholder="修改意见（选 ✏️ 时填写：改成什么表述/口径）" oninput="note['${cq.id}']=this.value">
+    </div>`).join('');
+}
+
+// ===========二、三态切换（radio 互斥 + 再点取消）==========
+function toggle(i, s) {
+  const id = CQS[i].id;
+  state[id] = (state[id] === s) ? undefined : s;
+  // 卡片着色随态
+  document.querySelectorAll(`.state-btn[data-i="${i}"]`).forEach(btn => {
+    btn.className = 'state-btn' + (state[id] === btn.dataset.s ? ` on-${btn.dataset.s}` : '');
+  });
+  const card = document.getElementById(`card-${i}`);
+  card.className = 'cq-card' + (state[id] === 'drop' ? ' rejected' : state[id] === 'revise' ? ' revised' : '');
+  // ✏️ 态聚焦备注框
+  const noteEl = document.getElementById(`note-${i}`);
+  noteEl.className = 'note' + (state[id] === 'revise' ? ' show' : '');
+  if (state[id] === 'revise') noteEl.focus();
+}
+
+// ===========三、批复文本生成==========
+function genVerdict() {
+  // extras：补充 CQ（按非空行拆分）
+  const extras = document.getElementById('extra').value.split('\n').map(s => s.trim()).filter(Boolean);
+  // unanswered：未勾选的 CQ id（如实呈报，不代用户决定）
+  const unanswered = CQS.filter(cq => !state[cq.id]).map(cq => cq.id);
+  document.getElementById('warn').style.display = unanswered.length ? 'block' : 'none';
+
+  const lines = ['【CQ 批复】'];
+  CQS.forEach(cq => {
+    const s = state[cq.id], n = (note[cq.id] || '').trim();
+    if (s === 'keep') lines.push(`${cq.id} ✅ 真业务`);
+    else if (s === 'revise') lines.push(`${cq.id} ✏️ 要改${n ? '：' + n : '：（未填修改意见）'}`);
+    else if (s === 'drop') lines.push(`${cq.id} ❌ 删除${n ? '：' + n : ''}`);
+    else lines.push(`${cq.id} ⏳ 未批复（需业务方再确认）`);
+  });
+  if (extras.length) {
+    lines.push('【补充 CQ】');
+    extras.forEach((q, i) => lines.push(`add-${String(i + 1).padStart(3, '0')} ${q}`));
+  }
+  if (unanswered.length) lines.push(`（提醒：${unanswered.join('、')} 未勾选，请业务方补充批复）`);
+
+  document.getElementById('verdict').textContent = lines.join('\n');
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('copy-btn').style.display = 'inline-block';
+  // 勾选状态挂全局，供 Gen UI 宿主桥接（window.zcode 等）扩展读取
+  window.__cqState__ = { domain: '__DOMAIN__', state, note, extras, unanswered };
+}
+
+// ===========四、复制与工具==========
+function copyVerdict() {
+  const text = document.getElementById('verdict').textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => { document.getElementById('copy-btn').textContent = '已复制 ✓'; setTimeout(() => document.getElementById('copy-btn').textContent = '复制批复', 1500); })
+    .catch(() => { // 非 https/老浏览器兜底：全选文本供手动复制
+      const range = document.createRange(); range.selectNodeContents(document.getElementById('verdict'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+renderList();
+</script>
+</body>
+</html>
