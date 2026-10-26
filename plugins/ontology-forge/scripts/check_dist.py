@@ -137,6 +137,16 @@ def check_manifests(report: Report) -> None:
     elif versions:
         report.ok("四清单版本一致")
 
+    #   2. 市场清单版本联动（教训：升版只改插件清单漏了 marketplace.json，用户刷新市场看不到更新）
+    marketplace = PLUGIN_ROOT.parent / "marketplace.json"
+    if marketplace.is_file():
+        mp_entry = next((e for e in json.loads(marketplace.read_text(encoding="utf-8"))["plugins"]
+                         if e.get("source", "").lstrip("./") == PLUGIN_ROOT.name), None)
+        plugin_version = next(iter(versions.values()), "") if versions else ""
+        check(report, "marketplace.json 版本与插件清单一致",
+              bool(mp_entry) and mp_entry.get("version") == plugin_version,
+              f"marketplace={mp_entry.get('version') if mp_entry else '未登记'} vs 插件清单={plugin_version}")
+
     #   2. WorkBuddy 清单逐项合规（平台解析硬依赖，缺一即拒收）
     cb_path = MANIFESTS["codebuddy"]
     if not cb_path.is_file():
