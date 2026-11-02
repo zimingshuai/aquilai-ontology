@@ -19,6 +19,7 @@
 4. **既有本体快照**（get_meta_objects 返回的 JSON）：归 D 类，命名 `existing_ontology.json`——增量建模时它是 diff 基准。
 5. **同一文档多主题**（对账 + 库存两个场景）：归位后标注「跨场景」，提请用户确认是否拆成两个资料包（两个本体）。
 6. **说不清的**：`待人工裁定` 区（intake-log.md 中列出），禁止按文件扩展名猜。
+7. **售前 POC 设计书**（v0.4.5，xgimi 实证）：含客户背景/损失收益估算/场景痛点表/验收标准的复合设计文档——整份归 B 类（业务场景+计算规则+流程混装，同案例 2 逻辑），客户背景与损失估算章节在源摘要标注"场景动机参考，非建模口径"。
 
 ## brief.yaml 生成规则
 
@@ -28,6 +29,12 @@ scenario_name: <string>       # 业务场景名（中文）
 business_owner: <string>      # 业务负责人（从文档署名/访谈对象推断，须确认）
 target_engine: fnb|mfg|new    # 增量建模选既有引擎；从零建库选 new
 source_systems: [<string>]    # 来源系统清单（SRM/WMS/ERP…，从文档推断）
+materials:                    # 资料清单（v0.4.5 反哺，xgimi 实证形态）——逐份登记三键
+  - path: <归位路径>          #   归位后的相对路径
+    type: A|B|C|D             #   判型结果
+    note: <string>            #   一句话备注（判型依据/内含物提示，可空）
+constraints: [<string>]       # 设计红线预提取（v0.4.5 反哺）——文档"设计红线/约束"段的条目摘录，
+                              #   直接喂给建模第 1 步 Charter 的统一计算约定，避免二次翻原文
 known_conflicts:              # 冲突预检结果；建模阶段未裁决不得定稿
   - { topic: <string>, side_a: <定义+来源>, side_b: <定义+来源>, status: pending }
 ```

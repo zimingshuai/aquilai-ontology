@@ -2,10 +2,11 @@
 
 主要 Input：DSL YAML 模型文件路径（命令行位置参数）。
 主要 Output：stdout 中文 lint 报告 + 退出码（0=通过；1=存在 error；2=文件/解析失败）。
-实现 dsl-spec.md §7 全部 12 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
+实现 dsl-spec.md §7 全部 13 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
 表达式方言/trigger/下游声明/衍生一致/外键一致）；第 9 条受控词表（v0.3，解析逻辑在
 lint_glossary.py）；第 10-11 条动作准入（v0.2.2 §4）；第 12 条规则名全局唯一（v0.3，
-studio-model code 需唯一）；外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
+studio-model code 需唯一）；第 13 条关系业务语义名 + 13b 关系业务定义（v0.3.4/0.3.7，
+warning 级）；外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
 ``alias: Target`` 与显式 fk ``alias: {target, fk: [字段...]}``（简写行为不变）。
 error 影响退出码，warning 仅提示。逻辑完全由 DSL 结构驱动，不含实体名特判。
 """

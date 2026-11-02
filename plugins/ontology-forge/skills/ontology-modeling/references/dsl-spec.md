@@ -1,11 +1,14 @@
-# Ontology DSL 规范 v0.3.4
+# Ontology DSL 规范 v0.3.5
 
-> 版本：v0.3.4（2026-10-15：关系语义名纪律——links 必须说清"是什么关系"，lint 第 13 条）
+> 版本：v0.3.5（2026-11-02：xgimi 全产物遍历反哺——文件头治理注释三行、属性 source 锚点格式、枚举双写、衍生公式 description 重述、可空外键/自引用/单表多态约定、规则级 source 键、编译剥离清单补登 derived 与规则 source）
+> v0.3.4（2026-10-15：关系语义名纪律——links 必须说清"是什么关系"，lint 第 13 条）
 > v0.3（2026-10-13，按 M2/M3 与端到端复验的实证发现升级）
 > v0.2.2→v0.3 变更：①links 支持显式 fk 声明（复合外键场景，xgimi 实证 13 连线收敛问题）；②lint 第 12 条规则名全局唯一（fnb 31 处重名实证：引擎合法但 studio-model code 需唯一）；③lint 第 9 条受控词表正式启用（同文档两次独立生成仅 7/26 实体同名的漂移实证）+ seeds/glossary.md 术语对照表机制。
 > 本质定位：面向 Aquilair 本体引擎的**本体元数据设计**（数据模型层 + 语义标注层 + 行为契约层），非 OWL 本体
 
 ## 1. 顶层结构
+
+**文件头治理注释三行（v0.3.5，xgimi 实证反哺）**：YAML 首个键之前以注释声明三行——①版本行（`# <域> 本体 DSL v<version>`）②依据行（`# 依据：models/<domain>/modeling-brief/...`，资料包定位）③状态行（`# 状态：draft——人审是唯一权威，未确认不得注册引擎`，定稿后改 `# 状态：final（人审通过 <日期>）`）。治理机读信息走 governance 键，这三行是**人读红线**——阅读文件第一眼就知道能不能注册引擎。
 
 ```yaml
 ontology: <string>            # 本体标识（kebab-case，如 fnb、supplier-recon）
@@ -34,6 +37,11 @@ conflicts:                    # 口径冲突记录（v0.3 固化 schema，结构
 assumptions: [ ... ]          # 生成假设清单
 ```
 
+**两条写法约定（v0.3.5，xgimi 实证反哺）**：
+
+1. **conflicts/assumptions 用显式空集合**：无冲突时写 `conflicts: []` 而非省略键——显式空数组表达"查过、结论为零"，省略会被误读为"没查过"。
+2. **待决点行内交叉引用**：属性/规则 description 中涉及未决事项时，就地锚定 `（…见 open_questions）` / `（…见 assumptions）`（如"编码规则待确认，见 open_questions"），让待决点与具体字段互相可寻——禁止只在顶层 OQ 列表里登记而在字段处无痕。
+
 ## 2. entities（实体）
 
 ```yaml
@@ -51,10 +59,11 @@ entities:
         type: <enum>             # 必填，仅 7 种：STRING|INTEGER|DOUBLE|DECIMAL|BOOLEAN|DATE|TIMESTAMP
         primary: <bool>          # 可选，默认 false；支持复合主键（多字段 true）
         uom: <string>            # 可选，量纲（kg/元/天/件）
-        enum_values: [<string>]  # 可选，枚举值清单
-        source: <string>         # 可选，provenance（来源文档#位置）
+        enum_values: [<string>]  # 可选，枚举值清单——声明枚举时 description 必须双写（见下方约定 3）
+        source: <string>         # 可选，provenance（来源文档#位置——格式见下方约定 2）
         derived: <bool>          # 可选，标注该字段由 derived_property 规则计算（lint 规则 7 方向 B
                                  #   依据：标了 derived: true 就必须有对应规则；不标则仅正向检查）
+                                 #   derived 字段须在 description 重述公式（见下方约定 4）
     links:                     # 可选；键 = 引用别名（同时是规则表达式的引用前缀）
       <alias>: <TargetEntity>   # 默认别名 = 目标表名 snake_case；可用短别名（如 wh）
     provenance:                # 可选
@@ -65,6 +74,13 @@ entities:
 
 1. **衍生字段必须在 properties 中声明**：derived_property 规则的目标字段必须已在该 upstream 实体的 properties 里声明（含 type/display_name/description），计算逻辑由规则承载。引擎实际形态即如此（fnb 的 SKUInWarehouse.properties 含 inventory_turnover_days / idd / inventory_level 等衍生字段）。类型为推断时在 assumptions 记录。
 2. **外键字段保留为属性 + links 并存声明**：外键字段（如 supplier_code）作为普通属性保留声明，同时以 links 声明引用关系（引擎实际：fnb PurchaseOrder.properties 有 sku_code/wh_code 且 links 并存）。
+
+**四条写法约定（v0.3.5，xgimi 21 实体全域 186 属性实证反哺）**：
+
+3. **枚举双写**：声明 `enum_values` 的字段，description 必须逐一给出 `code=中文含义` 对照（如 `MP=量产；NPI-DVT=新品设计验证；…`），且**覆盖全部枚举值**——enum_values 编译时被剥离（§6），description 是引擎侧唯一的语义载体；漏写即产出"孤儿枚举值"（实证：xgimi stage 的 NPI-EVT 曾在任何产物中都查不到含义）。
+4. **衍生公式重述**：`derived: true` 字段的 description 以「衍生：」前缀重述口径（如 `衍生：行用量 ÷ 基准数量`）——derived 标记与规则 logic 均不进引擎产物，description 重述保证人审/平台侧不回读 DSL 也能看懂口径。
+5. **source 锚点格式**：`source: <材料类目录>/<文件名>#<章节锚点>`（如 `B_scenarios/xgimi-poc-design.md#附录A.2`）——材料分类目录/文件/锚点三级粒度全域一致，provenance 才能机器定位；规则级 source 同此格式（§3）。
+6. **可空外键语义**：外键可空（如"仅替代类变化才有 bom_line_code"）时 DSL 无可空性键可用——**在字段 description 写明可空条件，并在 assumptions 登记推断依据**；平台导入时该 FK 是否必填以人审裁定为准。
 
 **links 语义与显式 fk 声明（v0.3）**：
 
@@ -77,7 +93,7 @@ entities:
       sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code] }  # 复合外键（桥接引用）
 ```
 
-`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。**关系语义名（name）是建模必填纪律（v0.3.4，用户实证：只建连线不说清"是什么关系"，拓扑与平台关系名不可读）**：每条 links 应声明中文关系语义名（动宾/偏正短语，如 订购物料/隶属项目/换算物料），进 studio-model 的 link name 与拓扑连线标签；简写形态无法带 name（lint13 提示）。**显式 fk 形态用于外键字段 ≠ 目标主键名的场景（fk 可缺省）**（xgimi 实证：PurchaseOrder 经 sku_code+wh_code 复合引用 SKUInWarehouse，简写约定无法表达，studio-model 编译报错）；fk 字段列表必须在 properties 中有声明（lint 校验）。反向一对多集合不写进 links（引擎侧推导），规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s）；多形态白名单校验，收敛为单形态待引擎侧确认）。
+`alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。**自引用 links 合法（v0.3.5 明示，xgimi 实证：Demand→Demand 的 covered_by）**：别名与被引用实体内同名 links 不冲突；规则表达式中沿自引用别名的引用照常解析，反向复数引用名生成规则不变（表名/别名 + s）。**关系语义名（name）是建模必填纪律（v0.3.4，用户实证：只建连线不说清"是什么关系"，拓扑与平台关系名不可读）**：每条 links 应声明中文关系语义名（动宾/偏正短语，如 订购物料/隶属项目/换算物料），进 studio-model 的 link name 与拓扑连线标签；简写形态无法带 name（lint13 提示）。**显式 fk 形态用于外键字段 ≠ 目标主键名的场景（fk 可缺省）**（xgimi 实证：PurchaseOrder 经 sku_code+wh_code 复合引用 SKUInWarehouse，简写约定无法表达，studio-model 编译报错）；fk 字段列表必须在 properties 中有声明（lint 校验）。反向一对多集合不写进 links（引擎侧推导），规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s）；多形态白名单校验，收敛为单形态待引擎侧确认）。
 
 **受控词表（v0.3 正式启用，lint 第 9 条）**：新建/增量建模时须对照 `seeds/glossary.md` 术语对照表优先复用既有命名；跨域同义实体（如 fnb `SKU` ↔ mfg `Material`）与同域历史版本命名（如 xgimi 两版 `RunSnapshot`↔`CalculationRun`）都登记在 glossary——**同域重跑必须走增量模式（diff/复用）而非从零生成**；新术语入库在人审时裁定。
 
@@ -93,6 +109,8 @@ entities:
   upstream: [<EntityName>]    # 依附的主实体（单实体）
   logic: "<目标字段>: <表达式>"  # 目标字段必须已声明于 upstream 实体 properties（§2 约定 1）
   description: <string>       # 口径的业务含义（人审重点）
+  source: <string>            # 可选，provenance（v0.3.5 固化，xgimi 10 条规则全带实证——格式同 §2 约定 5；
+                             #   规则 source 编译时剥离（§6），DSL 是唯一溯源载体）
 ```
 
 **表达式方言**（引擎实测能力边界，lint 强制）：
@@ -119,6 +137,8 @@ entities:
       - { field: <字段或别名.字段路径>, operator: <op>, value: <标量或数组> }
   downstream: <action_name>   # 触发的动作（引擎内置隐式 action 亦可，如 update_inventory_level）
   description: <string>
+  source: <string>            # 可选，provenance（v0.3.5，同 §3.1——触发规则的出处多为异常小节/红线段，
+                             #   source 是"这条规则为什么存在"的唯一线索）
 ```
 
 **operator 枚举**：`== != > >= < <= in`（value 为数组时必须用 in）。
@@ -203,7 +223,7 @@ actions:
 | `rules[trigger].logic` | `{rules: [{rule_type: "trigger", logic: {ALL: [...]}, upstream, downstream: <action>, name, description}]}` |
 | `rules[admission].logic` | `{rules: [{rule_type: "admission", logic: {ALL: [...]}, upstream: [<action>], downstream: "Action 准入拦截: <action>", name, description}]}` |
 
-**编译剥离清单**：DSL 自有字段（governance / provenance / uom / enum_values / source / competency_questions / open_questions / conflicts / assumptions）引擎不存储，编译时必须剥离——编译产物只含引擎格式键。
+**编译剥离清单**：DSL 自有字段（实体级 governance / provenance；属性级 uom / enum_values / source / **derived**；规则级 **source**；顶层 competency_questions / open_questions / conflicts / assumptions）引擎不存储，编译时必须剥离——编译产物只含引擎格式键。**v0.3.5 补登两项（xgimi 遍历实证：此前两处剥离无记载）**：①属性级 `derived` 在 engine 目标下实际被剥离（引擎侧无法区分自然属性与计算属性；studio-model 目标保留为 isDerived，见 §8），②规则级 `source` 全量剥离——**剥离后 description 成为引擎侧唯一语义载体，故 §2 约定 3/4（枚举双写、衍生重述）是强制项而非建议**。
 
 **round-trip 校验口径**：DSL → 编译 → 引擎格式，与引擎实测快照做**深度逐键比对**；编译产物中出现任何引擎格式之外的键 = 失败。
 
@@ -222,6 +242,7 @@ actions:
 11. admission 的 `{param: 名}` 引用与 action parameters 对应（v0.2.2）
 12. **规则名全局唯一（v0.3）**：同名规则跨实体重复报 error（引擎合法但 studio-model code 需唯一，fnb 31 处重名实证）
 13. **关系业务语义名（v0.3.4）**：links 未声明 name（简写形态或显式缺省）报 warning——只表达"有指向"未说清是什么关系，建议显式形态声明 name
+13b. **关系业务定义（v0.3.7）**：显式形态 links 缺 description 报 warning——关系只有名字没有业务定义，平台侧关系描述为空串（用户实证）
 
 ## 8. studio-model 互导格式（v0.2.1，2026-10-13 按试用上传的两份真实模板实证）
 

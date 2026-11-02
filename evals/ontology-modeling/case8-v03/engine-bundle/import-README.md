@@ -15,9 +15,11 @@
 
 ## 编译剥离说明（dsl-spec §6）
 
-DSL 自有字段不进入产物：实体级 governance / provenance，属性级 uom / enum_values / source，
+DSL 自有字段不进入产物：实体级 governance / provenance，属性级 uom / enum_values / source /
+derived（引擎侧不区分自然属性与计算属性；studio-model 目标保留为 isDerived），规则级 source，
 顶层 competency_questions / open_questions / conflicts / assumptions（规则仅保留引擎需要的
-name 与人审用的 description）。编译内置白名单自查，产物出现引擎格式之外的键即报错终止。
+name 与人审用的 description——剥离后 description 是引擎侧唯一语义载体，枚举含义与衍生公式
+口径必须已在 DSL 的 description 双写）。编译内置白名单自查，产物出现引擎格式之外的键即报错终止。
 
 ## 导入流程
 

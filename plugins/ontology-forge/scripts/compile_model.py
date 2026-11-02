@@ -303,9 +303,11 @@ def _write_import_readme(bundle_dir: Path, model_path: Path,
                        f"{len(rules_payload['rules'])} 条规则）与 DSL 的一致性；\n")
     text += (
         "\n## 编译剥离说明（dsl-spec §6）\n\n"
-        "DSL 自有字段不进入产物：实体级 governance / provenance，属性级 uom / enum_values / source，\n"
+        "DSL 自有字段不进入产物：实体级 governance / provenance，属性级 uom / enum_values / source /\n"
+        "derived（引擎侧不区分自然属性与计算属性；studio-model 目标保留为 isDerived），规则级 source，\n"
         "顶层 competency_questions / open_questions / conflicts / assumptions（规则仅保留引擎需要的\n"
-        "name 与人审用的 description）。编译内置白名单自查，产物出现引擎格式之外的键即报错终止。\n\n"
+        "name 与人审用的 description——剥离后 description 是引擎侧唯一语义载体，枚举含义与衍生公式\n"
+        "口径必须已在 DSL 的 description 双写）。编译内置白名单自查，产物出现引擎格式之外的键即报错终止。\n\n"
         "## 导入流程\n\n"
         + review_line
         + "2. 审核通过后由平台侧按 `get_meta_objects` / `get_meta_rules` 的注册格式执行注册；\n"
