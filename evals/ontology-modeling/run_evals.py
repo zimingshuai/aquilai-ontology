@@ -280,11 +280,27 @@ def build_case8(results: list) -> None:
         # lint9 如实断言：xgimi 复验版全用建议名则 0 warning 也是正确结果，故只断言退出码
         assert proc.returncode == 0, f"xgimi lint 退出码 {proc.returncode}: {proc.stdout[-300:]}"
 
+    def lint_bad_oq():
+        # lint14/15 坏例夹具（v0.3.6）：OQ id 重复/status 七态外/缺 topic+question/
+        # conflicts 缺 claim+status/枚举孤儿值/枚举空 description，逐点断言命中
+        proc = run_cmd([SCRIPTS_DIR / "lint_model.py", fixture_dir / "fixture-bad-oq.yaml"])
+        out = proc.stdout or ""
+        assert proc.returncode == 1, f"应报 error 退出 1，实际 {proc.returncode}: {out[-300:]}"
+        assert "已出现" in out and "重复" in out, f"缺 OQ id 重复 error: {out[-300:]}"
+        assert "bogus-state" in out and "七态枚举" in out, f"缺 status 非法 error: {out[-300:]}"
+        assert "缺少 topic" in out and "缺少 question" in out, f"缺 topic/question error: {out[-300:]}"
+        assert "side_a" in out and "side_b" in out, f"缺 conflicts claim error: {out[-300:]}"
+        # 精确计数：lint14 error=7（id 重复1+缺topic/question/status非法3+conflicts claim2+status1）+ lint15 error=1（空 description）
+        assert "error 8 处" in out, f"应恰 8 处 error，实际: {out[-200:]}"
+        assert "lint15" in out and "孤儿枚举值" in out and "B" in out, f"缺 lint15 孤儿值 warning: {out[-300:]}"
+        assert "description 为空" in out, f"缺 lint15 空 description error: {out[-300:]}"
+
     assert_case(results, "case8", "lint 显式 fk 0 错误", lint_ok)
     assert_case(results, "case8", "lint 坏例报 lint3+lint12", lint_bad)
     assert_case(results, "case8", "编译 both 引擎产物与 case7 一致", compile_both_matches_case7)
     assert_case(results, "case8", "复合 fk 连线告警跳过", compound_fk_skipped_with_warning)
     assert_case(results, "case8", "lint xgimi 退出码 0", lint_xgimi_exit0)
+    assert_case(results, "case8", "坏fixture 报 lint14+lint15", lint_bad_oq)
 
 
 # ===========七、case9：平台一致性自检（冻结夹具：xgimi 导入后快照）==========

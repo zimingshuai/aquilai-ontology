@@ -63,7 +63,7 @@ entities:
       from_uom: { display_name: 源单位, description: 被换算单位（如 盒）, type: STRING, source: "xgimi-poc-doc.md#§11.8 测试六" }
       to_uom: { display_name: 目标单位, description: 换算目标单位（如 颗，即基本单位）, type: STRING, source: "xgimi-poc-doc.md#§11.8 测试六" }
       ratio: { display_name: 换算比率, description: 1 源单位 = ratio 目标单位（1盒=100颗）, type: DECIMAL, uom: 颗/盒, source: "xgimi-poc-doc.md#§11.8 测试六" }
-      approval_status: { display_name: 批准状态, description: 换算关系须为已批准才可参与计算, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.8 测试六（批准换算）" }
+      approval_status: { display_name: 批准状态, description: 换算关系须为已批准才可参与计算（approved=已批准；pending=待批准）, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.8 测试六（批准换算）" }
       evidence_status: { display_name: 证据状态, description: complete=证据齐全；missing=换算依据被移除，缺证提示、不按零处理, type: STRING, enum_values: [complete, missing], source: "xgimi-poc-doc.md#§11.8 测试六" }
     links: { material: {target: Material, fk: [material_id], name: 换算物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§4.1+§11.8 测试六, reviewed: false }
@@ -258,7 +258,7 @@ entities:
       moq: { display_name: 最小起订量, description: MOQ（5,000 颗）, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§11.5" }
       order_multiple: { display_name: 订购倍数, description: 订购倍数（1,000 颗），取整产生的额外数量单独展示并纳入风险评估, type: DECIMAL, uom: 颗, source: "xgimi-poc-doc.md#§11.5+§4.3 ⑤" }
       share_ratio: { display_name: 分配份额, description: 供应商分配份额（100%；双供应商 70%/30% 为取整前目标，实际比例另行显示）, type: DECIMAL, uom: "%", source: "xgimi-poc-doc.md#§11.5+§11.8 测试一" }
-      approval_status: { display_name: 批准状态, description: approved=已批准供货（两家均已批准，无另设产能上限）, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.8 测试一" }
+      approval_status: { display_name: 批准状态, description: approved=已批准供货（两家均已批准，无另设产能上限）；pending=待批准, type: STRING, enum_values: [approved, pending], source: "xgimi-poc-doc.md#§11.8 测试一" }
     links: { supplier: {target: Supplier, name: 供货供应商}, material: {target: Material, fk: [material_id], name: 供货物料} }
     provenance: { doc: B_scenarios/xgimi-poc-doc.md#§11.5+§11.8 测试一, reviewed: false }
 

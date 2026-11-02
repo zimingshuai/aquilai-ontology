@@ -1,6 +1,7 @@
-# Ontology DSL 规范 v0.3.5
+# Ontology DSL 规范 v0.3.6
 
-> 版本：v0.3.5（2026-11-02：xgimi 全产物遍历反哺——文件头治理注释三行、属性 source 锚点格式、枚举双写、衍生公式 description 重述、可空外键/自引用/单表多态约定、规则级 source 键、编译剥离清单补登 derived 与规则 source）
+> 版本：v0.3.6（2026-11-02：OQ schema 对齐复验版实战形态（topic/question/proposal 键 + 七态状态机，修订 v0.3.9 固化时未对齐的 q/四态）；lint 新增第 14 条 OQ/conflicts 结构与第 15 条枚举双写）
+> v0.3.5（2026-11-02：xgimi 全产物遍历反哺——文件头治理注释三行、属性 source 锚点格式、枚举双写、衍生公式 description 重述、可空外键/自引用/单表多态约定、规则级 source 键、编译剥离清单补登 derived 与规则 source）
 > v0.3.4（2026-10-15：关系语义名纪律——links 必须说清"是什么关系"，lint 第 13 条）
 > v0.3（2026-10-13，按 M2/M3 与端到端复验的实证发现升级）
 > v0.2.2→v0.3 变更：①links 支持显式 fk 声明（复合外键场景，xgimi 实证 13 连线收敛问题）；②lint 第 12 条规则名全局唯一（fnb 31 处重名实证：引擎合法但 studio-model code 需唯一）；③lint 第 9 条受控词表正式启用（同文档两次独立生成仅 7/26 实体同名的漂移实证）+ seeds/glossary.md 术语对照表机制。
@@ -21,13 +22,18 @@ entities: { ... }             # 实体（见 §2），必填
 rules: [ ... ]                # 规则（见 §3），可空
 actions: [ ... ]              # 动作（见 §4），一期不含，保留槽位
 competency_questions: [ ... ] # 能力问题（见 §5）
-open_questions:                # 待确认问题（v0.3.9 固化 schema——OQ 是建模质量的核心承载，禁止脑补铁律的落点）
-  - id: OQ-NN                  #   域内唯一编号
-    q: <string>                #   问题原文（一句话）
+open_questions:                # 待确认问题（v0.3.9 固化、v0.3.6 对齐复验版实战形态——OQ 是建模质量的核心承载，禁止脑补铁律的落点）
+  - id: OQ-NN                  #   域内唯一编号（大写 OQ- 前缀，lint14 校验格式与唯一性）
+    topic: <string>            #   主题短语（问询单/呈审检索锚点，如"方言缺向上取整函数"）
+    question: <string>         #   问题原文（完整一句话，说清缺口与影响）
+    proposal: <string>         #   可选，建模侧提案（运行时契约/回退方案/验收用例）
     missing_from: <string>     #   缺在哪份材料/哪个环节（可空——方言边界类缺的是引擎能力而非材料）
-    status: resolved | pending-engine | pending-business | resolved-pending-input
-                               #   四态：已解决 / 等引擎侧 / 等业务方 / 已解决但待输入佐证
-    resolution: <string>       #   裁决留痕（已解决/已归类时必填：裁决内容+日期+裁决人；原文永不删除）
+    status: pending-engine | pending-business | pending-input | resolved
+             | resolved-pending-engine | resolved-pending-business | resolved-pending-input
+                               #   七态三组（v0.3.6 修订，xgimi 复验版 12 条 OQ 实证）：
+                               #   pending-* 未裁决（等引擎/等业务方/等输入）；
+                               #   resolved 已裁决且落地；resolved-pending-* 已裁决、待某方落地佐证
+    resolution: <string>       #   裁决留痕（status 含 resolved 时必填：裁决内容+日期+裁决人；原文永不删除）
 conflicts:                    # 口径冲突记录（v0.3 固化 schema，结构漂移=不合规）
   - topic: <string>           #   冲突主题（术语/口径名）
     side_a: { claim: <定义>, source: <来源文档#位置> }
@@ -243,6 +249,8 @@ actions:
 12. **规则名全局唯一（v0.3）**：同名规则跨实体重复报 error（引擎合法但 studio-model code 需唯一，fnb 31 处重名实证）
 13. **关系业务语义名（v0.3.4）**：links 未声明 name（简写形态或显式缺省）报 warning——只表达"有指向"未说清是什么关系，建议显式形态声明 name
 13b. **关系业务定义（v0.3.7）**：显式形态 links 缺 description 报 warning——关系只有名字没有业务定义，平台侧关系描述为空串（用户实证）
+14. **OQ/conflicts 结构（v0.3.6）**：OQ 逐条校验 id 格式（`OQ-NN` 大写，不符报 warning）/ id 域内唯一 / topic+question 非空 / status 在七态枚举内 / status 含 resolved 必带 resolution——违规报 error；conflicts 逐条校验 topic+side_a.claim+side_b.claim 非空、status 在 pending|resolved 内——违规报 error（实证：schema 漂移曾致同域两版 OQ 键名/状态机各说各话，机器无一拦截）
+15. **枚举双写（v0.3.6）**：声明 enum_values 的字段 description 缺失报 error；enum code 未在 description 出现报 warning（孤儿枚举值——enum_values 编译剥离后 description 是唯一语义载体；实证：xgimi 复验版 29 个枚举字段中 2 个存在孤儿值）
 
 ## 8. studio-model 互导格式（v0.2.1，2026-10-13 按试用上传的两份真实模板实证）
 

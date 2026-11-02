@@ -112,7 +112,7 @@
       },
       "approval_status": {
         "display_name": "批准状态",
-        "description": "换算关系须为已批准才可参与计算",
+        "description": "换算关系须为已批准才可参与计算（approved=已批准；pending=待批准）",
         "data_type": "STRING",
         "is_primary": false
       },
@@ -834,7 +834,7 @@
       },
       "approval_status": {
         "display_name": "批准状态",
-        "description": "approved=已批准供货（两家均已批准，无另设产能上限）",
+        "description": "approved=已批准供货（两家均已批准，无另设产能上限）；pending=待批准",
         "data_type": "STRING",
         "is_primary": false
       }

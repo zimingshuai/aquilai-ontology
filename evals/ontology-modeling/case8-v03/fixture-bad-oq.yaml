@@ -1,0 +1,28 @@
+# lint14/15 坏例夹具（v0.3.6）：每处标注预期报点——OQ id 重复 / status 七态外 /
+# 缺 topic+question / conflicts 缺 claim+status / 枚举孤儿值 / 枚举空 description。
+# 好条目（OQ-01 首条）不应产生任何报点。
+ontology: lint14-fixture
+version: 0.1.0-draft.1
+governance: { owner: fixture, maturity: experimental }
+entities:
+  Item:
+    display_name: 物料
+    table_name: item
+    description: lint14/15 坏例夹具
+    properties:
+      item_code: { display_name: 编码, type: STRING, primary: true }
+      # lint15 warning：B 为孤儿枚举值（description 只解释了 A）
+      status: { display_name: 状态, description: A=正常, type: STRING, enum_values: [A, B] }
+      # lint15 error：声明枚举但 description 为空（剥离后语义全丢）
+      kind: { display_name: 类别, type: STRING, enum_values: [X] }
+    links: {}
+open_questions:
+  # 好条目：id 格式/topic/question/status 全合规，不应报点
+  - { id: OQ-01, topic: 测试主题, question: 测试问题原文？, missing_from: 夹具自述, status: pending-engine }
+  # lint14 error：id 与上一条重复
+  - { id: OQ-01, topic: 重复id, question: 重复编号应报错？, status: pending-business }
+  # lint14 warning+error×3：id 小写格式 / 缺 topic / 缺 question / status 七态外
+  - { id: oq-99, status: bogus-state }
+conflicts:
+  # lint14 error×3：缺 side_a.claim / 缺 side_b.claim / 缺 status（人审裁决前一律 pending）
+  - { topic: 口径冲突夹具 }

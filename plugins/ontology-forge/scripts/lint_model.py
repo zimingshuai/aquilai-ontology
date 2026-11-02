@@ -2,11 +2,12 @@
 
 主要 Input：DSL YAML 模型文件路径（命令行位置参数）。
 主要 Output：stdout 中文 lint 报告 + 退出码（0=通过；1=存在 error；2=文件/解析失败）。
-实现 dsl-spec.md §7 全部 13 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
+实现 dsl-spec.md §7 全部 15 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
 表达式方言/trigger/下游声明/衍生一致/外键一致）；第 9 条受控词表（v0.3，解析逻辑在
 lint_glossary.py）；第 10-11 条动作准入（v0.2.2 §4）；第 12 条规则名全局唯一（v0.3，
 studio-model code 需唯一）；第 13 条关系业务语义名 + 13b 关系业务定义（v0.3.4/0.3.7，
-warning 级）；外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
+warning 级）；第 14 条 OQ/conflicts 结构（v0.3.6，七态状态机）；第 15 条枚举双写
+（v0.3.6，孤儿枚举值）；外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
 ``alias: Target`` 与显式 fk ``alias: {target, fk: [字段...]}``（简写行为不变）。
 error 影响退出码，warning 仅提示。逻辑完全由 DSL 结构驱动，不含实体名特判。
 """
@@ -34,6 +35,17 @@ FUNC_WHITELIST = {"SUM", "COALESCE", "MAX"}
 PARAM_REF_RE = re.compile(r"@param:([A-Za-z_]\w*)")
 # KNOWN_RULE_TYPES：DSL 三种规则类型。
 KNOWN_RULE_TYPES = {"derived_property", "trigger", "admission"}
+# OQ_ID_RE：open_questions 编号格式（OQ-NN，大写前缀、至少两位数字——lint 规则 14）。
+OQ_ID_RE = re.compile(r"^OQ-\d{2,}$")
+# ALLOWED_OQ_STATUS：§1 OQ 状态机七态（v0.3.6 对齐 xgimi 复验版实战形态：pending-* 未裁决
+# / resolved 已裁决已落地 / resolved-pending-* 已裁决待落地佐证）。
+ALLOWED_OQ_STATUS = {
+    "pending-engine", "pending-business", "pending-input",
+    "resolved", "resolved-pending-engine", "resolved-pending-business",
+    "resolved-pending-input",
+}
+# ALLOWED_CONFLICT_STATUS：§1 conflicts 状态两态（人审裁决前一律 pending）。
+ALLOWED_CONFLICT_STATUS = {"pending", "resolved"}
 # PASCAL_RE / SNAKE_RE：实体 PascalCase、字段 snake_case 的命名风格正则。
 PASCAL_RE = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 SNAKE_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
@@ -607,7 +619,118 @@ def _check_admission(rule: dict, actions_index: dict[str, dict],
                        f"参数引用 {ref!r} 不存在于 upstream 动作（{'/'.join(valid_actions)}）的 parameters")
 
 
-# ===========七、主流程与命令行入口==========
+# ===========七、顶层 OQ/conflicts 与枚举双写检查（lint 规则 14、15，v0.3.6）==========
+def _check_open_questions(model: dict, report: Report) -> None:
+    """lint 规则 14（OQ 部分）：id 格式与唯一性、topic/question 非空、status 七态、resolved 必带 resolution。
+
+    Args:
+        model: DSL 模型 dict。
+        report: 问题收集器。
+    Returns:
+        None。
+    """
+    oqs = model.get("open_questions")
+    if oqs is None:
+        return  # 键可省略（无待决问题时不强制声明）
+    if not isinstance(oqs, list):
+        report.err("lint14 OQ结构", "open_questions", "必须是数组")
+        return
+    seen_ids: set[str] = set()
+    for idx, oq in enumerate(oqs):
+        if not isinstance(oq, dict):
+            report.err("lint14 OQ结构", f"open_questions[{idx}]", "OQ 条目不是映射结构")
+            continue
+        oq_id = str(oq.get("id") or "")
+        label = oq_id or f"[{idx}]"
+        where = f"OQ {label}"
+        if not oq_id:
+            report.err("lint14 OQ结构", where, "缺少 id（域内唯一编号，如 OQ-01）")
+        elif not OQ_ID_RE.match(oq_id):
+            report.warn("lint14 OQ结构", where,
+                        f"id={oq_id!r} 不符合 OQ-NN 大写格式（v0.3.9 之前的 oq-001 小写旧形态应升级）")
+        elif oq_id in seen_ids:
+            report.err("lint14 OQ结构", where, f"id 重复（{oq_id} 已出现，OQ 编号域内唯一）")
+        seen_ids.add(oq_id)
+        for key in ("topic", "question"):
+            if not (isinstance(oq.get(key), str) and oq[key].strip()):
+                report.err("lint14 OQ结构", where,
+                           f"缺少 {key}（v0.3.6 schema：topic 主题短语 + question 问题原文）")
+        status = oq.get("status")
+        if status not in ALLOWED_OQ_STATUS:
+            report.err("lint14 OQ结构", where,
+                       f"status={status!r} 不在七态枚举内（pending-engine/pending-business/pending-input/"
+                       "resolved/resolved-pending-engine/resolved-pending-business/resolved-pending-input）")
+        elif str(status).startswith("resolved") and not (
+                isinstance(oq.get("resolution"), str) and oq["resolution"].strip()):
+            report.err("lint14 OQ结构", where,
+                       f"status={status} 但缺 resolution 裁决留痕（裁决内容+日期+裁决人）")
+
+
+def _check_conflicts(model: dict, report: Report) -> None:
+    """lint 规则 14（conflicts 部分）：topic/side_a.claim/side_b.claim 非空、status 两态。
+
+    Args:
+        model: DSL 模型 dict。
+        report: 问题收集器。
+    Returns:
+        None。
+    """
+    conflicts = model.get("conflicts")
+    if conflicts is None:
+        return  # 键可省略；显式空数组（conflicts: []）为推荐写法（v0.3.5 写法约定 1）
+    if not isinstance(conflicts, list):
+        report.err("lint14 冲突结构", "conflicts", "必须是数组")
+        return
+    for idx, conflict in enumerate(conflicts):
+        if not isinstance(conflict, dict):
+            report.err("lint14 冲突结构", f"conflicts[{idx}]", "冲突条目不是映射结构")
+            continue
+        topic = str(conflict.get("topic") or "")
+        where = f"冲突「{topic or f'[{idx}]'}」"
+        if not topic.strip():
+            report.err("lint14 冲突结构", where, "缺少 topic（冲突主题/口径名）")
+        for side in ("side_a", "side_b"):
+            spec = conflict.get(side)
+            if not (isinstance(spec, dict) and str(spec.get("claim") or "").strip()):
+                report.err("lint14 冲突结构", where,
+                           f"{side} 缺少 claim（需保留双方定义与来源，不擅自裁决）")
+        if conflict.get("status") not in ALLOWED_CONFLICT_STATUS:
+            report.err("lint14 冲突结构", where,
+                       f"status={conflict.get('status')!r} 不在 pending|resolved 内（人审裁决前一律 pending）")
+
+
+def _check_enum_doublewrite(entities: dict, report: Report) -> None:
+    """lint 规则 15：枚举双写——enum_values 编译剥离后 description 是引擎侧唯一语义载体，
+    每个 enum code 必须出现在 description 中（dsl-spec §2 写法约定 3，xgimi 复验版 29 个
+    枚举字段中 2 个孤儿值的实证）。
+
+    Args:
+        entities: 实体名 -> 实体定义 dict。
+        report: 问题收集器。
+    Returns:
+        None。
+    """
+    for name, ent in entities.items():
+        for field, spec in (ent.get("properties") or {}).items():
+            if not isinstance(spec, dict):
+                continue
+            enum_values = spec.get("enum_values")
+            if not (isinstance(enum_values, list) and enum_values):
+                continue  # 非数组已由 lint1 报告；空数组无枚举语义
+            where = f"实体 {name}.{field}"
+            desc = str(spec.get("description") or "")
+            if not desc.strip():
+                report.err("lint15 枚举双写", where,
+                           "声明 enum_values 但 description 为空——编译剥离后枚举语义全部丢失（v0.3.5 约定 3）")
+                continue
+            orphans = [str(v) for v in enum_values if str(v) not in desc]
+            if orphans:
+                report.warn("lint15 枚举双写", where,
+                            f"孤儿枚举值 {orphans!r} 未在 description 出现——须逐一写明 code=中文含义"
+                            "（剥离后 description 是引擎侧唯一语义载体）")
+
+
+# ===========八、主流程与命令行入口==========
 def lint_model(model: dict, report: Report) -> None:
     """执行全部 lint 检查（入口聚合）。Args: model DSL 模型 dict；report 问题收集器。Returns: None。"""
     _check_schema(model, report)
@@ -620,6 +743,9 @@ def lint_model(model: dict, report: Report) -> None:
     _check_foreign_keys(entities, report)
     lint_glossary.check_entities(entities, report)  # lint 规则 9：受控词表（v0.3，缺表降级跳过）
     _check_rules(model, entities, _build_plural_index(entities), report)
+    _check_open_questions(model, report)  # lint 规则 14：OQ 结构（v0.3.6，七态状态机）
+    _check_conflicts(model, report)  # lint 规则 14：conflicts 结构（v0.3.6）
+    _check_enum_doublewrite(entities, report)  # lint 规则 15：枚举双写（v0.3.6，孤儿枚举值）
 
 
 def main() -> int:

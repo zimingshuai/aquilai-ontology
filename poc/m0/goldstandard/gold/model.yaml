@@ -112,12 +112,16 @@ competency_questions:
   - { id: cq-004, q: 某供应商名下所有交货记录的金额合计是多少？, covered_by: [Supplier.total_delivery_amount] }
 
 open_questions:
-  - q: "差异率口径中「发票金额为 0」的除零行为：引擎方言未定义除零语义，COALESCE 兜底是否覆盖除零异常，待引擎侧验证"
-    status: pending
-    refs: ["B_scenarios/rules.md#对账差异率"]
-  - q: "供应商交货总额使用了两跳反向嵌套聚合 SUM(别名1.别名2.字段)，超出已实测的一跳聚合先例（SUM(sales_orders.unfulfill_qty)），方言支持性待引擎侧验证"
-    status: pending
-    refs: ["B_scenarios/rules.md#供应商交货总额"]
+  - id: OQ-01
+    topic: 差异率除零兜底语义
+    question: "差异率口径中「发票金额为 0」的除零行为：引擎方言未定义除零语义，COALESCE 兜底是否覆盖除零异常，待引擎侧验证"
+    missing_from: B_scenarios/rules.md#对账差异率
+    status: pending-engine
+  - id: OQ-02
+    topic: 两跳嵌套聚合方言支持性
+    question: "供应商交货总额使用了两跳反向嵌套聚合 SUM(别名1.别名2.字段)，超出已实测的一跳聚合先例（SUM(sales_orders.unfulfill_qty)），方言支持性待引擎侧验证"
+    missing_from: B_scenarios/rules.md#供应商交货总额
+    status: pending-engine
 
 conflicts: []
 assumptions: []
