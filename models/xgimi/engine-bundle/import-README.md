@@ -26,3 +26,8 @@ name 与人审用的 description——剥离后 description 是引擎侧唯一�
 1. 人工审核本目录 JSON 产物（共 26 个实体、19 条规则、6 个动作）与 DSL 的一致性；
 2. 审核通过后由平台侧按 `get_meta_objects` / `get_meta_rules` 的注册格式执行注册；
 3. 注册结果以引擎快照为准回流（增量建模的 base_version 依据）。
+
+## Studio 模板产物（studio-model.yaml）
+- 由同一 DSL 按 dsl-spec §8 编译：实体->object_types、links->link_types（1:n，外键字段取显式 fk，简写取目标主键同名属性）、  derived_property->rule_types（calculation，表达式中文名引用）；code 用 rel_/rule_+md5 稳定 hash，  重复编译字节一致（幂等）。
+- 规模：object_types 26 个 / link_types 39 条 / rule_types 13 条。
+- **6 条 trigger/admission 规则不进模板**（模板仅承载 calculation，需引擎侧配置）：呆滞风险触发复核、工程变更预防检查触发、授权数量变化重核算、替代关系变化复核分配方案、冻结供给排除待核查、归因不得超案例总量

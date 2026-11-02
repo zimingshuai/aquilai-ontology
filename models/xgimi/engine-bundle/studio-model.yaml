@@ -141,7 +141,7 @@ object_types:
     required: false
     isKey: false
     defaultValue: ''
-    description: 换算关系须为已批准才可参与计算
+    description: 换算关系须为已批准才可参与计算（approved=已批准；pending=待批准）
     isDerived: false
   - code: evidence_status
     name: 证据状态
@@ -1015,7 +1015,7 @@ object_types:
     required: false
     isKey: false
     defaultValue: ''
-    description: approved=已批准供货（两家均已批准，无另设产能上限）
+    description: approved=已批准供货（两家均已批准，无另设产能上限）；pending=待批准
     isDerived: false
 - code: DataVersion
   name: 数据版本
@@ -2008,7 +2008,7 @@ link_types:
   target: UnitConversion
   name: 换算物料
   cardinality: 1:n
-  description: ''
+  description: 单位换算关系生效的物料，计算前据此把盒/颗等源单位对齐到基本单位（1盒=100颗）；换算依据缺证时提示缺证，不得当作同单位直接计算
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_04711ef7
@@ -2016,7 +2016,7 @@ link_types:
   target: BomLine
   name: 子项物料
   cardinality: 1:n
-  description: ''
+  description: BOM 行需求展开的计算主体物料，各层毛需求按此逐层汇总到物料粒度；父项引用以 parent_material_id 属性承载不走本关系
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_336fff57
@@ -2024,7 +2024,7 @@ link_types:
   target: BomLine
   name: 隶属项目
   cardinality: 1:n
-  description: ''
+  description: BOM 行归属的机型项目（行表未单列项目、由项目持有的 BOM 版本状态推断，A2），点检比较与需求展开按项目圈定 BOM 范围
   sourcePropertyCode: project_id
   targetPropertyCode: project_id
 - code: rel_1b9e39f9
@@ -2032,7 +2032,7 @@ link_types:
   target: EcnRecord
   name: 变更项目
   cardinality: 1:n
-  description: ''
+  description: 工程变更记录归属的整机项目，变更生效后在该项目上驱动 BOM 前后版本比较与旧料关联未到货订单的预防检查
   sourcePropertyCode: project_id
   targetPropertyCode: project_id
 - code: rel_e5935086
@@ -2040,7 +2040,7 @@ link_types:
   target: Demand
   name: 项目需求
   cardinality: 1:n
-  description: ''
+  description: 各来源需求（MPS/客户订单/预测/售后维修）以项目为挂载主体，覆盖去重与需求展开均在项目口径内进行
   sourcePropertyCode: project_id
   targetPropertyCode: project_id
 - code: rel_c9e4445e
@@ -2048,7 +2048,7 @@ link_types:
   target: MaterialAuthorization
   name: 授权物料
   cardinality: 1:n
-  description: ''
+  description: 供应商备料授权的物料对象（整机料号维度、卫国策备表口径），运行按生效版本（v2 覆盖替换 v1）汇总其覆盖量，授权不构成物理供给
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_a7afb4d2
@@ -2056,7 +2056,7 @@ link_types:
   target: MaterialAuthorization
   name: 授权项目
   cardinality: 1:n
-  description: ''
+  description: 授权覆盖的整机项目，与授权物料共同构成「物料×项目」授权粒度，覆盖量仅在该项目口径内冲减待授权数量
   sourcePropertyCode: project_id
   targetPropertyCode: project_id
 - code: rel_66f6753b
@@ -2064,7 +2064,7 @@ link_types:
   target: Supply
   name: 供给物料
   cardinality: 1:n
-  description: ''
+  description: 物理供给条目（可用库存/冻结库存/在途订单/模拟采购）的物料归属，供给分配与呆滞评估按该物料聚合，模拟供给只留在 SIM 情景不写入 FACT
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_2c63fa8f
@@ -2072,7 +2072,7 @@ link_types:
   target: Supply
   name: 在途订单
   cardinality: 1:n
-  description: ''
+  description: 仅订单类供给（open_order）指向的采购订单，取其到货日与取消/延期条款参与分配；库存类供给此关系为空
   sourcePropertyCode: po_id
   targetPropertyCode: po_id
 - code: rel_643985e8
@@ -2080,7 +2080,7 @@ link_types:
   target: PurchaseOrder
   name: 订购物料
   cardinality: 1:n
-  description: ''
+  description: 订单订购的物料，未收货量核算与呆滞「未到货订单风险」均按该物料口径归集
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_e1e213ce
@@ -2088,7 +2088,7 @@ link_types:
   target: StockMovement
   name: 案例流水
   cardinality: 1:n
-  description: ''
+  description: 流水归属的历史呆滞案例，waterfall 还原按案例聚合全部出入库记录，核对呆滞数量的期初+增减项=期末
   sourcePropertyCode: case_id
   targetPropertyCode: case_id
 - code: rel_cc00f36e
@@ -2096,7 +2096,7 @@ link_types:
   target: StockMovement
   name: 流水物料
   cardinality: 1:n
-  description: ''
+  description: 出入库流水的物料，六类流水互斥记录、入库为正出库为负，为案例数量还原提供逐笔增减依据
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_0f491122
@@ -2104,7 +2104,7 @@ link_types:
   target: SubstitutionPermission
   name: 被替代物料
   cardinality: 1:n
-  description: ''
+  description: 许可中被替代/转出的原物料（原料侧，如 WiFi5 旧料），替代料引用以 substitute_material_id 属性承载，替代方向检查以此判定
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_3cddf3f1
@@ -2112,7 +2112,7 @@ link_types:
   target: SubstitutionPermission
   name: 适用项目
   cardinality: 1:n
-  description: ''
+  description: 许可限定的适用项目（如 SUB-01 仅 Z9），替代分配仅在该项目需求上合法，不代表新旧物料可任意互换
   sourcePropertyCode: project_id
   targetPropertyCode: project_id
 - code: rel_5e1dc2d0
@@ -2120,7 +2120,7 @@ link_types:
   target: SubstitutionPermission
   name: 许可用供给
   cardinality: 1:n
-  description: ''
+  description: 许可绑定的具体供给批次（指定库存批次或特定在途订单），替代/转用可用量受该供给数量与批次/批准用量上限双重约束
   sourcePropertyCode: supply_id
   targetPropertyCode: supply_id
 - code: rel_bad3c217
@@ -2128,7 +2128,7 @@ link_types:
   target: SupplierSupplyCondition
   name: 供货供应商
   cardinality: 1:n
-  description: ''
+  description: 供货条件的供应商一方，与物料共同构成「供应商×物料」资格粒度，份额分配与 MOQ/订购倍数取整按该供应商的条件执行
   sourcePropertyCode: supplier_id
   targetPropertyCode: supplier_id
 - code: rel_2f9f9c78
@@ -2136,7 +2136,7 @@ link_types:
   target: SupplierSupplyCondition
   name: 供货物料
   cardinality: 1:n
-  description: ''
+  description: 供货条件的物料一方，策备建议先按该物料下各供应商份额初步分配，再各自向上取整且不进行二次优化
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_783ee3df
@@ -2144,7 +2144,7 @@ link_types:
   target: CalculationRun
   name: 输入版本
   cardinality: 1:n
-  description: ''
+  description: 本次运行作为输入的数据版本快照（V0-V3），复算与历史决策判断只使用该版本可见时间点已知的信息
   sourcePropertyCode: version_id
   targetPropertyCode: version_id
 - code: rel_13993c79
@@ -2152,7 +2152,7 @@ link_types:
   target: MaterialRequirement
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 策备汇总归属的计算运行，毛需求/替代满足/授权覆盖按「运行×物料」一条记录列示，支撑结果可追溯可复算
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_f797c76f
@@ -2160,7 +2160,7 @@ link_types:
   target: MaterialRequirement
   name: 需求物料
   cardinality: 1:n
-  description: ''
+  description: 供需与授权各项数量（毛需求/替代满足/已分配供给/物理缺口/待授权）汇总的物料粒度，授权覆盖与物理供给分行列示、不得互相顶替
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_d4e5bdd9
@@ -2168,7 +2168,7 @@ link_types:
   target: InspectionChange
   name: 检测运行
   cardinality: 1:n
-  description: ''
+  description: 识别出该变化的点检运行（run_type=inspection），变化记录可回溯该次运行所比较的前后版本输入
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_4f36cf0d
@@ -2176,7 +2176,7 @@ link_types:
   target: InspectionChange
   name: 变化行
   cardinality: 1:n
-  description: ''
+  description: 变化后的 BOM 行（删除类变化无后版本行时为空），变化前行以 before_line_id 属性承载，前后匹配按物料层级与行标识进行
   sourcePropertyCode: line_id
   targetPropertyCode: line_id
 - code: rel_d8ceb2d7
@@ -2184,7 +2184,7 @@ link_types:
   target: ReviewTask
   name: 复核变化
   cardinality: 1:n
-  description: ''
+  description: 复核任务来源的点检变化记录，同一变化不重复生成任务，任务关闭须附取消/调整或明确保留的处理依据、不能以已通知代替已解决
   sourcePropertyCode: change_id
   targetPropertyCode: change_id
 - code: rel_7b7433f2
@@ -2192,7 +2192,7 @@ link_types:
   target: SourcingSuggestion
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 策备建议归属的策备运行（run_type=sourcing），建议针对该运行输入版本下的剩余物理缺口生成
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_c9bd6ea6
@@ -2200,7 +2200,7 @@ link_types:
   target: SourcingSuggestion
   name: 建议物料
   cardinality: 1:n
-  description: ''
+  description: 建议针对的缺口物料，每条建议为「物料×供应商」粒度的分配与取整结果，取整增量单列并纳入后续风险评估
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_fce2d407
@@ -2208,7 +2208,7 @@ link_types:
   target: SourcingSuggestion
   name: 建议供应商
   cardinality: 1:n
-  description: ''
+  description: 建议初步分配的供应商，先按其供货份额与资格形成分配量再按 MOQ/订购倍数向上取整，到货晚于需求日期不视为解决当期缺料
   sourcePropertyCode: supplier_id
   targetPropertyCode: supplier_id
 - code: rel_35f2e654
@@ -2216,7 +2216,7 @@ link_types:
   target: SourcingSuggestion
   name: 汇入清单
   cardinality: 1:n
-  description: ''
+  description: 建议汇入的供应商参考清单，同供应商的物料建议归并一张清单供内部审核，清单不等同于采购订单
   sourcePropertyCode: list_id
   targetPropertyCode: list_id
 - code: rel_1b2d54e4
@@ -2224,7 +2224,7 @@ link_types:
   target: VendorReferenceList
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 参考清单归属的策备运行，清单内物料、建议量与预计到货安排由该运行的策备建议汇总生成
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_78c8eda5
@@ -2232,7 +2232,7 @@ link_types:
   target: VendorReferenceList
   name: 面向供应商
   cardinality: 1:n
-  description: ''
+  description: 清单面向的供应商，按供应商维度整理建议内容；清单默认不外发，外发审批流程未定义（OQ-11）
   sourcePropertyCode: supplier_id
   targetPropertyCode: supplier_id
 - code: rel_22e3127a
@@ -2240,7 +2240,7 @@ link_types:
   target: PeriodSupplyBalance
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 分期供需归属的呆滞模拟运行（run_type=risk_simulation），逐期滚动结转（期初=上期期末）由该运行按期间顺序执行
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_035efff8
@@ -2248,7 +2248,7 @@ link_types:
   target: PeriodSupplyBalance
   name: 平衡物料
   cardinality: 1:n
-  description: ''
+  description: 分期平衡的物料，新料/旧料分开列示、按「物料×期间」逐期滚动，未满足需求保留为逾期结转且不重复累计
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_819d4e00
@@ -2256,7 +2256,7 @@ link_types:
   target: SlowMovingRisk
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 呆滞风险归属的呆滞模拟运行，风险量以该运行评估期末剩余量为基础，风险量大于 0 时一次有效评估即触发复核
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_26ba6628
@@ -2264,7 +2264,7 @@ link_types:
   target: SlowMovingRisk
   name: 风险物料
   cardinality: 1:n
-  description: ''
+  description: 呆滞风险的物料对象，现有库存与未到货订单两类风险来源按物料分开说明，风险金额按演示成本单价计、不等于减值损失
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_e3cf2a48
@@ -2272,7 +2272,7 @@ link_types:
   target: SolutionPlan
   name: 所属运行
   cardinality: 1:n
-  description: ''
+  description: 处理方案归属的呆滞模拟运行，各方案（S0/S1/S2）在该运行数据上完整重算对比，禁止以原风险量减措施数量代替重算
   sourcePropertyCode: run_id
   targetPropertyCode: run_id
 - code: rel_48f28f78
@@ -2280,7 +2280,7 @@ link_types:
   target: SolutionPlan
   name: 目标订单
   cardinality: 1:n
-  description: ''
+  description: 取消/延期类措施作用的采购订单，可取消量与延期条件以该订单运行前已有的书面条款为限、不得事后补设，不处理类方案为空
   sourcePropertyCode: po_id
   targetPropertyCode: po_id
 - code: rel_c78e07d7
@@ -2288,7 +2288,7 @@ link_types:
   target: HistoricalCase
   name: 案例项目
   cardinality: 1:n
-  description: ''
+  description: 案例还原的机型项目（如停产 P-X8），历史案例属独立数据包，不与当前项目需求混算
   sourcePropertyCode: project_id
   targetPropertyCode: project_id
 - code: rel_57c56235
@@ -2296,7 +2296,7 @@ link_types:
   target: HistoricalCase
   name: 案例物料
   cardinality: 1:n
-  description: ''
+  description: 案例呆滞的物料（如旧料 H-WIFI-OLD），呆滞总量与各原因归因数量之和均以该物料口径核对
   sourcePropertyCode: material_code
   targetPropertyCode: material_id
 - code: rel_0f255887
@@ -2304,7 +2304,7 @@ link_types:
   target: CauseAttribution
   name: 归因案例
   cardinality: 1:n
-  description: ''
+  description: 归因记录归属的历史案例，各原因归因数量之和不得超过案例呆滞总量（写入经 admission 写前拦截），不足部分保留为未归因、不强行凑足
   sourcePropertyCode: case_id
   targetPropertyCode: case_id
 - code: rel_de692b23
@@ -2312,7 +2312,7 @@ link_types:
   target: PreventionRule
   name: 规则来源案例
   cardinality: 1:n
-  description: ''
+  description: 预防规则沉淀来源的历史案例，规则保留该案例的证据链，触发不等 BOM 正式生效，经审核并试运行后启用
   sourcePropertyCode: case_id
   targetPropertyCode: case_id
 rule_types:
