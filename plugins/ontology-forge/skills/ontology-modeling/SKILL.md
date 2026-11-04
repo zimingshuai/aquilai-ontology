@@ -1,7 +1,8 @@
 ---
 name: ontology-modeling
-description: 本体建模主技能——九步流水线编排核心（场景圈定→术语抽取→设计稿合成与硬关卡确认→DSL 起草→lint 硬校验→CQ 回验→拓扑与双格式交付→平台自检与资产回流）。Use when 建模资料包（modeling-brief）已由 brief-intake 就绪、需要从业务资料设计本体元数据 DSL，或对既有本体做增量修改、生成引擎注册格式与拓扑图时使用。not for：资料包摄取整理（走 brief-intake）、生产发布与审批（人工审核唯一权威，本技能不越权）。
+description: 本体建模主技能——九步流水线编排核心（场景圈定→术语抽取→设计稿合成与硬关卡确认→DSL 起草→lint 硬校验→CQ 回验→拓扑与双格式交付→平台自检与资产回流）。Use when 建模资料包（modeling-brief）已由 brief-intake 就绪、需要从业务资料设计本体元数据 DSL，或对既有本体做增量修改、生成引擎注册格式与拓扑图时使用（「设计实体关系模型」「出平台导入 yaml」「画本体拓扑」「改本体」等说法均适用，无需说出技能名）。not for：资料包摄取整理（走 brief-intake）、生产发布与审批（人工审核唯一权威，本技能不越权）。
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
+compatibility: 工具链脚本需 Python 3.10+ 与 PyYAML；拓扑图片渲染（--image）另需 Playwright + Chromium（一次性安装）；断网时 mermaid 走插件内缓存
 ---
 
 # 本体建模主技能（ontology-modeling）
@@ -28,7 +29,7 @@ license: Proprietary — Aquilair 内部分发，仅限公司内网使用
    - **CQ 勾选呈审（确定性产物）**：把 CQ 清单经 `render_cq_checklist.py <来源> -o cq-checklist.html` 生成自包含 HTML（模板 `assets/cq-checklist.html`：三态勾选 ✅真业务/✏️要改/❌删 + 备注 + 补充框 + 一键生成批复文本）——来源支持 charter 阶段的 JSON（`[{id,q}]`）或 DSL model.yaml（competency_questions 段）。用户浏览器打开（或内联渲染宿主直接呈审）勾选后**复制批复文本回贴**；无 HTML 环境降级为 Markdown 勾选表。禁止现场手写 HTML 组件替代脚本产物。
 4. **★设计稿确认（硬关卡）**：**design-proposal.md 与骨架拓扑未经 FDE 逐表确认，禁止进入 DSL 生成**（对齐楠总蓝图 OntologyProposal 理念：先提案后形式化）。FDE 的修改意见当场回改设计稿与骨架并重新呈审；确认结论在设计稿头部留痕（确认人/日期/修改记录）。**合并呈审变体**：重跑/用户在场要求快速推进时，确认点①（Charter）与②（设计稿）可一并呈审，但两项须分别批复——Charter 被驳回回第 1 步、设计稿被驳回回第 3 步，互不牵连。
 5. **DSL 生成**：确认后的设计稿→完整 `model.yaml`（此步是**机械形式化**——语义已在确认点②定死，这里只做形态转换：补全属性/类型/规则表达式）。按 [`references/dsl-spec.md`](references/dsl-spec.md)（v0.3.5）与 [`references/modeling-guide.md`](references/modeling-guide.md) 执行。**文件头治理注释三行 + 枚举双写 + 衍生公式重述是本步必查项**（dsl-spec §1 开头与 §2 写法约定 3/4/5——枚举与公式编译时剥离 description 兜底，漏写即孤儿语义）。
-6. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——13 条确定性检查。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
+6. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——15 条确定性检查。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
 7. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 8. **交付初版候选本体（两大核心交付物）**：`render_topology.py --image both` 产出 **topology.png/svg**（完整版拓扑）；`compile_model.py --target studio-model` 产出 **studio-model.yaml**。**你不执行任何生产写入**；`--target engine` 仅用户明确需要时可选导出。产物标注 draft 版本，进入人审（ontology-review 技能）。
 9. **导入平台后自检 / 资产沉淀回流（v0.4.0 起为域闭环标准动作）**：域定稿（人审通过）后执行两项资产回流——
@@ -49,11 +50,13 @@ M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲�
 5. **流程步骤不建对象**：除非有独立身份+状态+生命周期；预测/优化类语义不进本体；每条关系有方向/基数/来源，且**业务含义必须落为 links 的 name（中文关系语义名，如 订购物料/隶属项目）**——只建连线不说清"是什么关系"是建模缺陷（lint13 检查）。**用户要求把流程步骤/动作建成实体时，按"拒绝+归类+反问"三段式回应**：①拒绝建实体并给出判定依据（无独立身份/状态/生命周期）；②正确归类（查询→CQ、计算口径→derived 候选、触发动作→trigger downstream）；③就模糊处反问用户确认。判定说明需在 charter 与 model.yaml 注释中留痕。
 6. **provenance 全程**：每个实体/属性/规则的 source 指回资料包具体位置；类型推断等假设进 assumptions。
 7. **人审是唯一权威**：你产出的永远是 draft 版本（-draft.N）；不把候选写成事实；不执行发布/审批/生产写入。
+8. **时间戳如实**：设计稿确认留痕/OQ resolution/域 README 任务日志等一切留痕时间，一律 bash `date +'%Y-%m-%d %H:%M:%S'` 现场取值，禁止凭记忆或上下文推断编造（六步工作流时间戳纪律实证反哺）。
 
 ## 五、产出物清单（每次建模任务）
 
 ```text
 models/<domain>/
+├── README.md                  # 域资产说明 + 任务日志（每次任务收尾追加一行：日期|任务类型|关键产物|确认人；六步工作流归档制反哺）
 ├── charter.md                 # Scenario Charter（第 1 步产物：业务目标/CQ/KPI 等，v0.4.5 补列）
 ├── fact-cards.md              # 业务事实卡片（第 2 步产物：候选/规则/异常映射/术语对齐，v0.4.5 补列）
 ├── design-proposal.md         # ★ 设计提案（确认点②呈审材料，含确认记录）

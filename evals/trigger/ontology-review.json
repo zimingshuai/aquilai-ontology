@@ -1,0 +1,11 @@
+[
+  { "query": "评审这份本体设计稿有没有语义问题", "should_trigger": true, "reason": "语义终审直接命中" },
+  { "query": "lint 全过了，做语义层面的终审", "should_trigger": true, "reason": "机器检查先行后的人审门（评审流程第 2→3 步）" },
+  { "query": "对比两个版本的本体差异，评估影响面", "should_trigger": true, "reason": "变更集影响分析（评审流程第 5 步）" },
+  { "query": "这个本体能支撑住调拨业务场景吗", "should_trigger": true, "reason": "CQ 语义覆盖评估（checklist 第 10 项）" },
+  { "query": "建模到第 7 步了，进人审门检查", "should_trigger": true, "reason": "流水线人审门位置触发" },
+  { "query": "review 一下这段 Python 代码", "should_trigger": false, "reason": "near-miss：评审相关但是代码评审" },
+  { "query": "帮我审查这个 PR 的改动", "should_trigger": false, "reason": "near-miss：PR 审查非本体评审" },
+  { "query": "评一下这篇论文的方法论部分", "should_trigger": false, "reason": "near-miss：学术评审" },
+  { "query": "检查这个 Excel 的数据质量", "should_trigger": false, "reason": "near-miss：数据质量 ≠ 本体元数据质量" }
+]

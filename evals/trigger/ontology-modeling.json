@@ -1,0 +1,15 @@
+[
+  { "query": "资料包就绪了，开始设计本体 DSL", "should_trigger": true, "reason": "直接流程词命中" },
+  { "query": "根据这份 DDL 设计实体和关系模型", "should_trigger": true, "reason": "pushy 场景：未提「本体」，实体关系设计即本体元数据建模" },
+  { "query": "给 xgimi 域做增量，只加这批新实体", "should_trigger": true, "reason": "增量修改变体（seeds 复用）" },
+  { "query": "设计稿确认过了，转成 yaml 吧", "should_trigger": true, "reason": "硬关卡②后的机械形式化阶段（第 5 步）" },
+  { "query": "画一下当前本体的拓扑图", "should_trigger": true, "reason": "拓扑交付（第 8 步）" },
+  { "query": "对 model.yaml 跑硬校验", "should_trigger": true, "reason": "lint 阶段（第 6 步）；单跑 lint 属建模流程步，非 review 触发" },
+  { "query": "生成平台导入用的 studio-model yaml", "should_trigger": true, "reason": "双格式交付（第 8 步核心交付物②）" },
+  { "query": "业务方回复了，把问询单的答复落进模型", "should_trigger": true, "reason": "OQ 生命周期落地（铁律 1）" },
+  { "query": "写个 Python 脚本把 yaml 转成 JSON", "should_trigger": false, "reason": "near-miss：yaml 相关但是编程任务" },
+  { "query": "设计一个订单库的 ER 图", "should_trigger": false, "reason": "near-miss 高危：数据库 ER 设计 ≠ 面向本体的元数据设计" },
+  { "query": "把这份 JSON 配置改成 YAML 格式", "should_trigger": false, "reason": "near-miss：纯格式转换任务" },
+  { "query": "评估这套数据架构的性能瓶颈", "should_trigger": false, "reason": "near-miss：「评估」相关但对象是架构性能非本体" },
+  { "query": "用 mermaid 画一个系统部署架构图", "should_trigger": false, "reason": "near-miss：mermaid 相关但非本体拓扑" }
+]

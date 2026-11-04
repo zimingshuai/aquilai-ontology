@@ -1,7 +1,7 @@
 {
   "name": "aquilair-fde",
-  "version": "0.4.6",
-  "description": "LLM-assisted ontology metadata design: proposal gate, topology + platform yaml delivery, OQ traceability (v0.4.2)",
+  "version": "0.4.7",
+  "description": "LLM-assisted ontology metadata design: proposal gate, topology + platform yaml delivery, OQ traceability",
   "author": {
     "name": "ElitesLand Aquilair",
     "email": "zishuai@elitesland.com"

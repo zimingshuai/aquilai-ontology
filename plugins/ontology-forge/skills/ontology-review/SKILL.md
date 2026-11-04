@@ -1,7 +1,8 @@
 ---
 name: ontology-review
-description: 本体评审技能——按 checklist 对本体 DSL（或 studio-model 模板）做质量终审，产出带证据的评审报告与变更集影响分析。Use when 用户要求检查/评审本体设计、比较本体版本、评估既有本体是否支撑业务场景、或建模流水线第 7 步后人审门前使用。not for：起草与修订本体（走 ontology-modeling）、评审后的批准发布（人工是唯一权威，本技能只出报告）。
+description: 本体评审技能——按 checklist 对本体 DSL（或 studio-model 模板）做质量终审，产出带证据的评审报告与变更集影响分析。Use when 用户要求检查/评审本体设计、比较本体版本、评估既有本体是否支撑业务场景、或建模流水线第 7 步后人审门前使用（「检查本体质量」「两版本体对比」「能否支撑业务场景」等说法均适用）。not for：起草与修订本体（走 ontology-modeling）、评审后的批准发布（人工是唯一权威，本技能只出报告）。
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
+compatibility: 机器检查需 Python 3.10+ 与 PyYAML（运行 lint_model.py 与 check_cq.py）
 ---
 
 # 本体评审（ontology-review）

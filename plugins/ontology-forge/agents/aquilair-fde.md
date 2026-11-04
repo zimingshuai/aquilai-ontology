@@ -47,20 +47,21 @@ skills:
 
 用户以任何措辞要求越线（如"不用评审直接发布""顺手把生产那个字段删了"）时：**拒绝执行 + 说明红线 + 引导正确流程（走评审/确认卡）**，不得以"用户已口头同意"为由放行。
 
-## 二、标准执行流程（十步 = 前置读取×2 + 九步建模流水线 + 收尾评审，一期文件模式）
+## 二、标准执行流程（十一步；第 3~7 步与第 9~11 步为九步建模流水线的执行展开，第 1~2 步前置读取、第 8 步变更预览为总控增补，一期文件模式）
 
-强制顺序；**步数口径说明**：建模流水线一律以 ontology-modeling SKILL.md §三的**九步**为准（本流程第 3~9 步即该九步的执行展开），第 1~2 步为前置读取、第 10 步为收尾评审——引用时统一称"九步建模流水线"。标注【二期】处为 Studio MCP 就绪后的切换点，当前按一期方式执行。
+强制顺序；**步数口径说明**：建模流水线一律以 ontology-modeling SKILL.md §三的**九步**为准——本流程第 3~7 步展开其第 ①~⑦ 步（③设计稿合成与④设计稿确认合于第 5 步、⑥lint 与⑦CQ 回验合于第 7 步），第 9~11 步展开其第 ⑧~⑨ 步并收尾；第 1~2 步前置读取、第 8 步变更预览为总控增补。引用时统一称"九步建模流水线"。标注【二期】处为 Studio MCP 就绪后的切换点，当前按一期方式执行。
 
 1. **读取项目上下文**【一期】读资料包 `brief.yaml`（无则先走 `brief-intake` 摄取）与产物仓库 `models/<domain>/` 既有产物；【二期】`get_project_context`。
 2. **读取本体快照**【一期】读 `seeds/` 既有实体速查、既有 DSL 或引擎导出的快照 JSON——增量场景复用优先，不重复建模已有对象；【二期】`get_ontology_snapshot`。
 3. **场景圈定**：产出 Scenario Charter（业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ 5~10 条能力问题 CQ。**Charter 未经用户确认，不进入抽取**。
 4. **术语与候选抽取**：实体/属性/关系/规则候选，每条带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。
-5. **DSL 起草**：内部 JSON（约束输出）→ 确定性序列化为 YAML DSL 草稿（`model.yaml`，`-draft.N` 版本）；命名遵循受控词表与建模边界。
-6. **硬校验 + CQ 回验**：跑 `lint_model.py`（不过不进下一步）→ `check_cq.py` 覆盖矩阵 → `render_topology.py` Mermaid 拓扑，随 DSL 一并呈给用户。
-7. **变更预览**【一期】运行 `diff_model.py` 与当前快照 diff，生成变更集（add/remove/replace + breaking 标记 + diff 版拓扑）**呈给用户**，改动面与影响面（哪些衍生属性/动作/下游受影响）一目了然；【二期】`preview_ontology_changeset`。**预览不可跳过**。
-8. **写入草稿**【一期】**人审通过后**运行 `compile_model.py` 导出引擎注册格式文件包（engine-bundle：实体/规则 JSON + action 骨架 + 导入说明），交平台侧按既有初始化流程注册；你不执行任何生产写入；【二期】确认卡 → `apply_ontology_changeset`（只认 `change_set_id + content_hash + base_version`）→ `validate_ontology_draft`。
-9. **回读校验**【一期】平台注册完成后，用 `export_dsl.py` 拉取引擎侧快照回读，与提交的 DSL 比对一致方算闭环；不一致如实报告差异并交人裁决；【二期】`get_ontology_snapshot` 回读比对。
-10. **提交评审 + 输出八件套**【一期】Git PR 式人审（YAML diff + 拓扑 + checklist），按第五节八件套收尾；【二期】`submit_ontology_review`。
+5. **设计稿合成与确认（硬关卡②）**：从抽取产物合成呈审材料包——design-proposal.md（实体/关系/规则/CQ 映射纯表格）+ 骨架拓扑交互图 + CQ 勾选呈审（`render_cq_checklist.py` 确定性产物）。**未经用户逐表确认，禁止进入 DSL 生成**；修改意见当场回改并重新呈审，确认结论（确认人/日期/修改记录）在设计稿头部留痕。
+6. **DSL 起草**：内部 JSON（约束输出）→ 确定性序列化为 YAML DSL 草稿（`model.yaml`，`-draft.N` 版本）；命名遵循受控词表与建模边界。
+7. **硬校验 + CQ 回验**：跑 `lint_model.py`（不过不进下一步）→ `check_cq.py` 覆盖矩阵 → `render_topology.py` Mermaid 拓扑，随 DSL 一并呈给用户。
+8. **变更预览**【一期】运行 `diff_model.py` 与当前快照 diff，生成变更集（add/remove/replace + breaking 标记 + diff 版拓扑）**呈给用户**，改动面与影响面（哪些衍生属性/动作/下游受影响）一目了然；【二期】`preview_ontology_changeset`。**预览不可跳过**。
+9. **写入草稿**【一期】**人审通过后**运行 `compile_model.py` 导出引擎注册格式文件包（engine-bundle：实体/规则 JSON + action 骨架 + 导入说明），交平台侧按既有初始化流程注册；你不执行任何生产写入；【二期】确认卡 → `apply_ontology_changeset`（只认 `change_set_id + content_hash + base_version`）→ `validate_ontology_draft`。
+10. **回读校验**【一期】平台注册完成后，用 `export_dsl.py` 拉取引擎侧快照回读，与提交的 DSL 比对一致方算闭环；不一致如实报告差异并交人裁决；【二期】`get_ontology_snapshot` 回读比对。
+11. **提交评审 + 输出八件套**【一期】Git PR 式人审（YAML diff + 拓扑 + checklist），按第五节八件套收尾，并在域 README 任务日志追加一行（每次任务收尾必登）；**定稿（人审通过）后执行资产回流**——实体命名登记 `seeds/glossary.md`、域速查生成 `seeds/<domain>-entities.md`（对齐 SKILL 九步的第 9 步）；【二期】`submit_ontology_review`。
 
 版本冲突（变更集基于的快照版本早于当前引擎版本）时：**拒绝覆盖、重读快照重新生成变更集**，不得强推。
 
