@@ -1,15 +1,77 @@
 [
-  { "query": "我手里有几份 DDL 和数据字典，想开始做本体建模", "should_trigger": true, "reason": "领域词全命中：结构化资料+建模意图" },
-  { "query": "帮我把这批业务文档整理一下，准备后续建模用", "should_trigger": true, "reason": "pushy 场景：未提「本体」，批量业务文档+建模准备即摄取意图" },
-  { "query": "这是供应商管理的需求文档、规则文档和两份访谈记录，先归档处理", "should_trigger": true, "reason": "批量业务文档归位，未说「建模」但属摄取入口" },
-  { "query": "这是飞书 wiki 链接，里面有流程制度文档，怎么开始？", "should_trigger": true, "reason": "云端拉取变体（v0.4.5 入口变体 B）" },
-  { "query": "这几个 Excel 字段表和 .sql 文件帮我分类放好", "should_trigger": true, "reason": "A 类资料形态的判型归位" },
-  { "query": "新域什么资料都还没有，能先开工吗", "should_trigger": true, "reason": "最小可跑路径+资产树自动初始化（一点五节）" },
-  { "query": "已有资料包，帮我检查还缺什么", "should_trigger": true, "reason": "缺口报告+完备度评分（第 5 步）" },
-  { "query": "上次那批文档补了两份访谈记录，加进去", "should_trigger": true, "reason": "增量追加归位（继承不重建）" },
-  { "query": "帮我把这批合同扫描件按年份整理到文件夹", "should_trigger": false, "reason": "near-miss：普通文件管理，无建模意图" },
-  { "query": "阅读这份需求文档并总结要点", "should_trigger": false, "reason": "near-miss：读文档总结 ≠ 摄取归位建模" },
-  { "query": "把这些 .sql 里的建表语句执行到测试库", "should_trigger": false, "reason": "near-miss：DDL 相关但任务是执行建库" },
-  { "query": "把这份日文数据字典翻译成中文", "should_trigger": false, "reason": "near-miss：数据字典相关但任务是翻译" },
-  { "query": "把这些会议纪要沉淀成知识库词条", "should_trigger": false, "reason": "not for 边界：知识沉淀走 aquilair-knowledge" }
+  {
+    "query": "我手里有几份 DDL 和数据字典，想开始做本体建模",
+    "should_trigger": true,
+    "reason": "领域词全命中：结构化资料+建模意图"
+  },
+  {
+    "query": "帮我把这批业务文档整理一下，准备后续建模用",
+    "should_trigger": true,
+    "reason": "pushy 场景：未提「本体」，批量业务文档+建模准备即摄取意图"
+  },
+  {
+    "query": "这是供应商管理的需求文档、规则文档和两份访谈记录，先归档处理",
+    "should_trigger": true,
+    "reason": "批量业务文档归位，未说「建模」但属摄取入口"
+  },
+  {
+    "query": "这是飞书 wiki 链接，里面有流程制度文档，怎么开始？",
+    "should_trigger": true,
+    "reason": "云端拉取变体（v0.4.5 入口变体 B）"
+  },
+  {
+    "query": "这几个 Excel 字段表和 .sql 文件帮我分类放好",
+    "should_trigger": true,
+    "reason": "A 类资料形态的判型归位"
+  },
+  {
+    "query": "新域什么资料都还没有，能先开工吗",
+    "should_trigger": true,
+    "reason": "最小可跑路径+资产树自动初始化（一点五节）"
+  },
+  {
+    "query": "已有资料包，帮我检查还缺什么",
+    "should_trigger": true,
+    "reason": "缺口报告+完备度评分（第 5 步）"
+  },
+  {
+    "query": "上次那批文档补了两份访谈记录，加进去",
+    "should_trigger": true,
+    "reason": "增量追加归位（继承不重建）"
+  },
+  {
+    "query": "帮我把这批合同扫描件按年份整理到文件夹",
+    "should_trigger": false,
+    "reason": "near-miss：普通文件管理，无建模意图"
+  },
+  {
+    "query": "阅读这份需求文档并总结要点",
+    "should_trigger": false,
+    "reason": "near-miss：读文档总结 ≠ 摄取归位建模"
+  },
+  {
+    "query": "把这些 .sql 里的建表语句执行到测试库",
+    "should_trigger": false,
+    "reason": "near-miss：DDL 相关但任务是执行建库"
+  },
+  {
+    "query": "把这份日文数据字典翻译成中文",
+    "should_trigger": false,
+    "reason": "near-miss：数据字典相关但任务是翻译"
+  },
+  {
+    "query": "把这些会议纪要沉淀成知识库词条",
+    "should_trigger": false,
+    "reason": "not for 边界：知识沉淀走 aquilair-knowledge"
+  },
+  {
+    "query": "我们这新业务连文档都没有，我口头跟你说，你帮我把它理成能建模的东西",
+    "should_trigger": true,
+    "reason": "口述零文档正例：显式要求从口述整理出建模准备材料（v0.4.9 变体 C 口述探索路径）"
+  },
+  {
+    "query": "先别急着建，你一维一维问我，把这个域的业务对象和规则问清楚再说",
+    "should_trigger": true,
+    "reason": "pushy 正例：没说「本体/资料包」，但「一维一维问业务对象和规则」即口述探索七维清单场景，未提关键词也该触发"
+  }
 ]

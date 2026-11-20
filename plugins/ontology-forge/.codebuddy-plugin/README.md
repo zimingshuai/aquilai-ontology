@@ -38,7 +38,7 @@ aquilair-fde/
 
 WorkBuddy 规范：**quickPrompts 必须恰好 3 条**（多一条少一条都不合规），每条含中英双语字段，与 `defaultInitPrompt` 呼应、覆盖插件的三个主入口场景：
 
-1. **从零起草**：帮我从业务资料开始设计一个可审核的本体草稿 → 走 brief-intake → ontology-modeling 全流水线。
+1. **从零起草**：帮我从业务资料（或零文档口述——七维对话探索）开始设计一个可审核的本体草稿 → 走 brief-intake → ontology-modeling 全流水线。
 2. **增量差异**：比较当前本体与这份业务方案的差异，只生成变更建议 → 走 diff 变更集（不落盘改写）。
 3. **评审校验**：校验/评审当前本体是否支撑目标业务场景 → 走 ontology-review（只出报告不做裁决）。
 

@@ -27,13 +27,17 @@ compatibility: 工具链脚本需 Python 3.10+ 与 PyYAML；拓扑图片渲染�
    - **design-proposal.md**（模板见 [`references/design-proposal-template.md`](references/design-proposal-template.md)）：实体表（名称/展示名/主键/关键字段/来源）、关系表（A→B/语义名/基数/来源）、规则表（类型/口径/来源）、CQ 映射、open_questions/conflicts——纯自然语言+表格，FDE 不需要懂任何格式规范就能审；
    - **交互式拓扑**（核心呈审图）：骨架 DSL（实体+links[语义名]+主键与名称字段+layer 分层）→ `render_topology.py --interactive` 产出**自包含 HTML**（分层+点击聚焦+全部关系名开关，浏览器直接打开）+ `--image both` 出静态 PNG/SVG（发人或存档两用）；
    - **CQ 勾选呈审（确定性产物）**：把 CQ 清单经 `render_cq_checklist.py <来源> -o cq-checklist.html` 生成自包含 HTML（模板 `assets/cq-checklist.html`：三态勾选 ✅真业务/✏️要改/❌删 + 备注 + 补充框 + 一键生成批复文本）——来源支持 charter 阶段的 JSON（`[{id,q}]`）或 DSL model.yaml（competency_questions 段）。用户浏览器打开（或内联渲染宿主直接呈审）勾选后**复制批复文本回贴**；无 HTML 环境降级为 Markdown 勾选表。禁止现场手写 HTML 组件替代脚本产物。
-4. **★设计稿确认（硬关卡）**：**design-proposal.md 与骨架拓扑未经 FDE 逐表确认，禁止进入 DSL 生成**（对齐楠总蓝图 OntologyProposal 理念：先提案后形式化）。FDE 的修改意见当场回改设计稿与骨架并重新呈审；确认结论在设计稿头部留痕（确认人/日期/修改记录）。**合并呈审变体**：重跑/用户在场要求快速推进时，确认点①（Charter）与②（设计稿）可一并呈审，但两项须分别批复——Charter 被驳回回第 1 步、设计稿被驳回回第 3 步，互不牵连。
+   - **呈审分批纪律（v0.4.8）**：设计稿按「**对象层（实体+关系）→ 规则与联动层（规则表+动作+归属判定自检）→ 全稿合卷**」分批呈审，每批确认后推进下一批——不一次吐全量（吸收自八阶段确认法：探索过程分批设门，防大稿一次审不动）。域小（≤8 实体）可合并一批，批注须说明合并理由。
+4. **★设计稿确认（硬关卡）**：**design-proposal.md 与骨架拓扑未经 FDE 逐表确认，禁止进入 DSL 生成**（对齐楠总蓝图 OntologyProposal 理念：先提案后形式化）。FDE 的修改意见当场回改设计稿与骨架并重新呈审；确认结论在设计稿头部留痕（确认人/日期/修改记录）。**呈审提问一律用五要素格式**（v0.4.8）：**问题 + AI 建议 + 理由 + 其他选项 + 快捷回复**——FDE 批的是带建议的决策点，不是开放式问卷。**合并呈审变体**：重跑/用户在场要求快速推进时，确认点①（Charter）与②（设计稿）可一并呈审，但两项须分别批复——Charter 被驳回回第 1 步、设计稿被驳回回第 3 步，互不牵连。
 5. **DSL 生成**：确认后的设计稿→完整 `model.yaml`（此步是**机械形式化**——语义已在确认点②定死，这里只做形态转换：补全属性/类型/规则表达式）。按 [`references/dsl-spec.md`](references/dsl-spec.md)（v0.3.5）与 [`references/modeling-guide.md`](references/modeling-guide.md) 执行。**文件头治理注释三行 + 枚举双写 + 衍生公式重述是本步必查项**（dsl-spec §1 开头与 §2 写法约定 3/4/5——枚举与公式编译时剥离 description 兜底，漏写即孤儿语义）。
-6. **硬校验（lint）**：运行 `python scripts/lint_model.py <model.yaml>`——15 条确定性检查。**lint 不过不进下一步**；修复意见由你提出，但修复后再跑。
+6. **硬校验（L1 lint + L2 语义沙盘）**：两道机器检查连续执行，error 均拦截；机器检查只拦确定性缺陷，人审权威不变——
+   - **L1 结构校验**：运行 `python scripts/lint_model.py <model.yaml>`——15 条确定性检查。**lint 不过不进 L2**；修复意见由你提出，但修复后再跑。
+   - **L2 语义沙盘**：lint 通过后运行 `python scripts/semantic_sandbox.py <model.yaml> --out-dir <模型目录>`——把 DSL 一次性投影为 OWL/SHACL（假设投影，检完即弃，不引入推理机进运行时），做结构层查不出的语义自洽性检查（S1-S7，与 lint 1-15 编号独立、职责互斥，对照表见 report.md）。**error 同样拦截、不进下一步**；warning/info 不拦截，随产物呈审给 FDE。产物 sandbox.owl.ttl / sandbox.shapes.ttl / report.md 落模型目录存档（有实例样本时可加 `--data data.json` 做实例校验）。
 7. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 8. **交付初版候选本体（两大核心交付物）**：`render_topology.py --image both` 产出 **topology.png/svg**（完整版拓扑）；`compile_model.py --target studio-model` 产出 **studio-model.yaml**。**你不执行任何生产写入**；`--target engine` 仅用户明确需要时可选导出。产物标注 draft 版本，进入人审（ontology-review 技能）。
 9. **导入平台后自检 / 资产沉淀回流（v0.4.0 起为域闭环标准动作）**：域定稿（人审通过）后执行两项资产回流——
    - **glossary 回流**：该域全部实体命名登记进 `seeds/glossary.md`（附域版本戳），同域重跑/增量从此自动复用命名（受控词表 lint9 生效的数据源）；
+   - **域交接包生成（v0.4.9，技能工厂对接）**：运行 `python scripts/gen_handoff.py <model.yaml>` 产出 `models/<域名>/handoff/` 五件（cq-final 验收种子 / glossary-snapshot 中文名权威表 / rule-calibers 判定面初始认知 / oq-verdicts 口径出处与能力边界 / probe-expectations 实测预期）——交付给技能工厂（aquilair-skill-forge）立项作素材；红线：制造素材非技能运行时依赖，易变结构以 MCP 现查为准；
    - **seeds 域速查回流**：从定稿 DSL 生成 `seeds/<domain>-entities.md`（实体名/表名/展示名/主键/links/属性数——对齐 fnb/mfg 速查格式），成为该域后续增量建模与跨域对齐的既有资产参照。
    原有知识库沉淀（口径/术语进 aquilair-knowledge）并行可选。**红线不变**：本体 DSL 唯一权威，glossary/seeds/知识库都是资产层。
    导入平台自检（check_platform_sync + SDK 存证）同前。：用户导入平台成功后，下载该工作区 SDK 存档为 `models/<domain>/platform-sdk.py`，跑 `check_platform_sync.py` 四维比对（平台手改当场现形，实证：xgimi 曾抓到 Material 主键被改），差异按用户裁决写回；人审通过后将口径/术语沉淀回域知识库（红线：本体 DSL 唯一权威，知识库只是沉淀层）。
@@ -62,6 +66,7 @@ models/<domain>/
 ├── design-proposal.md         # ★ 设计提案（确认点②呈审材料，含确认记录）
 ├── model.skeleton.yaml        # 骨架 DSL（实体+links+主键，画图用；确认后对照补全）
 ├── model.yaml                 # 本体 DSL（source of truth，确认点②之后生成）
+├── sandbox.owl.ttl / sandbox.shapes.ttl / report.md # L2 语义沙盘产物（第 6 步假设投影+分级报告，存档呈审）
 ├── topology.png / topology.svg # ★ 核心交付物①：可视化图片（实体/属性/关系，给人看）
 ├── studio-model.yaml          # ★ 核心交付物②：设计稿格式 yaml（供导入本体）
 ├── topology.md                # Mermaid 源（图片的可编辑形态）
@@ -74,7 +79,7 @@ models/<domain>/
 
 | 借口 | 反驳 |
 |---|---|
-| "lint 报错不影响主体，先往下走" | lint 不过不进下一步是铁律；"差不多"是质量崩塌的起点 |
+| "lint 报错不影响主体，先往下走" | lint/沙盘 error 不过不进下一步是铁律（L1 管结构、L2 管语义自洽）；"差不多"是质量崩塌的起点 |
 | "资料没写，我按行业常识补上" | 不脑补是铁律；常识进 open_questions 让人裁决 |
 | "这个口径两边说法不一致，我选更合理的" | 冲突不擅自裁决：保留双方定义与来源进 conflicts |
 | "fnb 里已有 SKU，但我重写一个更规范的" | 增量优先复用；命名漂移会毁掉本体互操作性 |

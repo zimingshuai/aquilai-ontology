@@ -1,0 +1,65 @@
+# 语义沙盘（L2）坏样本夹具——差异化纪律实证（v0.4.8）
+# 坏点登记（断言见 run_evals.py build_case11，精确计数）：
+#   ① 外键类型不匹配：BomLine.links.material 显式 fk [material_ref] 为 INTEGER，Material 主键为 STRING → S2 warning；
+#   ② 派生承诺反向：规则「行用量计算」产出 BomLine.computed_qty 未标 derived:true → S1 warning；
+#   ③ 孤岛实体：StandaloneDict 无任何 links 入边/出边 → S3 warning；
+#   ⑥ 孤儿动作：orphan_recipe_action 未被任何 trigger/admission 规则 downstream 引用 → S7 warning
+#     （referenced_guard_action 被 trigger 规则引用，验证不误报）；
+#   ④ 悬空 upstream（规则「悬空规则」upstream 引用 GhostEntity）与 ⑤ derived 无规则承载
+#     （BomLine.stale_flag 标 derived:true 但无规则）是 lint1/lint7 已覆盖项——
+#     沙盘按差异化纪律【不得】重复报告，断言二者不出现在 L2 报告中。
+ontology: sandbox-fixture
+version: 0.1.0-draft.1
+governance: { owner: evals, maturity: experimental }
+entities:
+  Material:
+    display_name: 物料
+    table_name: material
+    description: 测试物料主数据（被 BomLine 外键引用的目标实体）
+    properties:
+      material_code: { display_name: 物料编码, description: 物料唯一编码, type: STRING, primary: true }
+      unit_cost: { display_name: 单价, description: 演示成本单价, type: DECIMAL, uom: 元/颗 }
+  BomLine:
+    display_name: BOM行
+    table_name: bom_line
+    description: 测试 BOM 行（承载 S1/S2 坏点与 lint7 职责坏点）
+    properties:
+      line_id: { display_name: 行ID, description: 行唯一编号, type: STRING, primary: true }
+      material_ref: { display_name: 物料引用, description: 外键字段——类型与目标主键不一致（S2 坏点）, type: INTEGER }
+      computed_qty: { display_name: 计算用量, description: 规则产出但未标 derived:true（S1 坏点）, type: DECIMAL }
+      stale_flag: { display_name: 陈旧标记, description: 标 derived 无规则承载——lint7 职责，S 不报（差异化坏点）, type: BOOLEAN, derived: true }
+    links:
+      material: { target: Material, fk: [material_ref], name: 子项物料, description: BOM 行引用的计算主体物料 }
+  StandaloneDict:
+    display_name: 独立字典
+    table_name: standalone_dict
+    description: 孤岛实体——links 图上无任何入边/出边（S3 坏点；独立主数据合法，呈审）
+    properties:
+      dict_code: { display_name: 字典编码, description: 字典唯一编码, type: STRING, primary: true }
+      dict_label: { display_name: 字典标签, description: 字典展示标签, type: STRING }
+rules:
+  - rule_type: derived_property
+    name: 行用量计算
+    upstream: [BomLine]
+    logic: "computed_qty: unit_cost * 2"
+    description: 计算用量 = 单价 × 2（测试规则——产出字段未标 derived:true，S1 坏点）
+  - rule_type: derived_property
+    name: 悬空规则
+    upstream: [GhostEntity]
+    logic: "ghost_qty: 1"
+    description: upstream 引用不存在实体——lint1 职责，S 不报（差异化坏点）
+  - rule_type: trigger
+    name: 单价过高告警
+    upstream: [Material]
+    condition: "unit_cost > 100"
+    downstream: referenced_guard_action
+    description: 测试联动规则——引用 referenced_guard_action，验证被引用动作不误报 S7
+actions:
+  - name: orphan_recipe_action
+    description: 孤儿动作——未被任何规则 downstream 引用（S7 坏点，手动入口呈审）
+    parameters: { batch_no: str }
+    supports_sandbox: true
+  - name: referenced_guard_action
+    description: 被引用动作——trigger 规则「单价过高告警」downstream 引用，不应报 S7
+    parameters: { material_code: str }
+    supports_sandbox: true

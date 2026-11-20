@@ -9,7 +9,7 @@
 
 | 文件 | 技能 | 正例 | 反例 |
 |---|---|---|---|
-| `brief-intake.json` | 建模资料摄取 | 8 | 5 |
+| `brief-intake.json` | 建模资料摄取 | 10 | 5 |
 | `ontology-modeling.json` | 本体建模主技能 | 8 | 5 |
 | `ontology-review.json` | 本体评审 | 5 | 4 |
 

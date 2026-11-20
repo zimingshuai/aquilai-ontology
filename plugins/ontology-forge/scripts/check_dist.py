@@ -53,6 +53,15 @@ LINT_MODEL_PY = PLUGIN_ROOT / "scripts" / "lint_model.py"
 LINT_COUNT_RE = re.compile(r"全部 (\d+) 条")
 # LINT_MENTION_RE：文档中 lint 条数写法的匹配正则（覆盖"15 条 lint"/"15条lint"/"15 条确定性检查"等形态，大小写不敏感）
 LINT_MENTION_RE = re.compile(r"(\d+)\s*条\s*(?:lint|确定性检查)", re.IGNORECASE)
+# SANDBOX_PY：语义沙盘 S 检查项数唯一事实源——动态解析其模块 docstring，禁止在文档里写死 S 区间
+# （教训：S7 加入后 scripts/README 与 evals README 两处仍写 S1-S6/3 warning——与 lint 条数同款漂移病）
+SANDBOX_PY = PLUGIN_ROOT / "scripts" / "semantic_sandbox.py"
+# S_COUNT_RE：事实源形态解析正则（semantic_sandbox.py docstring 形如"检查项 S1-S7"——区间右端带 S 前缀）
+S_COUNT_RE = re.compile(r"检查项 S1-S(\d+)")
+# S_RANGE_MENTION_RE：文档中 S 区间写法的匹配正则（覆盖"S1-S7"/"S1～S7"形态，右端 S 可省；列举式如"S1/S2/S3/S7"不命中，属用例内容非计数口径）
+S_RANGE_MENTION_RE = re.compile(r"S1[-～~]S?(\d+)")
+# S_COUNT_MENTION_RE：文档中 S 计数写法的匹配正则（"7 项语义沙盘"形态，与区间写法互为印证）
+S_COUNT_MENTION_RE = re.compile(r"(\d+)\s*项语义沙盘")
 # PIPELINE_STEP_RE：流水线步数口径正则（"九步流水线"/"九步建模流水线"等变体均命中，取代旧精确子串匹配）
 PIPELINE_STEP_RE = re.compile(r"([一二三四五六七八九十百\d]+)\s*步(?:建模)?流水线")
 # CN_NUM_MAP：中文数字词映射（按规格覆盖一~十一做全——"十一步"不接"流水线"后缀不命中，但映射备全防未来变体）
@@ -280,6 +289,9 @@ def check_agent_frontmatter(report: Report) -> None:
           "派发形态的确认关卡规则缺失——ZCode/Claude subagent 将无法正确停卡")
     check(report, "agents/README.md 接入指南存在",
           (AGENT_MD.parent / "README.md").is_file())
+    # 插件根 README 是分发单元门面（v0.4.9 补齐——对标分发物最佳实践，误删即 FAIL）
+    check(report, "插件根 README.md 门面存在",
+          (PLUGIN_ROOT / "README.md").is_file())
 
 
 def check_skills(report: Report) -> None:
@@ -489,9 +501,10 @@ def check_lint_count_wording(report: Report) -> None:
         mp_entries = json.loads(mp_path.read_text(encoding="utf-8")).get("plugins", [])
         targets += [(f"../marketplace.json（plugins[{e.get('name')}] description）", e["description"])
                     for e in mp_entries if e.get("description")]
+    # 范围策略（v0.4.9 扩展）：插件根全部 *.md 全树扫描——与 S 计数/步数断言同款；
+    # 教训：固定清单（SKILL+user-guide）外的文档写「N条lint」无断言（插件根 README 新增即成盲区）
     targets += [(str(path.relative_to(PLUGIN_ROOT)), path.read_text(encoding="utf-8"))
-                for path in (PLUGIN_ROOT / "skills" / "ontology-modeling" / "SKILL.md",
-                             PLUGIN_ROOT / "docs" / "user-guide.md") if path.is_file()]
+                for path in sorted(PLUGIN_ROOT.rglob("*.md"))]
     #   3. 逐处核对「N条lint」写法，发现不等收集文件+实际数字 vs 事实源数字
     drifts = []
     for label, text in targets:
@@ -499,6 +512,69 @@ def check_lint_count_wording(report: Report) -> None:
             if int(num) != lint_count:
                 drifts.append(f"{label} 写「{num}条lint」vs 事实源 {lint_count} 条")
     check(report, f"文档口径：lint 条数与事实源一致（{lint_count} 条）", not drifts, "；".join(drifts))
+
+
+def _load_s_count(report: Report) -> Optional[int]:
+    """从 semantic_sandbox.py 模块 docstring 动态解析 S 检查项数（唯一事实源）。
+
+    Args:
+        report: 结果收集器（事实源不可读时记 fail 指名，绝不静默跳过——三不纪律之"不降级"）。
+    Returns:
+        S 检查项数；文件缺失、语法不可解析或 docstring 未声明「检查项 S1-SN」时返回 None，
+        调用方此时不得继续做联动断言（S 口径已失去事实源）。
+    """
+    if not SANDBOX_PY.is_file():
+        report.fail("文档口径：S 检查项数事实源可读", f"缺 {SANDBOX_PY.relative_to(PLUGIN_ROOT)}")
+        return None
+    try:
+        tree = ast.parse(SANDBOX_PY.read_text(encoding="utf-8"))
+        docstring = ast.get_docstring(tree) or ""
+    except SyntaxError:
+        docstring = ""
+    match = S_COUNT_RE.search(docstring)
+    if not match:
+        report.fail("文档口径：S 检查项数事实源可读",
+                    "semantic_sandbox.py 模块 docstring 未声明「检查项 S1-SN」——S 口径失去事实源")
+        return None
+    return int(match.group(1))
+
+
+def check_s_count_wording(report: Report) -> None:
+    """S 检查项数联动断言：文档写法必须与 semantic_sandbox.py 事实源一致。
+
+    教训：S7（孤儿动作）加入后 scripts/README 的「S1-S6」与 evals README 的旧描述
+    两处漂移、靠人眼发现——与 lint 条数 13→15 漂移同款病根。事实源唯一：
+    semantic_sandbox.py docstring 的「检查项 S1-SN」；扫描插件根全部 *.md +
+    四清单 description + marketplace description，命中「S1-SN」区间式或
+    「N 项语义沙盘」计数式写法即与事实源核对（无命中的文件跳过，不强制写数）。
+
+    Args:
+        report: 结果收集器。
+    Returns:
+        None（结果记入 report）。
+    """
+    #   1. 解析事实源 S 项数（失败已由 _load_s_count 记 fail，直接返回不降级）
+    s_count = _load_s_count(report)
+    if s_count is None:
+        return
+    #   2. 汇总口径敏感文本：四清单 description + 市场清单 + 插件根全部 *.md（全树扫描，
+    #      学流水线步数断言的范围策略——漂移发生地不可枚举，宁可全扫零误报）
+    targets = _manifest_text_snippets()
+    mp_path = PLUGIN_ROOT.parent / "marketplace.json"
+    if mp_path.is_file():
+        mp_entries = json.loads(mp_path.read_text(encoding="utf-8")).get("plugins", [])
+        targets += [(f"../marketplace.json（plugins[{e.get('name')}] description）", e["description"])
+                    for e in mp_entries if e.get("description")]
+    targets += [(str(p.relative_to(PLUGIN_ROOT)), p.read_text(encoding="utf-8"))
+                for p in sorted(PLUGIN_ROOT.rglob("*.md"))]
+    #   3. 逐处核对两种写法（区间式 + 计数式），漂移收集 文件+写法 vs 事实源
+    drifts = []
+    for label, text in targets:
+        for regex, shape in ((S_RANGE_MENTION_RE, "S1-S{}"), (S_COUNT_MENTION_RE, "{} 项语义沙盘")):
+            for num in dict.fromkeys(m.group(1) for m in regex.finditer(text)):
+                if int(num) != s_count:
+                    drifts.append(f"{label} 写「{shape.format(num)}」vs 事实源 S1-S{s_count}")
+    check(report, f"文档口径：S 检查项数与事实源一致（S1-S{s_count}）", not drifts, "；".join(drifts))
 
 
 def check_pipeline_wording(report: Report) -> None:
@@ -640,6 +716,7 @@ def main() -> int:
     check_skill_spec_conformance(report)
     check_mermaid(report)
     check_lint_count_wording(report)
+    check_s_count_wording(report)
     check_pipeline_wording(report)
     check_trigger_cases(report)
     check_zip(report)

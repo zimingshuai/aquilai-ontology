@@ -24,7 +24,7 @@ REPO_ROOT = EVAL_ROOT.parent.parent
 # scripts_dir：插件确定性脚本目录。
 SCRIPTS_DIR = REPO_ROOT / "plugins" / "ontology-forge" / "scripts"
 # gold_path：M0 基准 DSL（人工设计、v0.2 修订后）。
-GOLD_PATH = REPO_ROOT / "poc" / "m0" / "goldstandard" / "gold" / "model.yaml"
+GOLD_PATH = REPO_ROOT / "evals" / "ontology-modeling" / "goldstandard" / "gold" / "model.yaml"
 
 
 # ===========一、断言工具==========
@@ -335,9 +335,9 @@ def build_case9(results: list) -> None:
 def build_case10(results: list) -> None:
     """case10 断言：render_cq_checklist 对真实 DSL 生成含三态交互的完整 HTML，坏输入如实报错。"""
     cq_script = SCRIPTS_DIR / "render_cq_checklist.py"
-    xgimi_model = REPO_ROOT / "models" / "xgimi-rebuild" / "model.yaml"
+    xgimi_model = REPO_ROOT / "models" / "xgimi" / "model.yaml"
     if not all(p.exists() for p in (cq_script, xgimi_model)):
-        results.append(("case10", "前置就绪检测", "SKIP（render_cq_checklist 或 xgimi-rebuild 模型未就绪）"))
+        results.append(("case10", "前置就绪检测", "SKIP（render_cq_checklist 或 xgimi 模型未就绪）"))
         return
 
     def gen_ok():
@@ -365,7 +365,130 @@ def build_case10(results: list) -> None:
     assert_case(results, "case10", "无 CQ 输入如实报错", bad_input_rejected)
 
 
-# ===========九、主流程==========
+# ===========九、case11：L2 语义沙盘（差异化纪律 + 精确计数）==========
+def build_case11(results: list) -> None:
+    """case11 断言：语义沙盘三类增量坏点命中、lint 职责项不重复报、--data 与 --out-dir 行为正确。"""
+    sandbox_script = SCRIPTS_DIR / "semantic_sandbox.py"
+    fixture_dir = EVAL_ROOT / "case11-sandbox"
+    fixture = fixture_dir / "fixture-bad-sandbox.yaml"
+    xgimi_path = REPO_ROOT / "models" / "xgimi" / "model.yaml"
+    if not (sandbox_script.exists() and fixture.exists()):
+        results.append(("case11", "前置就绪检测", "SKIP（semantic_sandbox 或 case11 fixture 未就绪）"))
+        return
+
+    def bad_fixture_graded():
+        # 坏样本夹具：S1/S2/S3 各 1 warning（精确计数），无 error 退出 0（warning 呈审不拦截）
+        proc = run_cmd([sandbox_script, fixture])
+        out = proc.stdout or ""
+        assert proc.returncode == 0, f"坏样本无 error 应退出 0，实际 {proc.returncode}: {out[-300:]}"
+        assert "[S1]" in out and "computed_qty" in out, f"缺 S1 派生承诺反向 warning: {out[-300:]}"
+        assert "[S2]" in out and "material_ref" in out, f"缺 S2 外键类型不匹配 warning: {out[-300:]}"
+        assert "[S3]" in out and "StandaloneDict" in out, f"缺 S3 孤岛实体 warning: {out[-300:]}"
+        assert "[S7]" in out and "orphan_recipe_action" in out, f"缺 S7 孤儿动作 warning: {out[-300:]}"
+        assert "孤儿动作：referenced_guard_action" not in out, f"被引用动作不应误报 S7: {out[-300:]}"
+        assert "统计：error 0 / warning 4 / info 3" in out, f"应恰 4 warning + 3 info: {out[-200:]}"
+        assert "通过（warning 呈审）" in out, f"无 error 应结论通过: {out[-200:]}"
+
+    def lint_scope_not_duplicated():
+        # 差异化断言：夹具内 lint 职责坏点（悬空 upstream=lint1 / derived 无规则=lint7）S 不得重复报；
+        # 问题行编号必须全部 S 前缀（消息文本中的差异化说明如「lint7 只查反向」是呈审上下文，不算重复报告）
+        import re
+        proc = run_cmd([sandbox_script, fixture])
+        out = proc.stdout or ""
+        assert "GhostEntity" not in out, f"悬空 upstream 属 lint1 职责，沙盘不应重复报: {out[-300:]}"
+        assert "stale_flag" not in out, f"derived 无规则承载属 lint7 职责，沙盘不应重复报: {out[-300:]}"
+        codes = re.findall(r"^\[(\S+?)\]", out, re.M)
+        assert codes and all(c.startswith("S") and c[1:].isdigit() for c in codes), \
+            f"问题行编号应全为 S 前缀，实际 {codes}"
+
+    def xgimi_clean():
+        # lint 复验版零警告模型：L2 预期 0 error；warning 恰 5 条全 S7（xgimi 六动作中五个为手动入口
+        # recipe 动作、无规则 downstream 引用——呈审级合法形态，精确断言锁定动作集合变化即重看）
+        proc = run_cmd([sandbox_script, xgimi_path])
+        out = proc.stdout or ""
+        assert proc.returncode == 0, f"xgimi 应 0 error 退出 0，实际 {proc.returncode}: {out[-300:]}"
+        assert "统计：error 0 / warning 5 / info 3" in out, f"xgimi 应 0 error/5 warning(全 S7): {out[-200:]}"
+        s7_lines = [ln for ln in out.splitlines() if ln.startswith("[S7]")]
+        assert len(s7_lines) == 5 and all("孤儿动作" in ln for ln in s7_lines),             f"xgimi 5 条 warning 应全为 S7 孤儿动作，实际: {s7_lines}"
+
+    def out_dir_artifacts():
+        # --out-dir 三产物落盘：ttl 双图 + report.md（含 lint 对照表设计说明）
+        import tempfile
+        import pathlib
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = pathlib.Path(td)
+            proc = run_cmd([sandbox_script, fixture, "--out-dir", out_dir])
+            assert proc.returncode == 0, f"落盘运行退出码 {proc.returncode}: {proc.stdout[-200:]}"
+            for name in ("sandbox.owl.ttl", "sandbox.shapes.ttl", "report.md"):
+                assert (out_dir / name).is_file(), f"缺产物 {name}"
+            report_md = (out_dir / "report.md").read_text(encoding="utf-8")
+            assert "lint 已覆盖 vs S 项增量对照" in report_md and "非 OWL DL 一致性检测" in report_md, \
+                "report.md 缺 lint 对照表或能力边界说明"
+
+    def data_samples():
+        # --data 实例校验：好样本 conforms 退出 0；坏样本（缺主键 + 枚举外值）violation 逐条 error 退出 1
+        import tempfile
+        import pathlib
+        with tempfile.TemporaryDirectory() as td:
+            good = pathlib.Path(td) / "good.json"
+            bad = pathlib.Path(td) / "bad.json"
+            good.write_text('[{"objectType": "Material", "material_code": "300-W6A01", "unit_cost": 20}]',
+                            encoding="utf-8")
+            bad.write_text('[{"objectType": "Material", "unit_cost": 20}]',
+                            encoding="utf-8")  # 坏点：缺主键 material_code → sh:minCount 1 violation
+            proc_good = run_cmd([sandbox_script, fixture, "--data", good])
+            assert proc_good.returncode == 0, f"好样本应退出 0: {proc_good.stdout[-300:]}"
+            assert "实例校验通过" in proc_good.stdout, f"好样本应 conforms: {proc_good.stdout[-200:]}"
+            proc_bad = run_cmd([sandbox_script, fixture, "--data", bad])
+            out = proc_bad.stdout or ""
+            assert proc_bad.returncode == 1, f"坏样本应退出 1，实际 {proc_bad.returncode}: {out[-300:]}"
+            assert "[S6] error" in out and "material_code" in out, f"缺缺主键 violation: {out[-300:]}"
+
+    assert_case(results, "case11", "坏样本 S1/S2/S3/S7 精确命中（4 warning 呈审）", bad_fixture_graded)
+    assert_case(results, "case11", "lint 职责项不重复报（差异化纪律）", lint_scope_not_duplicated)
+    assert_case(results, "case11", "xgimi 0 error，warning 恰 5 条全 S7 孤儿动作", xgimi_clean)
+    assert_case(results, "case11", "--out-dir 三产物含 lint 对照表", out_dir_artifacts)
+    assert_case(results, "case11", "--data 实例校验好坏样本行为", data_samples)
+
+
+# ===========十、主流程==========
+def build_case12(results: list) -> None:
+    """case12 断言：域交接包五件齐全、内容与 xgimi 定稿模型一致、红线头注在位。"""
+    gen_script = SCRIPTS_DIR / "gen_handoff.py"
+    xgimi_path = REPO_ROOT / "models" / "xgimi" / "model.yaml"
+    if not (gen_script.exists() and xgimi_path.exists()):
+        results.append(("case12", "前置就绪检测", "SKIP（gen_handoff 或 xgimi 模型未就绪）"))
+        return
+
+    def five_artifacts_consistent():
+        # 五件产物存在且内容与定稿模型一致（26 实体/6 动作/19 规则/12 OQ/12 CQ），红线头注在位
+        import tempfile
+        import pathlib
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = pathlib.Path(td)
+            proc = run_cmd([gen_script, xgimi_path, "--out-dir", out_dir])
+            assert proc.returncode == 0, f"生成退出码 {proc.returncode}: {proc.stdout[-200:]}"
+            for name in ("cq-final.md", "glossary-snapshot.md", "rule-calibers.md",
+                         "oq-verdicts.md", "probe-expectations.md"):
+                assert (out_dir / name).is_file(), f"缺产物 {name}"
+            cq = (out_dir / "cq-final.md").read_text(encoding="utf-8")
+            assert "cq-001" in cq and "共 12 条" in cq, f"cq-final 计数或首条异常: {cq[-200:]}"
+            rule = (out_dir / "rule-calibers.md").read_text(encoding="utf-8")
+            assert "共 19 条" in rule and "【待处理" not in rule.split("共 19")[0].split("| 待")[0],                 f"rule-calibers 计数异常（xgimi 复验版应无待处理前缀规则）: {rule[-200:]}"
+            oq = (out_dir / "oq-verdicts.md").read_text(encoding="utf-8")
+            assert "pending-engine" in oq and "共 12 条" in oq, f"oq 分组异常: {oq[-200:]}"
+            probe = (out_dir / "probe-expectations.md").read_text(encoding="utf-8")
+            assert "实体（26 个）" in probe and "动作（6 个）" in probe and "规则（19 条）" in probe,                 f"probe 清单计数异常: {probe[-200:]}"
+            glossary = (out_dir / "glossary-snapshot.md").read_text(encoding="utf-8")
+            assert "受控词表" in glossary and "Project" in glossary, "glossary 两节缺失"
+            # 红线头注：每件首行均含素材非依赖声明
+            for name in ("cq-final.md", "probe-expectations.md"):
+                head = (out_dir / name).read_text(encoding="utf-8").splitlines()[:3]
+                assert any("不是技能**运行时**依赖" in ln for ln in head), f"{name} 红线头注缺失"
+
+    assert_case(results, "case12", "交接包五件齐全且与 xgimi 定稿一致（红线头注在位）", five_artifacts_consistent)
+
+
 def main() -> int:
     """执行全部机械断言并输出结果表。
 
@@ -381,6 +504,8 @@ def main() -> int:
     build_case8(results)
     build_case9(results)
     build_case10(results)
+    build_case11(results)
+    build_case12(results)
     print("\n====evals 回归结果====")
     for case, name, status in results:
         print(f"[{case}] {name}: {status}")

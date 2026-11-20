@@ -11,7 +11,6 @@
 | `models/<domain>/` | **运行时业务资产**：各业务域的 DSL/设计稿/拓扑图/平台 yaml/问询单/资料包——插件生产的数据 | 运行资产 |
 | `evals/` | 回归测试（行为样例 + 机械断言，改插件必跑） | 工程资产 |
 | `docs/` | 设计决策记录（方案/调研/对照报告/转交文档）——插件为什么这样设计 | 工程资产 |
-| `poc/` | M0 验证资产（round-trip/盲测基准，格式演进的对账锚点） | 工程资产 |
 | `workbuddy/` | WorkBuddy 构建产物区（`pack_workbuddy.py` 生成的上传 zip，可随时重建） | 构建产物 |
 
 ## 资产流转规则
@@ -55,4 +54,4 @@
 
 - 使用手册：`plugins/ontology-forge/docs/user-guide.md`
 - DSL 规范（格式权威）：`plugins/ontology-forge/skills/ontology-modeling/references/dsl-spec.md`
-- 回归：`cd evals/ontology-modeling && python run_evals.py`（改插件必跑，当前 20 断言）
+- 回归：`cd evals/ontology-modeling && python run_evals.py`（改插件必跑；断言数以脚本实时输出为准）

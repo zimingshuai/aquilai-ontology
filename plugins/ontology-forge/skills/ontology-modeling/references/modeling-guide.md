@@ -48,6 +48,26 @@
 - **单表多态实体（discriminator 模式）**：多业务子型共享主体结构、子型专属字段少时，建单实体 + `supply_type` 式判别字段，子型专属字段在 description 写明"仅 X 型有值"；不强行拆实体（拆了主体字段全要重复）。拆分与否的裁定进人审，assumptions 留痕。
 - **多态引用**：一个引用字段可指向多种实体（如 affected_ref）时以 STRING 编码承载，description 写明引用对象清单与编码规则；引擎若不支持多态，拆分方案（每目标实体一条 links）在人审时裁定。 |
 
+**规则归属判定链（v0.4.8 吸收自 ontology-driven-dev 七模型框架——按依赖范围分流，起草 rules 前必走）**：
+
+核心是「**能低不高**」——约束随数据走，跨对象/可复用才独立成规则：
+
+| 依赖范围 | 归属 | DSL 形态 | 示例 |
+|---|---|---|---|
+| 类型/枚举/主键 | 属性内置字段 | `type` / `enum_values` / `primary` | 状态枚举五态、物料编码主键 |
+| 只依赖当前属性值 | 属性 description 注记（平台无属性级表达式约束承载时，落 open_questions 或文档口径） | description 写明约束语义 | 金额须为正、名称长度上限 |
+| 依赖单一实体多属性 | rules 段（upstream 单实体） | `rule_type: derived_property` + `logic` | 标准用量 = 行用量 ÷ 基准数量 |
+| 跨对象 / 被多处复用 / 触发动作 | rules 段（upstream 多实体）或 trigger / admission | `upstream: [A, B]` / `downstream` | 累计收款达合同总额可关单 |
+
+判定顺序：① 内置字段能表达的**不进 rules**；② 单属性级约束平台无承载时**不虚建规则**（注记/OQ 如实声明）；③ 进 rules 的按依赖范围定 upstream 宽度与 rule_type。反向自检：起草后发现规则只读单属性 → 考虑下沉注记；只被一处引用且语义狭窄 → 考虑是否过度独立。
+
+**trigger 联动设计纪律（v0.4.8 同源吸收——联动显式且失败语义不吞）**：
+
+1. **联动显式声明**：跨对象联动一律走 trigger 的 `downstream`，禁止在动作 description 里隐含"顺手改别的实体"；
+2. **规则只判断**：联动条件归 trigger 规则表达式，动作只承接"做什么"；
+3. **跨对象才联动**：同一实体内的级联计算用 derived_property（规则链），不用 trigger 自我联动；
+4. **失败语义显式**：downstream 失败的处置（重试 / 降级 / 人工介入）在 description 或 open_questions 写明，禁止隐含吞掉。
+
 ## 四、受控词表策略
 
 - 优先复用 `seeds/` 中 fnb/mfg 既有术语（实体名、字段名、展示名三层）。

@@ -2,7 +2,7 @@
 name: ontology-review
 description: 本体评审技能——按 checklist 对本体 DSL（或 studio-model 模板）做质量终审，产出带证据的评审报告与变更集影响分析。Use when 用户要求检查/评审本体设计、比较本体版本、评估既有本体是否支撑业务场景、或建模流水线第 7 步后人审门前使用（「检查本体质量」「两版本体对比」「能否支撑业务场景」等说法均适用）。not for：起草与修订本体（走 ontology-modeling）、评审后的批准发布（人工是唯一权威，本技能只出报告）。
 license: Proprietary — Aquilair 内部分发，仅限公司内网使用
-compatibility: 机器检查需 Python 3.10+ 与 PyYAML（运行 lint_model.py 与 check_cq.py）
+compatibility: 机器检查需 Python 3.10+ 与 PyYAML（运行 lint_model.py 与 check_cq.py）；L2 语义沙盘另需 rdflib / owlrl / pyshacl（运行 semantic_sandbox.py）
 ---
 
 # 本体评审（ontology-review）
@@ -12,7 +12,7 @@ compatibility: 机器检查需 Python 3.10+ 与 PyYAML（运行 lint_model.py �
 ## 一、评审流程
 
 1. **输入定位**：评审对象是 DSL（model.yaml）还是 studio-model 模板（先逆向为 DSL 或直接按 §8 结构检查）；增量场景读变更集（changeset.json + diff 拓扑）。
-2. **机器检查先行**：跑 `lint_model.py` 与 `check_cq.py`——机器可判定的不过关，直接打回（不走语义评审）。
+2. **机器检查先行**：跑 `lint_model.py` 与 `check_cq.py`（L2 语义沙盘 `semantic_sandbox.py` 报告随产物呈审时一并复核）——机器可判定的不过关，直接打回（不走语义评审）。
 3. **checklist 逐项评审**（见下），每项给出：✅ 通过（一句证据）/ ⚠️ 存疑（问题+证据+建议）/ ❌ 不通过（问题+证据+修复建议）。
 4. **CQ 覆盖终审**：覆盖矩阵之上人工判断语义覆盖度——"这个问题本体现在真的能答吗"（机器只查引用合法性）。
 5. **变更集影响分析**（增量场景）：逐条 breaking 操作列出影响面（哪些衍生属性/动作/下游技能会受影响）。

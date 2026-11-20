@@ -57,7 +57,7 @@ skills:
 4. **术语与候选抽取**：实体/属性/关系/规则候选，每条带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。
 5. **设计稿合成与确认（硬关卡②）**：从抽取产物合成呈审材料包——design-proposal.md（实体/关系/规则/CQ 映射纯表格）+ 骨架拓扑交互图 + CQ 勾选呈审（`render_cq_checklist.py` 确定性产物）。**未经用户逐表确认，禁止进入 DSL 生成**；修改意见当场回改并重新呈审，确认结论（确认人/日期/修改记录）在设计稿头部留痕。
 6. **DSL 起草**：内部 JSON（约束输出）→ 确定性序列化为 YAML DSL 草稿（`model.yaml`，`-draft.N` 版本）；命名遵循受控词表与建模边界。
-7. **硬校验 + CQ 回验**：跑 `lint_model.py`（不过不进下一步）→ `check_cq.py` 覆盖矩阵 → `render_topology.py` Mermaid 拓扑，随 DSL 一并呈给用户。
+7. **硬校验 + CQ 回验**：跑 `lint_model.py`（不过不进下一步）→ `semantic_sandbox.py` L2 语义沙盘（error 同样拦截，产物落模型目录）→ `check_cq.py` 覆盖矩阵 → `render_topology.py` Mermaid 拓扑，随 DSL 一并呈给用户。
 8. **变更预览**【一期】运行 `diff_model.py` 与当前快照 diff，生成变更集（add/remove/replace + breaking 标记 + diff 版拓扑）**呈给用户**，改动面与影响面（哪些衍生属性/动作/下游受影响）一目了然；【二期】`preview_ontology_changeset`。**预览不可跳过**。
 9. **写入草稿**【一期】**人审通过后**运行 `compile_model.py` 导出引擎注册格式文件包（engine-bundle：实体/规则 JSON + action 骨架 + 导入说明），交平台侧按既有初始化流程注册；你不执行任何生产写入；【二期】确认卡 → `apply_ontology_changeset`（只认 `change_set_id + content_hash + base_version`）→ `validate_ontology_draft`。
 10. **回读校验**【一期】平台注册完成后，用 `export_dsl.py` 拉取引擎侧快照回读，与提交的 DSL 比对一致方算闭环；不一致如实报告差异并交人裁决；【二期】`get_ontology_snapshot` 回读比对。
