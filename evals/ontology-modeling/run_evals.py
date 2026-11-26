@@ -489,6 +489,372 @@ def build_case12(results: list) -> None:
     assert_case(results, "case12", "交接包五件齐全且与 xgimi 定稿一致（红线头注在位）", five_artifacts_consistent)
 
 
+# ===========十一、case13：需求探索记录门禁（结构校验/批复应用/勾选页）==========
+def build_case13(results: list) -> None:
+    """case13 断言：探索记录三脚本的行为——门禁精确命中、批复四动作迁移与原子性、勾选页生成。"""
+    check_script = SCRIPTS_DIR / "check_exploration.py"
+    apply_script = SCRIPTS_DIR / "apply_exploration_feedback.py"
+    render_script = SCRIPTS_DIR / "render_explore_checklist.py"
+    template = SCRIPTS_DIR.parent / "assets" / "explore-checklist.html"
+    fixture_dir = EVAL_ROOT / "case13-exploration"
+    if not all(p.exists() for p in (check_script, apply_script, render_script, template,
+                                     fixture_dir / "good.yaml", fixture_dir / "feedback.txt")):
+        results.append(("case13", "前置就绪检测", "SKIP（探索脚本或 case13 夹具未就绪）"))
+        return
+
+    def good_handoff():
+        # good：结构合规且必问全收口 → 可交接（提示清单 7 条的编号与计数整串锁定）
+        proc = run_cmd([check_script, fixture_dir / "good.yaml"])
+        out = proc.stdout or ""
+        assert proc.returncode == 0, f"good 应退出 0，实际 {proc.returncode}: {out[-300:]}"
+        assert "====探索记录可交接建模====" in out, f"good 应判可交接: {out[-300:]}"
+        assert "阻塞清单（必问未确认 0 条）：无" in out, f"good 阻塞清单应为空: {out[-300:]}"
+        assert ("提示清单（非必问未确认 7 条）：X-007、X-008、X-009、X-012、X-014、X-016、X-017"
+                in out), f"good 提示清单编号/计数漂移: {out[-300:]}"
+
+    def blocked_exact():
+        # blocked：必问项改回未定案 → 恰 2 条阻塞、整串锁定编号
+        proc = run_cmd([check_script, fixture_dir / "blocked.yaml"])
+        out = proc.stdout or ""
+        assert proc.returncode == 1, f"blocked 应退出 1，实际 {proc.returncode}: {out[-300:]}"
+        assert "必问项未确认 2 条" in out, f"blocked 应恰 2 条阻塞: {out[-300:]}"
+        assert "阻塞清单（必问未确认 2 条）：X-001、X-010" in out, f"blocked 阻塞编号漂移: {out[-300:]}"
+        assert "====探索记录不可交接====" in out, f"blocked 结论行应为不可交接: {out[-300:]}"
+
+    def bad_fixtures_precise():
+        # bad-x1..x8：逐个坏样本恰只命中对应检查项（编号集合精确等于该一项）
+        import re
+        for n in range(1, 9):
+            proc = run_cmd([check_script, fixture_dir / f"bad-x{n}.yaml"])
+            out = proc.stdout or ""
+            assert proc.returncode == 1, f"bad-x{n} 应退出 1，实际 {proc.returncode}: {out[-200:]}"
+            codes = set(re.findall(r"^\[(X\d+)\]", out, re.M))
+            assert codes == {f"X{n}"}, f"bad-x{n} 应恰命中 [X{n}]，实际 {sorted(codes)}: {out[-200:]}"
+
+    def missing_file_exit2():
+        proc = run_cmd([check_script, fixture_dir / "not-exist.yaml"])
+        assert proc.returncode == 2, f"文件缺失应退出 2，实际 {proc.returncode}"
+
+    def _copy_good(td):
+        # 把 good 与批复文本复制进临时目录（不污染夹具），返回两文件路径
+        import pathlib
+        import shutil
+        good = pathlib.Path(td) / "good.yaml"
+        shutil.copyfile(fixture_dir / "good.yaml", good)
+        return good, pathlib.Path(td) / "feedback.txt"
+
+    def _load(path):
+        import yaml
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    def apply_four_verbs():
+        # 四类批复动作的字段迁移：statement/status/resolution 逐条断言，未批复条目逐字段原样
+        import hashlib
+        import pathlib
+        import shutil
+        import tempfile
+        import yaml
+        with tempfile.TemporaryDirectory() as td:
+            good, feedback = _copy_good(td)
+            shutil.copyfile(fixture_dir / "feedback.txt", feedback)
+            proc = run_cmd([apply_script, good, "--feedback", feedback, "--by", "回归测试"])
+            assert proc.returncode == 0, f"批复应用应退出 0: {proc.stdout[-300:]}"
+            before = _load(fixture_dir / "good.yaml")
+            after = _load(good)
+            b_items, a_items = {i["id"]: i for i in before["items"]}, {i["id"]: i for i in after["items"]}
+            # 批复文本按编号解析出期望文本（不硬编码夹具文案，断言的是迁移逻辑本身）
+            payloads = {}
+            for line in (fixture_dir / "feedback.txt").read_text(encoding="utf-8").splitlines():
+                parts = line.split("：", 1)
+                payloads[parts[0].split()[0]] = (parts[1] if len(parts) > 1 else "")
+            # 按建议（proposed→confirmed）：statement 不变、留痕含动作词与确认人
+            assert a_items["X-007"]["status"] == "confirmed" and \
+                a_items["X-007"]["statement"] == b_items["X-007"]["statement"], "X-007 按建议应保留陈述"
+            assert "按 AI 建议确认" in a_items["X-007"]["resolution"] and "回归测试" in \
+                a_items["X-007"]["resolution"], "X-007 留痕缺动作词或确认人"
+            # 按建议（pending→confirmed）：statement ← proposal、原陈述入留痕
+            assert a_items["X-009"]["statement"] == b_items["X-009"]["proposal"], "X-009 陈述应取 proposal"
+            assert b_items["X-009"]["statement"] in a_items["X-009"]["resolution"], "X-009 原陈述未入留痕"
+            # 改为：statement 替换、原陈述入留痕
+            assert a_items["X-012"]["statement"] == payloads["X-012"], "X-012 陈述应取「改为」文本"
+            assert b_items["X-012"]["statement"] in a_items["X-012"]["resolution"], "X-012 原陈述未入留痕"
+            # 否决：rejected、原文保留、备注入留痕
+            assert a_items["X-014"]["status"] == "rejected" and \
+                a_items["X-014"]["statement"] == b_items["X-014"]["statement"], "X-014 否决应保留原文"
+            assert payloads["X-014"] in a_items["X-014"]["resolution"], "X-014 否决备注未入留痕"
+            # 选备选：statement ← options[1]、留痕含「选备选B」
+            assert a_items["X-016"]["statement"] == b_items["X-016"]["options"][1], "X-016 应取备选 B 内容"
+            assert "选备选B" in a_items["X-016"]["resolution"], "X-016 留痕缺选备选记录"
+            # 未批复的 13 条逐字段原样；联动矩阵不变；updated_at 刷新
+            touched = {"X-007", "X-009", "X-012", "X-014", "X-016"}
+            assert all(a_items[k] == b_items[k] for k in b_items if k not in touched), "未批复条目被改动"
+            assert after["linkage"] == before["linkage"] and after["dimensions"] == before["dimensions"], \
+                "联动矩阵/维度覆盖被改动"
+            assert after["updated_at"] != before["updated_at"], "updated_at 未刷新"
+            # 复检结论与独立再跑一致（均可交接）
+            assert "====探索记录可交接建模====" in proc.stdout, "应用后复检应判可交接"
+            proc2 = run_cmd([check_script, good])
+            assert proc2.returncode == 0, f"写回后再独立检查应退出 0: {proc2.stdout[-200:]}"
+
+    def apply_atomicity():
+        # 原子性：未知编号 / 改为缺文本 / 备选序号不存在 —— 任一问题整批不写、文件字节不变
+        import hashlib
+        import pathlib
+        import tempfile
+        cases = {
+            "unknown": "X-999 ✅ 按建议\n",
+            "missing-text": "X-007 ✏️ 改为：\n",
+            "bad-option": "X-016 ➜ 选备选Z：xx\n",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            for name, text in cases.items():
+                good, feedback = _copy_good(td)
+                feedback.write_text(text, encoding="utf-8")
+                digest = hashlib.sha256(good.read_bytes()).hexdigest()
+                proc = run_cmd([apply_script, good, "--feedback", feedback, "--by", "回归测试"])
+                assert proc.returncode == 1, f"{name} 应退出 1，实际 {proc.returncode}: {proc.stdout[-200:]}"
+                assert hashlib.sha256(good.read_bytes()).hexdigest() == digest, f"{name} 违反原子性：文件被写入"
+
+    def apply_confirmed_rewrite():
+        # 已确认条目更正通道：改为 → statement 替换、status 保持 confirmed、resolution 追加不覆盖
+        import pathlib
+        import tempfile
+        import yaml
+        with tempfile.TemporaryDirectory() as td:
+            good, feedback = _copy_good(td)
+            before = _load(good)
+            target = next(i["id"] for i in before["items"] if i["status"] == "confirmed")
+            feedback.write_text(f"{target} ✏️ 改为：更正后的巡检范围陈述\n", encoding="utf-8")
+            proc = run_cmd([apply_script, good, "--feedback", feedback, "--by", "回归测试"])
+            assert proc.returncode == 0, f"已确认条目改写应退出 0: {proc.stdout[-300:]}"
+            after = _load(good)
+            item = next(i for i in after["items"] if i["id"] == target)
+            assert item["status"] == "confirmed" and item["statement"] == "更正后的巡检范围陈述", \
+                "已确认条目改写后状态/陈述异常"
+            assert "改为「更正后的巡检范围陈述」" in item["resolution"], "改写留痕缺失"
+            # 追加不覆盖：原留痕保留在前；分隔符计数 = 原有分隔符 +（原有留痕时新增一条分隔）
+            old = str(next(i for i in before["items"] if i["id"] == target).get("resolution") or "")
+            assert item["resolution"].startswith(old) and item["resolution"] != old, \
+                "改写不得覆盖既有留痕"
+            assert item["resolution"].count("｜") == old.count("｜") + (1 if old else 0), \
+                "留痕条数应恰为原有一条加新一条（原本无留痕时即新留痕本身）"
+
+    def apply_reject_states():
+        # 已确认条目「按建议」拒绝（更正请用改为/否决）；rejected 终态拒绝——两者均不写文件
+        import hashlib
+        import pathlib
+        import tempfile
+        import yaml
+        with tempfile.TemporaryDirectory() as td:
+            good, feedback = _copy_good(td)
+            record = _load(good)
+            confirmed_id = next(i["id"] for i in record["items"] if i["status"] == "confirmed")
+            rejected_id = next(i["id"] for i in record["items"] if i["status"] == "rejected")
+            feedback.write_text(f"{confirmed_id} ✅ 按建议\n{rejected_id} ❌ 否决\n", encoding="utf-8")
+            digest = hashlib.sha256(good.read_bytes()).hexdigest()
+            proc = run_cmd([apply_script, good, "--feedback", feedback, "--by", "回归测试"])
+            out = proc.stdout or ""
+            assert proc.returncode == 1, f"非法状态批复应退出 1，实际 {proc.returncode}: {out[-300:]}"
+            assert "仅用于未定案条目" in out, f"已确认按建议的拒绝文案异常: {out[-300:]}"
+            assert "终态" in out, f"rejected 终态拒绝文案异常: {out[-300:]}"
+            assert hashlib.sha256(good.read_bytes()).hexdigest() == digest, "被拒绝的批复写入了文件"
+        # 无备注否决：留痕不带空括号
+        with tempfile.TemporaryDirectory() as td:
+            good, feedback = _copy_good(td)
+            record = _load(good)
+            proposed_id = next(i["id"] for i in record["items"] if i["status"] == "proposed")
+            feedback.write_text(f"{proposed_id} ❌ 否决\n", encoding="utf-8")
+            proc = run_cmd([apply_script, good, "--feedback", feedback, "--by", "回归测试"])
+            assert proc.returncode == 0, f"无备注否决应成功: {proc.stdout[-200:]}"
+            item = next(i for i in _load(good)["items"] if i["id"] == proposed_id)
+            assert item["status"] == "rejected" and "否决" in item["resolution"] and \
+                "否决（）" not in item["resolution"], f"无备注否决留痕异常: {item['resolution']}"
+
+    def render_page_and_gate():
+        # 勾选页：计数/域名取记录值、占位符零残留、未定案编号全在页面；结构违规不产出文件
+        import pathlib
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            out_html = pathlib.Path(td) / "ck.html"
+            proc = run_cmd([render_script, fixture_dir / "good.yaml", "-o", out_html])
+            out = proc.stdout or ""
+            assert proc.returncode == 0, f"渲染应退出 0: {out[-300:]}"
+            assert "待确认 7 条，其中必问 0 条；已定案 11 条，域 device-patrol" in out, \
+                f"统计行计数/域名异常（域名默认取记录内 domain）: {out[-200:]}"
+            page = out_html.read_text(encoding="utf-8")
+            assert "__DOMAIN__" not in page and "__GENERATED_AT__" not in page and \
+                "__ITEM_DATA__" not in page, "页面占位符残留（坏件）"
+            for item_id in ("X-007", "X-008", "X-009", "X-012", "X-014", "X-016", "X-017"):
+                assert item_id in page, f"页面缺未定案条目 {item_id}"
+            bad_out = pathlib.Path(td) / "bad.html"
+            proc = run_cmd([render_script, fixture_dir / "bad-x2.yaml", "-o", bad_out])
+            assert proc.returncode == 1, f"结构违规应退出 1，实际 {proc.returncode}"
+            assert not bad_out.exists(), "结构违规不得产出页面文件"
+
+    def template_placeholders():
+        # 模板三占位符在位（render 的代入依赖；防模板漂移坏件）
+        text = template.read_text(encoding="utf-8")
+        for holder in ("__DOMAIN__", "__GENERATED_AT__", "__ITEM_DATA__"):
+            assert holder in text, f"assets/explore-checklist.html 缺占位符 {holder}"
+
+    assert_case(results, "case13", "good 可交接（阻塞 0｜提示 7 条编号整串锁定）", good_handoff)
+    assert_case(results, "case13", "blocked 恰列 2 条必问（X-001、X-010）", blocked_exact)
+    assert_case(results, "case13", "bad-x1..x8 逐条精确命中（编号集合恰等）", bad_fixtures_precise)
+    assert_case(results, "case13", "文件缺失退出码 2", missing_file_exit2)
+    assert_case(results, "case13", "apply 四类批复字段迁移 + 复检一致", apply_four_verbs)
+    assert_case(results, "case13", "apply 原子性（未知编号/缺文本/备选越界不写文件）", apply_atomicity)
+    assert_case(results, "case13", "已确认条目改写留痕追加（更正通道）", apply_confirmed_rewrite)
+    assert_case(results, "case13", "非法状态批复拒绝 + 无备注否决无空括号", apply_reject_states)
+    assert_case(results, "case13", "勾选页计数/域名/占位符 + 违规不产出", render_page_and_gate)
+    assert_case(results, "case13", "模板三占位符在位", template_placeholders)
+
+
+# ===========十二、case14：平台新导入格式编译（v0.4 全键覆盖 + 多路径不猜）==========
+def build_case14(results: list) -> None:
+    """case14 断言：v0.4 新键全量编译为平台新导入格式——占位符+关系路径/分支触发/挂载校验/
+    声明式动作/基数翻转/整数类型，多路径冲突报错不猜。"""
+    compile_script = SCRIPTS_DIR / "compile_model.py"
+    lint_script = SCRIPTS_DIR / "lint_model.py"
+    fixture_dir = EVAL_ROOT / "case14-platform-format"
+    fixture = fixture_dir / "fixture-v04.yaml"
+    multipath = fixture_dir / "fixture-multipath.yaml"
+    if not all(p.exists() for p in (compile_script, lint_script, fixture, multipath)):
+        results.append(("case14", "前置就绪检测", "SKIP（case14 夹具未就绪）"))
+        return
+
+    def _compile(out_dir):
+        # 编译到指定目录并返回 (proc, studio dict)；供幂等与断言复用
+        import pathlib
+        import yaml
+        proc = run_cmd([compile_script, fixture, "--target", "studio-model", "-o", str(out_dir)])
+        assert proc.returncode == 0, f"主夹具编译应 0 错误，实际退出码 {proc.returncode}: {proc.stdout[-300:]}"
+        return yaml.safe_load((pathlib.Path(out_dir) / "studio-model.yaml").read_text(encoding="utf-8"))
+
+    def lint_and_compile_clean():
+        # 主夹具 lint 0/0 + 编译 0 错误（新键全量合法）
+        proc = run_cmd([lint_script, fixture])
+        assert proc.returncode == 0 and "error 0 处，warning 0 处" in (proc.stdout or ""), \
+            f"主夹具 lint 应 0/0: {proc.stdout[-300:]}"
+
+    def expression_sources():
+        # 计算规则：自身属性空路径；反向聚合段结构（sourceEntityCode=Equipment → WorkOrder）
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            studio = _compile(td)
+            calcs = {r["name"]: r for r in studio["rule_types"] if r["ruleType"] == "calculation"}
+            self_rule = calcs["停机天数折算"]["ruleConfig"]
+            assert self_rule["expression"] == "COALESCE(${x.repair_hours} / 24, 9999)", \
+                f"自身属性占位符表达式异常: {self_rule['expression']}"
+            assert self_rule["expressionSources"]["x"]["relationPath"] == [], "自身属性 relationPath 应为空数组"
+            agg_rule = calcs["累计停机天数"]["ruleConfig"]
+            seg = agg_rule["expressionSources"]["x"]["relationPath"]
+            assert len(seg) == 1 and seg[0]["sourceEntityCode"] == "Equipment" \
+                and seg[0]["targetEntityCode"] == "WorkOrder" and seg[0]["relationCode"], \
+                f"反向聚合关系路径段结构异常: {seg}"
+
+    def trigger_branches_and_validation():
+        # 分支触发：multi/cases 2/otherwise 1/operator 映射/with 双形态；validation 编出+挂载
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            studio = _compile(td)
+            trg = next(r for r in studio["rule_types"] if r["ruleType"] == "trigger")
+            assert trg["mode"] == "multi" and len(trg["cases"]) == 2 and len(trg["otherwise"]) == 1, \
+                f"分支结构异常: mode={trg.get('mode')} cases={len(trg.get('cases', []))}"
+            assert trg["cases"][0]["when"]["all"][0]["operator"] == "gt" and \
+                trg["cases"][1]["when"]["all"][0]["operator"] == "eq", "operator 映射异常（>→gt、==→eq）"
+            assert trg["cases"][1]["when"]["all"][0]["left"] == "@Equipment.critical_level", \
+                "跨实体条件应解析为 @Equipment.critical_level"
+            assert trg["cases"][1]["run"][0]["with"]["$note"] == "@Equipment.equipment_name", \
+                "with 属性引用映射异常"
+            val = next(r for r in studio["rule_types"] if r["ruleType"] == "validation")
+            assert val["when"]["all"][0] == {"left": "@WorkOrder.status", "operator": "ne", "right": "已关闭"}, \
+                f"validation 条件映射异常: {val['when']}"
+            assert "reassign_work_order" in val["failureMessage"], "failureMessage 应含动作名"
+            mounted = next(a for a in studio["action_types"] if a["name"] == "reassign_work_order")
+            assert mounted.get("validation_rules") == [val["code"]], "validation 未挂载到 reassign 动作"
+
+    def action_steps_and_types():
+        # 声明式动作三形态赋值、notification、函数型空步骤、enabled、基数翻转、integer 类型
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            studio = _compile(td)
+            acts = {a["name"]: a for a in studio["action_types"]}
+            assignments = acts["escalate_work_order"]["steps"][0]["assignments"]
+            assert assignments["priority_note"] == "$level" and assignments["status"] == "处理中" \
+                and assignments["last_escalate_by"] == "@WorkOrder.equipment_code", \
+                f"assignments 三形态映射异常: {assignments}"
+            note = acts["notify_long_downtime"]["steps"][0]
+            assert note["type"] == "notification" and note["channel"] == "dingtalk" \
+                and note["content"] == "$content", f"notification 步骤映射异常: {note}"
+            assert acts["schedule_maintenance"]["steps"] == [], "函数型动作 steps 应为空数组（不随 yaml 往返）"
+            assert all(a.get("enabled") is True for a in studio["action_types"]), "动作应带 enabled: true"
+            assert all(r.get("enabled") is True for r in studio["rule_types"]
+                       if r["ruleType"] == "trigger"), "trigger 应带 enabled: true"
+            link = studio["link_types"][0]
+            assert link["source"] == "Equipment" and link["target"] == "WorkOrder" \
+                and link["cardinality"] == "1:1", f"DSL 1:1（本体:目标）应翻转为平台 Equipment→WorkOrder 1:1: {link}"
+            types = {a["type"] for o in studio["object_types"] for a in o["attrs"]}
+            assert "integer" in types and "double" in types, f"INTEGER 应编为 integer 不压 double: {sorted(types)}"
+
+    def idempotent_and_readme():
+        # 编译幂等（两次 sha256）+ import-README 标注函数型/未声明动作
+        import hashlib
+        import pathlib
+        import tempfile
+        with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
+            _compile(td1)
+            _compile(td2)
+            for name in ("studio-model.yaml", "import-README.md"):
+                p1, p2 = pathlib.Path(td1) / name, pathlib.Path(td2) / name
+                assert p1.is_file() and p2.is_file() and \
+                    hashlib.sha256(p1.read_bytes()).hexdigest() == hashlib.sha256(p2.read_bytes()).hexdigest(), \
+                    f"{name} 两次编译 sha256 不一致——非确定性"
+            readme = (pathlib.Path(td1) / "import-README.md").read_text(encoding="utf-8")
+            assert "函数型动作" in readme and "schedule_maintenance" in readme, \
+                "import-README 应标注函数型动作不随 yaml 往返"
+            assert "log_routine_check" in readme, "import-README 应列出被引用但未声明的动作"
+
+    def reverse_roundtrip():
+        # 逆向往返：编译产物 -> export_dsl 逆向 DSL -> lint 0/0 -> 再编译 -> sha256 字节一致
+        import hashlib
+        import pathlib
+        import tempfile
+        export_script = SCRIPTS_DIR / "export_dsl.py"
+        with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
+            _compile(td1)
+            reversed_yaml = pathlib.Path(td1) / "reversed.yaml"
+            proc = run_cmd([export_script, "--platform-yaml", str(pathlib.Path(td1) / "studio-model.yaml"),
+                            "--output", str(reversed_yaml), "--ontology", "equipment-repair"])
+            assert proc.returncode == 0, f"逆向应退出 0: {(proc.stdout or '')[-200:]}{(proc.stderr or '')[-200:]}"
+            lint_proc = run_cmd([lint_script, reversed_yaml])
+            assert lint_proc.returncode == 0 and "error 0 处" in (lint_proc.stdout or ""),                 f"逆向 DSL 应 lint 0 错: {(lint_proc.stdout or '')[-300:]}"
+            proc2 = run_cmd([compile_script, reversed_yaml, "--target", "studio-model", "-o", td2])
+            assert proc2.returncode == 0, f"再编译应 0 错误: {(proc2.stdout or '')[-200:]}"
+            first = hashlib.sha256((pathlib.Path(td1) / "studio-model.yaml").read_bytes()).hexdigest()
+            second = hashlib.sha256((pathlib.Path(td2) / "studio-model.yaml").read_bytes()).hexdigest()
+            assert first == second, "编译->逆向->再编译 产物 sha256 不一致——往返有损"
+
+    def multipath_rejected():
+        # 多路径等长：编译报错退出码 1、消息含候选路径提示与「不猜」，产物不静默通过
+        # （编译器错误行走 stderr——断言取 stdout+stderr 合并）
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            proc = run_cmd([compile_script, multipath, "--target", "studio-model", "-o", str(td)])
+            out = (proc.stdout or "") + (proc.stderr or "")
+            assert proc.returncode == 1, f"多路径应退出码 1，实际 {proc.returncode}: {out[-300:]}"
+            assert "等长最短关系路径" in out and "不猜" in out and "in_unit" in out, \
+                f"多路径错误消息应指名路径与改写建议: {out[-300:]}"
+
+    assert_case(results, "case14", "主夹具 lint 0/0（v0.4 新键全量合法）", lint_and_compile_clean)
+    assert_case(results, "case14", "计算规则占位符+关系路径（自身空数组/反向聚合段结构）", expression_sources)
+    assert_case(results, "case14", "分支触发+校验挂载（multi/cases/otherwise/operator/with/failureMessage）",
+                trigger_branches_and_validation)
+    assert_case(results, "case14", "声明式动作三形态+函数型空步骤+基数翻转+integer", action_steps_and_types)
+    assert_case(results, "case14", "编译幂等 + import-README 标注（函数型/未声明动作）", idempotent_and_readme)
+    assert_case(results, "case14", "多路径等长报错不猜（退出码 1+指名候选）", multipath_rejected)
+    assert_case(results, "case14", "逆向往返字节一致（编译→逆向→lint→再编译）", reverse_roundtrip)
+
+
 def main() -> int:
     """执行全部机械断言并输出结果表。
 
@@ -506,6 +872,8 @@ def main() -> int:
     build_case10(results)
     build_case11(results)
     build_case12(results)
+    build_case13(results)
+    build_case14(results)
     print("\n====evals 回归结果====")
     for case, name, status in results:
         print(f"[{case}] {name}: {status}")

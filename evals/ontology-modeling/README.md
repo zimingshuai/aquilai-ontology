@@ -19,6 +19,8 @@
 | 10 | CQ 勾选呈审生成（无独立目录，输入用 xgimi 现役模型） | 机械 | render_cq_checklist 生成完整 HTML（12 CQ+占位符替换+三态交互）、无 CQ 输入如实报错（run_evals.py 自动） |
 | 12 | —（无夹具，直跑 xgimi） | 机械 | 域交接包五件齐全且与 xgimi 定稿一致（26/6/19/12/12 计数+红线头注）（run_evals.py 自动） |
 | 11 | `case11-sandbox/` L2 语义沙盘 | 机械 | 坏样本 S1/S2/S3/S7 精确命中（4 warning 呈审，被引用动作不误报）、lint 职责项不重复报（差异化纪律）、xgimi 0 error 且 warning 恰 5 条全 S7 孤儿动作、--out-dir 三产物含 lint 对照表、--data 实例校验好坏样本行为（run_evals.py 自动） |
+| 13 | `case13-exploration/` 探索记录门禁 | 机械 | good 可交接（阻塞 0｜提示 7 条编号整串锁定）、blocked 恰列 2 条必问、bad-x1..x8 逐条精确命中、文件缺失退出 2、apply 四类批复字段迁移+复检一致、apply 原子性（三类无效批复不写文件）、已确认条目改写留痕追加、非法状态批复拒绝+无备注否决无空括号、勾选页计数/域名/占位符+违规不产出、模板三占位符在位（run_evals.py 自动） |
+| 14 | `case14-platform-format/` 平台新格式编译 | 机械 | v0.4 新键全量编译断言——占位符+关系路径（自身空数组/反向聚合段）、分支触发（multi/cases/otherwise/operator 映射/with 双形态）、validation 编出+挂载、声明式动作三形态赋值+函数型空步骤+enabled、基数翻转（DSL 1:1→平台 1:1）、INTEGER→integer、编译幂等+import-README 标注、多路径等长报错不猜（run_evals.py 自动） |
 
 ## 运行方式
 

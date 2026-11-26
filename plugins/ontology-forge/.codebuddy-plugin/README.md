@@ -1,44 +1,38 @@
 # aquilair-fde（WorkBuddy Expert Plug-in）
 
-Aquilair 本体建模插件（ontology-forge）的 **WorkBuddy 清单**。把新业务域接入本体引擎的时间从"数周手工建模"压缩到"半天人审"：资料摄取 → 场景圈定（CQ）→ DSL 起草 → 硬校验 → 变更集 diff → 引擎注册格式导出 → 人工审核（唯一权威）。
+Aquilair 本体建模插件（ontology-forge）的 **WorkBuddy 清单**。插件定位、工作方式、使用手册与四平台安装总表见插件根 `README.md` 与 `docs/user-guide.md`——**本文只写 WorkBuddy 特有内容**（包结构、上传、quickPrompts 约束、二期挂接点）。
 
 > 骨架来源：楠总 × Codex 蓝图（WorkBuddy Expert Plug-in 规范，2026-09-21~24）。
 
-## 一、单内容多清单架构
+## 一、构建与上传
 
-插件内容**只有一份**，位于插件根（`plugins/ontology-forge/`），各平台清单并存引用同一份内容，不存在镜像/平移：
+1. 构建：`python plugins/ontology-forge/scripts/pack_workbuddy.py` → 产出 `workbuddy/aquilair-fde-<版本>.zip`（版本读清单）。
+2. 上传：WorkBuddy 开放平台（唯一分发通道，需微信扫码）。
+3. 发布前自检：`python plugins/ontology-forge/scripts/check_dist.py`——清单合规、agent frontmatter、zip 结构逐项断言，任一失败退出码 1。
 
-| 平台 | 清单 | 安装方式 |
-| --- | --- | --- |
-| WorkBuddy | `.codebuddy-plugin/plugin.json`（本目录） | 开放平台上传 zip（`scripts/pack_workbuddy.py` 构建于 `workbuddy/`） |
-| ZCode | `.zcode-plugin/plugin.json` | 插件市场添加 `plugins/marketplace.json` 后安装 |
-| Claude Code | `.claude-plugin/plugin.json` | `/plugin marketplace add <仓库>/plugins` 后安装 |
-| Codex | `.codex-plugin/plugin.json` | `codex plugin marketplace add <仓库>/plugins` 后安装 |
-
-共享内容（插件根）：`skills/`（3 技能）、`agents/aquilair-fde.md`（总控提示词）、`avatars/expert.png`、`seeds/`（种子资产）、`docs/`（使用手册）、`scripts/`（校验/编译/diff 脚本——**所有宿主通用**，WorkBuddy 有 Bash 工具可直接执行）。
+脚本随包分发且**所有宿主通用**——WorkBuddy 有 Bash 工具可直接执行（含探索门禁、批复写回、编译、平台对账等全部工具链）。
 
 ## 二、WorkBuddy 包结构
 
-zip 内根目录为 `aquilair-fde/`：
+zip 内根目录为 `aquilair-fde/`（与插件根同构，去掉其他平台清单）：
 
 ```text
 aquilair-fde/
 ├── .codebuddy-plugin/plugin.json   # WorkBuddy 清单（expertType: agent；quickPrompts 恰好 3 条）
-├── agents/aquilair-fde.md          # 总控提示词（权威边界/十步流程/建模边界/脚本使用规则/八件套）
+├── agents/aquilair-fde.md          # 总控提示词（权威边界/十一步标准执行流程/建模边界/脚本使用规则/八件套）
 ├── avatars/expert.png              # 专家头像（512x512，平台必填）
 ├── skills/                         # 3 技能（brief-intake / ontology-modeling / ontology-review）
 ├── seeds/                          # 种子资产（glossary / mfg-entities / fnb-entities）
 ├── docs/user-guide.md              # FDE 使用手册
-└── scripts/                        # lint_model / check_cq / render_topology / compile_model 等（Bash 调用）
+├── examples/                       # 黄金范例（九步流水线全流程实物范本）
+└── scripts/                        # 全部工具链脚本（Bash 调用）
 ```
-
-发布前跑 `python plugins/ontology-forge/scripts/check_dist.py`——清单合规、agent frontmatter、zip 结构逐项断言，任一失败退出码 1。
 
 ## 三、quickPrompts 规则
 
 WorkBuddy 规范：**quickPrompts 必须恰好 3 条**（多一条少一条都不合规），每条含中英双语字段，与 `defaultInitPrompt` 呼应、覆盖插件的三个主入口场景：
 
-1. **从零起草**：帮我从业务资料（或零文档口述——七维对话探索）开始设计一个可审核的本体草稿 → 走 brief-intake → ontology-modeling 全流水线。
+1. **从零起草**：帮我从业务资料（或零文档口述——八维对话探索，少问且带建议问）开始设计一个可审核的本体草稿 → 走 brief-intake → ontology-modeling 全流水线。
 2. **增量差异**：比较当前本体与这份业务方案的差异，只生成变更建议 → 走 diff 变更集（不落盘改写）。
 3. **评审校验**：校验/评审当前本体是否支撑目标业务场景 → 走 ontology-review（只出报告不做裁决）。
 

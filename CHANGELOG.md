@@ -7,6 +7,17 @@
 > 禁用 `git reset --hard` 直推远程（违反只进不退）。
 > 各节倒序排列（最新在上）；版本号不可变、只进不退。
 
+## v0.6.0（2026-11-26）｜发版 tag `v0.6.0`
+
+- DSL v0.4 + 编译器全面对齐平台新导入格式（官方升级说明）：计算规则占位符 + expressionSources 关系路径**自动推导**（最短且唯一才自动、多条等长报错不猜）、trigger 多分支 cases/otherwise/with、admission→validation 挂载、声明式动作 steps、INTEGER→integer、基数翻转
+- lint 15→20 条（16-19 新键校验 + 20 准入字段可解析——补齐「lint 与编译器同判」盲区）；逆向导出 `--platform-yaml`（编译→逆向→lint→再编译**往返字节一致**，case14 与 xgimi 双实证）；平台对账支持 MCP 元数据 JSON 输入
+- evals 回归 39→46（case14 平台新格式八组断言）；行为层实物范本 = case14 夹具（范例不硬造无据动作语义）
+
+## v0.5.0（2026-11-26）｜发版 tag `v0.5.0`
+- 需求探索侧对标 ontology-driven-dev 八维重做：少问且带建议问、必问六条、探索记录门禁三脚本、勾选批复闭环
+- 黄金范例 examples/supplier-recon 随包分发并受发布门禁保护（check_dist 新增范例门禁断言组：探索记录可交接/lint/CQ/编译幂等/拓扑同步/结构等价）
+- 发布门禁 65→90、evals 回归 29→39（新增 case13 需求探索记录门禁）
+
 ## push/2026-11-20.2（2026-11-20 11:38）｜1 commits
 - `e6c21c9` chore(release): 发版 v0.4.9——CHANGELOG 版本节+发版 tag
 > 要点：发版 v0.4.9（本体锻造师）

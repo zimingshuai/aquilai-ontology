@@ -5,8 +5,9 @@
      版本号读 .codebuddy-plugin/plugin.json，输出到仓库 workbuddy/ 目录。
 主要 Input：无必填参数（插件根按脚本位置自定位；--out 可选指定输出目录）。
 主要 Output：workbuddy/aquilair-fde-<version>.zip——zip 内根目录为 aquilair-fde/，
-     含 WorkBuddy 清单/总控提示词/头像/渲染缓存(assets)/技能/种子/手册/scripts；条目路径统一
-     正斜杠（避免 Windows 反斜杠导致平台解析失败）；排除 __pycache__ 与
+     含 WorkBuddy 清单/总控提示词/头像/渲染缓存(assets)/技能/种子/手册/范例(examples)/scripts；
+     范例随包分发：对照范本是产物形态约束，WorkBuddy 宿主同样需要（详见 INCLUDE_ITEMS 注释）。
+     条目路径统一正斜杠（避免 Windows 反斜杠导致平台解析失败）；排除 __pycache__ 与
      其他平台清单（.zcode-plugin/.claude-plugin/.codex-plugin）。
 """
 
@@ -23,11 +24,14 @@ CODEBUDDY_MANIFEST = PLUGIN_ROOT / ".codebuddy-plugin" / "plugin.json"
 # PACKAGE_NAME：zip 内根目录名（WorkBuddy Expert 规范：插件名即目录名）
 PACKAGE_NAME = "aquilair-fde"
 # INCLUDE_ITEMS：打包清单——插件根下的相对目录/文件，存在才打包（缺失报错的是清单必需项）
+# examples 随包分发：对照范本（黄金范例）本身是产物形态约束——技能文档只描述"产物长什么样"，
+# 实物范本须与技能同达，WorkBuddy 宿主同样需要，缺了范例对照、现场起草形态必漂移。
 INCLUDE_ITEMS = (
     ".codebuddy-plugin",
     "agents",
     "avatars",
     "assets",
+    "examples",
     "skills",
     "seeds",
     "docs",

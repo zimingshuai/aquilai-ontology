@@ -18,6 +18,9 @@ from typing import Any
 # 第三方依赖导入
 import yaml
 
+# 项目内部模块导入
+import platform_reverse
+
 # ===========一、常量与键集合校验表==========
 # KNOWN_ENTITY_KEYS：引擎实体对象中 DSL 有对应槽位的键集合；集合外的键 = DSL 表达力缺口。
 KNOWN_ENTITY_KEYS = {"display_name", "table_name", "description", "properties", "links"}
@@ -178,18 +181,32 @@ def export_model(
 def main() -> None:
     """命令行入口：读快照 -> 导出 DSL -> 写 YAML，打印中文统计摘要。"""
     parser = argparse.ArgumentParser(description="引擎元数据快照逆向导出为 DSL YAML（插件版，路径必填）")
-    parser.add_argument("--objects", required=True, help="get_meta_objects 快照 JSON 路径（必填）")
-    parser.add_argument("--rules", required=True, help="get_meta_rules 快照 JSON 路径（必填）")
+    parser.add_argument("--objects", default=None, help="get_meta_objects 快照 JSON 路径（与 --platform-yaml 二选一）")
+    parser.add_argument("--rules", default=None, help="get_meta_rules 快照 JSON 路径（与 --platform-yaml 二选一）")
+    parser.add_argument("--platform-yaml", default=None,
+                        help="平台 studio-model 新导入格式 YAML 路径（与 --objects/--rules 二选一）")
     parser.add_argument("--output", required=True, help="输出的 DSL YAML 路径（必填）")
     parser.add_argument("--ontology", required=True, help="本体标识（必填，如 fnb）")
     parser.add_argument("--version", default="0.1.0-draft.1", help="语义化版本（默认 0.1.0-draft.1）")
     args = parser.parse_args()
 
-    #   1. 读取两份快照（引擎原始返回，原样读入不做任何整理）
-    snapshot_objects = json.loads(Path(args.objects).read_text(encoding="utf-8"))
-    snapshot_rules = json.loads(Path(args.rules).read_text(encoding="utf-8"))
-    #   2. 逆向导出并落盘 YAML（allow_unicode 保持中文可读，sort_keys=False 保持插入顺序）
-    model = export_model(snapshot_objects, snapshot_rules, args.ontology, args.version)
+    #   1. 入口分派：--platform-yaml（平台新格式）与 --objects/--rules（旧引擎快照）二选一，缺一即参数错误
+    if bool(args.platform_yaml) == bool(args.objects and args.rules):
+        print("错误：须恰用一种输入——--platform-yaml（平台新格式）或 --objects + --rules（引擎快照）",
+              file=sys.stderr)
+        raise SystemExit(2)
+    if args.platform_yaml:
+        sm = yaml.safe_load(Path(args.platform_yaml).read_text(encoding="utf-8"))
+        if not (isinstance(sm, dict) and sm.get("format") == "studio-model"):
+            print(f"错误：{args.platform_yaml} 不是平台 studio-model 新格式（缺 format: studio-model）",
+                  file=sys.stderr)
+            raise SystemExit(2)
+        model = platform_reverse.reverse_platform_model(sm, args.ontology, args.version)
+    else:
+        #   2. 读取两份快照（引擎原始返回，原样读入不做任何整理）
+        snapshot_objects = json.loads(Path(args.objects).read_text(encoding="utf-8"))
+        snapshot_rules = json.loads(Path(args.rules).read_text(encoding="utf-8"))
+        model = export_model(snapshot_objects, snapshot_rules, args.ontology, args.version)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(

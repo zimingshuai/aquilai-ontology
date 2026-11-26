@@ -1,0 +1,566 @@
+# supplier-recon 探索记录 v1
+# 范例性质：虚构域示范记录（随插件分发的黄金范例）。本域是对资料包的「缺口探索」，没有真实受访人。
+#   · basis=stated 的条目直接来自五份资料，source 记「资料：<路径>#<位置>」，路径相对本资料包目录，可回查原文。
+#   · basis=inferred 的条目是 AI 按行业惯例补全的建议，source 统一记「AI 建议 <日期>」。
+#   · X-002（已确认）与 X-019（已否决）的 status 与 resolution 是示范用途的手写留痕，格式对齐
+#     apply_exploration_feedback.py 的写回产出（[日期 时间] 确认人：结论）。真实项目一律经该脚本写回：
+#     禁止手改 status、禁止手写 resolution，更不得把 AI 建议自行标成 confirmed。
+#   · pending 条目的「已追问两轮」同样是示范过程。
+#   · 真实项目经写回脚本回写后，本文件的全部注释会被重排丢弃，属预期行为。
+format: exploration-record        # 记录类型标识（固定值）
+version: 1                        # 记录格式版本（固定值）
+domain: supplier-recon            # 域名（与 brief.yaml 的 domain 一致）
+updated_at: "2026-11-25 17:29:37"  # 最近更新时间（bash date 现场取；追加 X-035 时更新）
+interviewee: ""                   # 受访人：缺口探索没有真实受访人，留空
+dimensions:                       # 维度覆盖栏：8 个标准维度每个恰好一条（covered 时 reason 与 confirmed_by 留空）
+  - id: D1                        # D1 总体理解与范围
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D2                        # D2 业务对象、属性与关系
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D3                        # D3 状态与生命周期
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D4                        # D4 动作
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D5                        # D5 触发与联动
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D6                        # D6 计算口径与校验
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D7                        # D7 数据源与既有系统
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D8                        # D8 能力问题
+    status: covered
+    reason: ""
+    confirmed_by: ""
+items:                            # 探索结论条目：按 D1 → D8 的探索顺序排列
+  # ───── D1 总体理解与范围 ─────
+  - id: X-001
+    dimension: D1
+    kind: scope
+    statement: "本域管的是：财务共享中心每月按供应商对账，算清每张对账单的差异；差异超线的转人工复核；供应商被冻结时它的对账单不再自动推进。要支撑三项决策：哪些对账单需要人工复核、哪些供应商当前不宜推进对账、某供应商交付了多少金额"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：B_scenarios/decisions.md#财务共享中心每月按供应商对账"
+    refs: ["X-002", "X-033"]
+  - id: X-002
+    dimension: D1
+    kind: scope
+    statement: "本域不包含发票明细管理与付款执行，只使用对账单上的发票金额与已对账金额"
+    basis: inferred
+    must_ask: false
+    status: confirmed
+    question: "发票本身的明细（逐张发票的信息）和实际付款，要不要纳入这次对账的范围？"
+    proposal: "不纳入：本域只使用对账单上的发票金额与已对账金额"
+    rationale: "五份资料里没有发票明细表，也没有付款记录表；对账只用到对账单上的发票金额与已对账金额（A_schema/data_dictionary.md#reconciliation_statement），交货总额也只汇总交货金额"
+    options:
+      - "把发票明细纳入范围（需要补充发票明细的表结构与口径资料）"
+      - "把付款记录纳入范围（需要补充付款数据来源，「差异」可能要从发票减已对账改成发票减已付款）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 0
+    resolution: "[2026-11-25 17:20:39] 示范确认人（虚构域示范记录）：按 AI 建议确认"   # 留痕时间早于 updated_at：确认发生在追加 X-035 之前
+    refs: ["X-001"]
+  # ───── D2 业务对象、属性与关系 ─────
+  - id: X-003
+    dimension: D2
+    kind: object
+    statement: "本域有四类业务对象：供应商、采购合同、交货记录、对账单；分别用供应商编码、采购合同号、交货单号、对账单号唯一标识"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：A_schema/supplier_ddl.sql#supplier.supplier_code；A_schema/supplier_ddl.sql#purchase_contract.contract_nr；A_schema/supplier_ddl.sql#delivery_record.delivery_nr；A_schema/supplier_ddl.sql#reconciliation_statement.recon_nr"
+    refs: ["X-016", "X-032"]
+  - id: X-004
+    dimension: D2
+    kind: rule
+    statement: "术语「对账差异金额」在本域特指：发票金额 − 已对账金额（不是发票与交货金额之差，也不是发票与付款之差）；结果为负表示「多对账」，保留负值、不取绝对值；「已对账金额」指双方核对一致确认的金额"
+    basis: stated
+    must_ask: true                 # 必问清单第 5 条：业务术语在本企业的特殊含义
+    status: confirmed
+    question: "「对账差异金额」在你们这里具体是哪两个数相减？算出来是负数怎么办？"
+    source: "资料：B_scenarios/rules.md#对账差异金额；A_schema/data_dictionary.md#reconciliation_statement.reconciled_amount"
+    refs: ["X-008", "X-026"]
+  - id: X-005
+    dimension: D2
+    kind: object
+    statement: "术语「冻结」在本域特指：供应商因合同纠纷或质检问题被停止对账与付款；冻结由采购侧在 SRM 系统操作"
+    basis: stated
+    must_ask: true                 # 必问清单第 5 条：业务术语在本企业的特殊含义
+    status: confirmed
+    question: "「冻结」的供应商具体是什么意思？由谁来冻结？"
+    source: "资料：A_schema/data_dictionary.md#supplier.frozen_flag；C_interviews/interview_finance.md#Q：冻结是什么意思？"
+    refs: ["X-023"]
+  - id: X-006
+    dimension: D2
+    kind: property
+    statement: "金额类信息项的口径与计量单位：采购合同总金额是含税金额，单位为元；交货金额是含税金额，单位为元；交货数量的单位为件"
+    basis: stated
+    must_ask: true                 # 必问清单第 4 条：计量单位（属性口径在 D2 问清）
+    status: confirmed
+    question: "合同总金额、交货金额登记的是含税还是不含税？金额和数量各以什么单位计量？"
+    source: "资料：A_schema/data_dictionary.md#purchase_contract.contract_amount；A_schema/data_dictionary.md#delivery_record.delivery_amount；A_schema/data_dictionary.md#delivery_record.delivery_qty"
+    refs: ["X-014", "X-027"]
+  - id: X-007
+    dimension: D2
+    kind: property
+    statement: "三个有固定取值的信息项，取值全集如下——结算方式：月结30天、月结60天、货到付款；合同状态：生效、终止、作废；对账状态：open（对账中）、confirmed（双方确认）、disputed（有争议）"
+    basis: stated
+    must_ask: true                 # 必问清单第 4 条：枚举类属性的取值全集
+    status: confirmed
+    question: "结算方式、合同状态、对账状态各自一共有哪几个取值？"
+    source: "资料：A_schema/data_dictionary.md#supplier.settlement_type；A_schema/data_dictionary.md#purchase_contract.status；A_schema/data_dictionary.md#reconciliation_statement.status"
+    refs: ["X-017", "X-018"]
+  - id: X-008
+    dimension: D2
+    kind: property
+    statement: "空值的含义：已对账金额为空时按 0 处理；供应商的冻结标记缺省为 0（即正常）"
+    basis: stated
+    must_ask: true                 # 必问清单第 4 条：空值含义
+    status: confirmed
+    question: "已对账金额没有填的时候当什么算？冻结标记没有填的时候算冻结还是正常？"
+    source: "资料：B_scenarios/rules.md#对账差异金额；A_schema/supplier_ddl.sql#supplier.frozen_flag"
+    refs: ["X-004", "X-026"]
+  - id: X-009
+    dimension: D2
+    kind: property
+    statement: "各字段的类型与数据字典一致：采购合同号、供应商编码等为字符串，合同总金额、交货金额为 DECIMAL(18,2)，交货数量为 DOUBLE，签约日期为 DATE，创建时间与更新时间为 DATETIME；冻结标记在数据字典里是 BOOLEAN，在建表语句里是 TINYINT(1)"
+    basis: stated
+    must_ask: false                # 数据类型属可补全项；本域类型资料齐备，直接取自建表语句
+    status: confirmed
+    source: "资料：A_schema/supplier_ddl.sql#purchase_contract.contract_nr；A_schema/supplier_ddl.sql#purchase_contract.contract_amount；A_schema/supplier_ddl.sql#delivery_record.delivery_qty；A_schema/supplier_ddl.sql#delivery_record.delivery_amount；A_schema/supplier_ddl.sql#purchase_contract.sign_date；A_schema/supplier_ddl.sql#supplier.create_time；A_schema/supplier_ddl.sql#supplier.update_time；A_schema/supplier_ddl.sql#supplier.frozen_flag；A_schema/data_dictionary.md#supplier.frozen_flag"
+    refs: ["X-013"]
+  - id: X-010
+    dimension: D2
+    kind: property
+    statement: "三个引用字段都不允许为空：采购合同上的供应商编码、交货记录上的合同号、对账单上的供应商编码"
+    basis: stated
+    must_ask: false                # 必填/可空属可补全项；建表语句已写明 NOT NULL
+    status: confirmed
+    source: "资料：A_schema/supplier_ddl.sql#purchase_contract.supplier_code；A_schema/supplier_ddl.sql#delivery_record.contract_nr；A_schema/supplier_ddl.sql#reconciliation_statement.supplier_code"
+    refs: ["X-016"]
+  - id: X-011
+    dimension: D2
+    kind: property
+    statement: "建议对账单增加一个「状态变更时间」信息项，记录最近一次状态变化的时间"
+    basis: inferred
+    must_ask: false                # 可补全项：常见属性清单
+    status: proposed
+    question: "对账单要不要记下最近一次状态变化的时间？"
+    proposal: "增加「状态变更时间」，由系统在对账单状态变化时自动记录"
+    rationale: "决策 1 的 KPI 里有「争议单处理时长」（B_scenarios/decisions.md#决策 1），算时长需要知道对账单什么时候进入「有争议」；对账单现在只有创建时间，没有状态变化时间"
+    options:
+      - "不增加（「争议单处理时长」这项 KPI 算不出来）"
+      - "改为分别记录进入争议的时间与争议结束的时间（多一个信息项，时长算得更准）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 0
+    refs: ["X-017"]
+  - id: X-012
+    dimension: D2
+    kind: property
+    statement: "建议供应商增加一个「对账联系人」信息项，记录对账事项的对接人"
+    basis: inferred
+    must_ask: false                # 可补全项：常见属性清单
+    status: proposed
+    question: "供应商要不要记一个对账联系人？"
+    proposal: "增加「对账联系人」，记录对账事项的对接人"
+    rationale: "对账出现差异时需要找供应商核对，而供应商现在只有名称与结算方式，没有任何联系方式；同类对账业务里一般都有联系人"
+    options:
+      - "不增加（有差异时需要到别的系统查联系人）"
+      - "增加联系人与联系方式两个信息项（多一个信息项，沟通更直接）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 0
+    refs: ["X-003"]
+  - id: X-013
+    dimension: D2
+    kind: property
+    statement: "建议三个计算字段的数据类型：对账差异金额、供应商交货总额按金额型，对账差异率按数值型"
+    basis: inferred
+    must_ask: false                # 可补全项：常见数据类型
+    status: proposed
+    question: "三个算出来的字段（差异金额、差异率、交货总额）按什么类型存？"
+    proposal: "对账差异金额、供应商交货总额按金额型，对账差异率按数值型"
+    rationale: "资料给了三个字段的口径但没有给类型。两个金额分别由金额相减、相加得到，沿用金额型；差异率是小数比率"
+    options:
+      - "三个都按金额型（差异率带上金额的单位，容易让人误读成金额）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 0
+    refs: ["X-004", "X-026", "X-027"]
+  - id: X-014
+    dimension: D2
+    kind: property
+    statement: "发票金额、已对账金额登记的是含税金额还是不含税金额，资料没有写明"
+    basis: inferred
+    must_ask: false                # 属必问清单第 4 条「是否含税」；资料未写明、无法按资料确认，挂为待确认
+    status: pending
+    question: "对账单上的发票金额和已对账金额，登记的是含税金额还是不含税金额？"
+    proposal: "按含税金额登记，与交货金额、合同总金额的口径保持一致"
+    rationale: "交货金额与合同总金额都写明是含税金额，决策 3 要用交货金额合计与发票金额交叉核对，两边口径一致才比得出来"
+    options:
+      - "按不含税金额登记（与交货金额口径不一致，交叉核对前要先做价税换算）"
+      - "含税与不含税都登记（多一个信息项，两种口径都能查）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 4 条「是否含税」，资料未写明，挂为待确认、不带入建模"
+    refs: ["X-006"]
+  - id: X-015
+    dimension: D2
+    kind: property
+    statement: "对账单被系统标记为「需复核」之后，这个标记记在对账单的哪个信息项上，资料没有说明；对账单现有的信息项里没有复核标记"
+    basis: inferred
+    must_ask: false                # 常见属性清单的缺口；资料未说明，挂为待确认
+    status: pending
+    question: "对账单被标记「需复核」以后，这个标记记在对账单的哪个信息项上？"
+    proposal: "对账单增加一个「需复核标记」信息项（是 / 否），差异超线时由系统置为「是」"
+    rationale: "口径规则说由系统动作把对账单标记为需复核（B_scenarios/rules.md#复核触发），但数据字典里对账单只有对账单号、对账期间、发票金额、已对账金额、对账状态、创建时间等信息项，没有能承载这个标记的字段；不补的话，决策 1 要看的「月度复核单量」无从统计"
+    options:
+      - "不加信息项，标记由系统动作自行处理（对账单上查不到是否需复核，复核单量需另行统计）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复；标记落在哪需要业务方与平台侧共同确认，挂为待确认、不带入建模"
+    refs: ["X-019", "X-022"]
+  - id: X-016
+    dimension: D2
+    kind: relation
+    statement: "三条关系：每份采购合同签约于一个供应商，一个供应商可以有多份合同；每条交货记录挂在一份采购合同下，一份合同可以有多条交货记录；每张对账单对应一个供应商，按供应商加月份生成、一个供应商每月一张"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：C_interviews/interview_finance.md#Q：合同和交货的关系？；A_schema/data_dictionary.md#purchase_contract.supplier_code；A_schema/data_dictionary.md#delivery_record.contract_nr；A_schema/data_dictionary.md#reconciliation_statement.supplier_code"
+    refs: ["X-003", "X-010", "X-025"]
+  # ───── D3 状态与生命周期 ─────
+  - id: X-017
+    dimension: D3
+    kind: state
+    statement: "对账单的三种状态（对账中 / 双方确认 / 有争议）之间如何流转、什么条件下允许变化，资料没有说明"
+    basis: inferred
+    must_ask: false                # 属必问清单第 3 条「状态如何流转」；资料未说明，挂为待确认
+    status: pending
+    question: "对账单从「对账中」变成「双方确认」或「有争议」，分别要满足什么条件？确认之后还能不能改回「对账中」？"
+    proposal: "差异在复核线以内且双方核对一致的，对账单从「对账中」变为「双方确认」；任一方对差异提出异议的，变为「有争议」；「双方确认」是终态，不改回「对账中」"
+    rationale: "资料只给了三个状态和各自的含义；「有争议」说明存在提出异议的环节，「双方确认」说明需要双方都认可；终态不回退是对账业务的通行做法"
+    options:
+      - "「有争议」在对账单争议解决后可以直接变为「双方确认」（多一条流转路径，需要明确争议解决的判定人）"
+      - "所有状态变化都由人工操作，系统不做任何自动确认"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 3 条「状态如何流转」，资料只给了状态取值，挂为待确认、不带入建模"
+    refs: ["X-007", "X-023"]
+  - id: X-018
+    dimension: D3
+    kind: state
+    statement: "采购合同的三种状态（生效 / 终止 / 作废）在什么条件下允许变化、由谁操作，资料只给了含义，没有给变化规则"
+    basis: inferred
+    must_ask: false                # 属必问清单第 3 条「状态如何流转」；资料未说明，挂为待确认
+    status: pending
+    question: "采购合同从「生效」变为「终止」或「作废」，分别由谁在什么情况下操作？变成「终止」或「作废」之后还能不能恢复为「生效」？"
+    proposal: "合同到期或双方协商提前结束时由采购人员把合同置为「终止」；签署后取消的合同置为「作废」；「终止」和「作废」都是终态，不恢复为「生效」"
+    rationale: "数据字典对两个状态的解释已经点明了各自的成因（到期或提前终止、签署后取消），建议只是把成因对应到操作上；终态不回退是合同管理的通行做法"
+    options:
+      - "「终止」的合同允许恢复为「生效」（需要额外记录恢复原因和次数）"
+      - "只保留「生效」一种状态，其余用删除处理（丢失合同的历史轨迹）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 3 条「状态如何流转」，资料只给了状态含义，挂为待确认、不带入建模"
+    refs: ["X-007", "X-025"]
+  - id: X-019
+    dimension: D3
+    kind: state
+    statement: "建议对账单增加第四种状态「需复核」：差异超线的对账单从「对账中」变为「需复核」"
+    basis: inferred
+    must_ask: false
+    status: rejected               # 已否决：原文保留，只加 resolution 留痕；不得进事实卡片与设计稿
+    question: "差异超线的对账单，状态要不要从「对账中」变成一个专门的「需复核」？"
+    proposal: "对账单状态取值改为四种：对账中 / 需复核 / 双方确认 / 有争议"
+    rationale: "复核在对账流程里常常是一个独立环节，AI 据此建议把它建成一种状态"
+    options:
+      - "不增加状态，「需复核」只作为一个标记"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 0
+    resolution: "[2026-11-25 17:20:39] 示范确认人（虚构域示范记录）：否决（对账单状态的取值全集在三处资料里一致为 open、confirmed、disputed；需复核是系统动作打的标记而不是状态取值，出处见 A_schema/data_dictionary.md#reconciliation_statement.status 与 B_scenarios/rules.md#复核触发）"
+  # ───── D4 动作 ─────
+  - id: X-020
+    dimension: D4
+    kind: action
+    statement: "差异超线的对账单由财务对账专员人工复核"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：B_scenarios/decisions.md#决策 1；C_interviews/interview_finance.md#Q：对账差异怎么算、什么情况要人看？"
+    refs: ["X-021", "X-022"]
+  - id: X-021
+    dimension: D4
+    kind: action
+    statement: "人工复核做完之后，复核结论以什么方式落下来（是否直接改对账单的生产数据、是否要先在沙箱试跑并弹确认卡），资料没有说明"
+    basis: inferred
+    must_ask: false                # 属必问清单第 6 条「动作的写入风险」；资料未说明，挂为待确认
+    status: pending
+    question: "复核完成以后，复核结论是怎么落下来的——直接改对账单上的数据，还是走别的流程？"
+    proposal: "复核结论落为对账单的状态变化和已对账金额的调整；默认先在沙箱环境试跑并弹出确认卡，确认后才改生产数据"
+    rationale: "复核的结果要能回到对账单上才可追溯；涉及金额的写操作先试跑再确认是平台的通行做法"
+    options:
+      - "复核结论只写在复核意见里，不改对账单（对账单的状态无法反映复核结果）"
+      - "复核通过后直接改生产数据、不弹确认卡（操作快，但误操作无法撤回）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 6 条「动作的写入风险」，资料只写明由财务对账专员复核，挂为待确认、不带入建模"
+    refs: ["X-017", "X-020"]
+  # ───── D5 触发与联动 ─────
+  - id: X-022
+    dimension: D5
+    kind: trigger
+    statement: "对账单的差异金额超过 2000 元并且差异率超过 5% 时，系统自动把这张对账单标记为「需复核」；两个条件只超一个的不用复核"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：B_scenarios/rules.md#复核触发；B_scenarios/decisions.md#决策 1；C_interviews/interview_finance.md#Q：对账差异怎么算、什么情况要人看？"
+    refs: ["X-015", "X-020", "X-026"]
+  - id: X-023
+    dimension: D5
+    kind: trigger
+    statement: "供应商被冻结后，它名下的所有对账单都不再自动推进（不自动确认），并由系统触发冻结提醒"
+    basis: stated
+    must_ask: true                 # 必问清单第 1 条（联动）与第 2 条（被引用方变化时引用方如何处理）
+    status: confirmed
+    question: "供应商被冻结以后，它的对账单要不要自动跟着变？"
+    source: "资料：B_scenarios/rules.md#冻结拦截；B_scenarios/decisions.md#决策 2；C_interviews/interview_finance.md#Q：冻结是什么意思？"
+    refs: ["X-005", "X-024"]
+  - id: X-024
+    dimension: D5
+    kind: trigger
+    statement: "冻结提醒这一步如果失败了，供应商冻结这个操作的结果是否仍然成立，资料没有说明"
+    basis: inferred
+    must_ask: false                # 属必问清单第 1 条「联动失败时原操作结果是否仍然成立」；资料未规定，挂为待确认
+    status: pending
+    question: "如果冻结提醒没有发成功，供应商还算不算已冻结？它的对账单还拦不拦？"
+    proposal: "冻结照常成立、对账单照常拦截；提醒失败时记录失败并转人工跟进"
+    rationale: "冻结的事实发生在采购侧的 SRM 系统，提醒只是通知；把「冻结」和「提醒送达」绑在一起，会让漏发提醒等于没冻结"
+    options:
+      - "提醒失败则冻结操作作废并提示采购人员（供应商在对账系统里仍算正常，可能被自动确认）"
+      - "提醒失败自动重试若干次，仍失败再转人工（需要明确重试次数）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 1 条「联动失败时原操作结果是否仍然成立」，资料未规定，挂为待确认、不带入建模"
+    refs: ["X-023"]
+  - id: X-025
+    dimension: D5
+    kind: rule
+    statement: "采购合同被终止或作废时，挂在它下面的交货记录、以及已经生成的对账单要不要跟着处理，资料没有说明"
+    basis: inferred
+    must_ask: false                # 属必问清单第 2 条「被引用方删除或作废时引用方如何处理」；资料未规定，挂为待确认
+    status: pending
+    question: "一份采购合同终止或作废以后，它下面已经发生的交货记录和已经生成的对账单要怎么处理？"
+    proposal: "都不自动改动：交货记录是已发生的事实，对账单按供应商和月份生成、不挂在合同上；合同终止或作废只作为提示信息"
+    rationale: "对账单上直接记的是供应商编码而不是合同号；交货记录记录的是已发生的交货。两者都是事实类数据，自动改动会丢失历史"
+    options:
+      - "合同作废时自动把其下交货金额从供应商交货总额中剔除（交货总额不再等于全部交货记录的合计，与口径规则的定义不一致）"
+      - "合同终止或作废时自动冻结相关的对账单（需要再明确冻结后的解冻条件）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 2 条「被引用方删除或作废时引用方如何处理」，资料未规定，挂为待确认、不带入建模"
+    refs: ["X-016", "X-018"]
+  # ───── D6 计算口径与校验 ─────
+  - id: X-026
+    dimension: D6
+    kind: rule
+    statement: "对账差异率 = 对账差异金额 ÷ 发票金额，用比率（小数）表示而不是百分数；发票金额为 0 或缺失时差异率记为 9999"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：B_scenarios/rules.md#对账差异率；C_interviews/interview_finance.md#Q：对账差异怎么算、什么情况要人看？"
+    refs: ["X-004", "X-008", "X-030"]
+  - id: X-027
+    dimension: D6
+    kind: rule
+    statement: "供应商交货总额 = 该供应商所有合同下全部交货记录的交货金额合计（元，含税）；查某供应商的交货要顺着「采购合同 → 交货记录」两级去找"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：B_scenarios/rules.md#供应商交货总额；C_interviews/interview_finance.md#Q：合同和交货的关系？"
+    refs: ["X-006", "X-028", "X-031"]
+  - id: X-028
+    dimension: D6
+    kind: rule
+    statement: "决策 3 的标题问的是「某供应商本期实际交付了多少金额」，而交货总额的口径是「所有合同下全部交货记录」的合计、没有限定期间；「本期」要不要按对账期间只统计当月交货，资料没有说清"
+    basis: inferred
+    must_ask: false                # 属必问清单第 4 条「统计窗口」；两处资料措辞不一致，挂为待确认
+    status: pending
+    question: "查某供应商的交货金额合计时，是算它全部历史交货的合计，还是只算本期（对账当月）的交货？"
+    proposal: "保留两个口径：现有的「供应商交货总额」按全部交货记录合计（照口径规则原文）；如果与发票金额核对确实要按月比，再补一个只统计本期交货的口径"
+    rationale: "口径规则对交货总额的定义是明确的全量合计；决策 3 的「依据信息」一栏写的也是「所有合同下的交货记录金额合计」，只有标题带「本期」。两边并不矛盾，只是可能还需要第二个口径"
+    options:
+      - "只建本期口径，不建全量合计（口径规则里定义的交货总额就没有了）"
+      - "只建全量合计（与发票金额按月核对时需要人工换算）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 4 条「统计窗口」，两处资料的措辞不一致，挂为待确认、不带入建模"
+    refs: ["X-027"]
+  - id: X-029
+    dimension: D6
+    kind: rule
+    statement: "对账差异金额、对账差异率、供应商交货总额计算结果的取整方式和保留位数，资料没有说明"
+    basis: inferred
+    must_ask: false                # 属必问清单第 4 条「取整方式」；资料未说明，挂为待确认
+    status: pending
+    question: "差异金额和差异率算出来以后，保留几位小数、怎么取整？"
+    proposal: "金额类结果保留两位小数、差异率保留四位小数，都按四舍五入"
+    rationale: "发票金额、已对账金额、交货金额在建表语句里都是 DECIMAL(18,2)，金额结果沿用两位小数与源数据对齐；差异率是小数比率，阈值 0.05 在小数点后两位，多留两位足够判断"
+    options:
+      - "差异率只保留两位小数（刚好等于阈值的精度，临界值容易被舍入到线的同一侧）"
+      - "不做取整，保留计算出的全部小数位（展示和导出时位数不统一）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。属必问清单第 4 条「取整方式」，资料未说明，挂为待确认、不带入建模"
+    refs: ["X-004", "X-026", "X-027"]
+  - id: X-030
+    dimension: D6
+    kind: function
+    statement: "口径要求发票金额为 0 时差异率记 9999；表达式按引擎惯例写成「差异金额 ÷ 发票金额，除不出结果时取 9999」，发票金额为 0 时这个兜底会不会生效，需要引擎侧验证"
+    basis: inferred
+    must_ask: false
+    status: pending
+    question: "发票金额为 0 的对账单，引擎实际算出来的差异率是不是 9999？"
+    proposal: "在引擎沙箱里用一张发票金额为 0 的对账单实测；兜底不生效时由建模侧另写兜底方案"
+    rationale: "引擎的除法在分母为 0 时是返回空值还是报错，现有资料没有说明；只有返回空值，取 9999 的写法才接得住"
+    options:
+      - "等引擎确认后再定差异率的表达式（确认之前差异率先按现行写法起草，不注册引擎）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "属引擎能力边界，待引擎侧验证；业务方无法回答，挂为待确认，对应 DSL 待确认问题 OQ-01"
+    refs: ["X-026"]
+  - id: X-031
+    dimension: D6
+    kind: function
+    statement: "供应商交货总额要从供应商出发，先找它名下的采购合同、再找合同下的交货记录做合计，是两级查找；这种两级合计能否被引擎正确执行，需要引擎侧验证"
+    basis: inferred
+    must_ask: false
+    status: pending
+    question: "从供应商出发跨两级找到交货记录再做合计，引擎能不能算对？"
+    proposal: "在引擎沙箱里实测；引擎不支持两级合计时改为逐级计算——先在每份合同上算出交货合计，再把各合同的合计加到供应商上"
+    rationale: "资料明确说查供应商的交货要顺着合同到交货两级找，口径本身没有歧义；不确定的只是引擎对两级路径的支持"
+    options:
+      - "直接改为逐级计算（多一个合同层面的交货合计信息项，但每一级的写法都更简单）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "属引擎能力边界，待引擎侧验证；业务方无法回答，挂为待确认，对应 DSL 待确认问题 OQ-02"
+    refs: ["X-016", "X-027"]
+  # ───── D7 数据源与既有系统 ─────
+  - id: X-032
+    dimension: D7
+    kind: object
+    statement: "四类对象的数据来自三个既有系统：供应商与采购合同来自 SRM，交货记录来自 WMS，对账单（含发票金额）来自 FIM；三个系统各自建表、表之间没有建外键约束，关联含义以数据字典为准"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：brief.yaml#source_systems；A_schema/supplier_ddl.sql#三系统各自建表，主键均为业务编码；A_schema/data_dictionary.md#reconciliation_statement.recon_nr"
+    refs: ["X-003"]
+  # ───── D8 能力问题 ─────
+  - id: X-033
+    dimension: D8
+    kind: query
+    statement: "业务方希望本体能直接回答四个问题：①哪些对账单的差异金额超阈值且差异率超阈值（即需要复核）；②哪些供应商处于冻结状态；③某供应商本期发票金额、已对账金额、差异金额分别是多少；④某供应商名下所有交货记录的金额合计是多少"
+    basis: stated
+    must_ask: false
+    status: confirmed
+    source: "资料：B_scenarios/decisions.md#能力问题"
+    refs: ["X-001", "X-034"]
+  - id: X-034
+    dimension: D8
+    kind: query
+    statement: "建议再补充三个「发生变化以后系统怎么做」类的问题，用来检验两条触发规则有没有建对"
+    basis: inferred
+    must_ask: false
+    status: proposed
+    question: "除了已有的四个问题，下面三个「发生变化以后系统怎么做」的问题，是不是你们也关心的？"
+    proposal: "①供应商被冻结时，它名下的对账单会怎样、由谁来处理；②某张对账单的差异金额或差异率变化并越过复核线时，系统应该做什么；③采购合同终止或作废时，其下交货记录的金额合计与对账要不要跟着变"
+    rationale: "已有的四个问题都在问「现在是多少」「有哪些」；两条触发规则（差异超线转复核、冻结后不自动推进）描述的却是「发生变化以后系统怎么做」，目前没有对应的问题来验收它们"
+    options:
+      - "只保留已有的四个问题（两条触发规则没有对应的能力问题做验收）"
+      - "从这三条里挑一部分采纳"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 0
+    refs: ["X-022", "X-023", "X-025", "X-033"]
+  # ───── 追加条目（归 D2 业务对象、属性与关系；建模第 2 步交叉抽取时发现并回补，编号顺延不复用）─────
+  - id: X-035
+    dimension: D2
+    kind: relation
+    statement: "访谈说「一个供应商每月一张对账单」，但对账单的表结构上只有对账单号是唯一的，没有「供应商加对账期间」的唯一限制；同一供应商同一个月出现多张对账单时怎么办，资料没有说明"
+    basis: inferred
+    must_ask: false                # 口头约定与表结构不一致；资料未说明，挂为待确认
+    status: pending
+    question: "同一个供应商在同一个月里，会不会出现两张对账单？如果出现了算不算异常？"
+    proposal: "把「一个供应商每月一张」当作业务约定，不在表结构上加唯一限制；同月多单时按对账单逐张计算差异，统计供应商本期金额时再把它们加总"
+    rationale: "访谈里是口头说法，建表语句没有唯一约束；差异金额与差异率都定义在单张对账单上，逐张计算不影响口径"
+    options:
+      - "在表结构上增加「供应商加对账期间」的唯一限制（同月多单将无法录入，需要先明确由谁合并）"
+      - "同月多单时以最新一张为准（其余对账单的差异会被忽略）"
+    source: "AI 建议 2026-11-25"
+    asked_rounds: 2
+    pending_reason: "示范过程：已追问两轮仍无明确答复。资料未说明，挂为待确认、不带入建模"
+    refs: ["X-016"]
+linkage:                           # 联动矩阵：每个 action / trigger 条目至少一行；verdict=none 的行 target_object 留空
+  - id: L-001
+    source_item: X-020            # 人工复核
+    source_object: "对账单"
+    target_object: ""
+    verdict: none
+    reason: "人工复核只处理对账单自身的差异核对，不改动供应商的任何信息"
+    status: confirmed
+  - id: L-002
+    source_item: X-021            # 人工复核的写入风险
+    source_object: "对账单"
+    target_object: ""
+    verdict: none
+    reason: "复核结论的落库方式尚未确认，但复核的对象只有对账单，经排查不涉及其他对象"
+    status: pending
+  - id: L-003
+    source_item: X-022            # 复核触发
+    source_object: "对账单"
+    target_object: ""
+    verdict: none
+    reason: "差异金额与差异率只由对账单自身的发票金额、已对账金额算出，复核标记也落在对账单上——只改自身，既不读取也不改动其他对象"
+    status: confirmed
+  - id: L-004
+    source_item: X-023            # 冻结 → 对账单：联动本体
+    source_object: "供应商"
+    target_object: "对账单"
+    verdict: linkage
+    reason: "供应商被冻结后，它名下所有对账单不再自动推进，并触发冻结提醒——口径规则、决策 2 与访谈三处一致"
+    rule_mediated: true           # 冻结标记的取值需要判断
+    on_failure: "联动本身已确认；失败时原操作结果是否成立资料未规定，见 L-005"
+    status: confirmed
+  - id: L-005
+    source_item: X-024            # 同一条联动的失败语义
+    source_object: "供应商"
+    target_object: "对账单"
+    verdict: linkage
+    reason: "同 L-004 这条联动；追问「提醒失败时冻结是否仍然成立」，资料未说明"
+    rule_mediated: true
+    on_failure: "未确认。资料只要求「系统要给个提醒」，未规定提醒失败时如何处置；AI 建议：冻结照常成立、对账单照常拦截，提醒失败时记录失败并转人工跟进（见 X-024）"
+    status: pending
+  - id: L-006
+    source_item: X-025            # 合同终止/作废 → 交货记录
+    source_object: "采购合同"
+    target_object: ""
+    verdict: none
+    reason: "合同被终止或作废后，其下已发生的交货记录是否需要联动处理，资料未说明；AI 建议不自动改动已发生的交货记录，待业务方确认"
+    status: pending
+  - id: L-007
+    source_item: X-025            # 合同终止/作废 → 对账单
+    source_object: "采购合同"
+    target_object: ""
+    verdict: none
+    reason: "对账单按供应商加月份生成、直接挂在供应商上而不挂在合同上；合同终止或作废是否影响已生成的对账单，资料未说明；AI 建议不自动改动，待业务方确认"
+    status: pending

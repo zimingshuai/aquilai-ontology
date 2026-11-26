@@ -979,7 +979,7 @@ object_types:
     isDerived: false
   - code: lead_time_weeks
     name: 交期（周）
-    type: double
+    type: integer
     required: false
     isKey: false
     defaultValue: ''
@@ -2318,144 +2318,318 @@ link_types:
 rule_types:
 - code: rule_daf5b7c7
   name: 标准用量
+  description: 标准用量 = BOM 行用量 ÷ BOM 基准数量；用量比较须在单位和基准数量一致后进行（§4.2 核心判断规则）
   ruleType: calculation
   mode: single
-  description: 标准用量 = BOM 行用量 ÷ BOM 基准数量；用量比较须在单位和基准数量一致后进行（§4.2 核心判断规则）
-  ruleConfig:
-    expression: '[BOM行.BOM行用量] / [BOM行.BOM基准数量]'
   outputEntityCode: BomLine
   outputPropertyCode: standard_usage
   outputPropertyName: 标准用量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.qty_per} / ${x.base_qty}
+    expressionSources:
+      x:
+        entityCode: BomLine
+        relationPath: []
 - code: rule_1559efe0
   name: 订单未收货量
+  description: 订单未收货量 = max(订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0)；订单收货转为库存后不再按原未收货数量重复计入（§4.3 ③）
   ruleType: calculation
   mode: single
-  description: 订单未收货量 = max(订单数量 − 累计有效收货量 − 已取消量 − 已关闭未收余量, 0)；订单收货转为库存后不再按原未收货数量重复计入（§4.3 ③）
-  ruleConfig:
-    expression: MAX([采购订单.订单数量] - [采购订单.累计有效收货量] - [采购订单.已取消量] - [采购订单.已关闭未收余量], 0)
   outputEntityCode: PurchaseOrder
   outputPropertyCode: unreceived_qty
   outputPropertyName: 订单未收货量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: MAX(${x.order_qty} - ${x.cumulative_receipt_qty} - ${x.cancelled_qty} - ${x.closed_unreceived_qty}, 0)
+    expressionSources:
+      x:
+        entityCode: PurchaseOrder
+        relationPath: []
 - code: rule_2519a26b
   name: 剩余新料需求
+  description: 剩余新料需求 = 物料毛需求 − 替代满足量（主案例 Z9：20,000−6,000=14,000，加 Z9S 共 24,000）（§4.3 ④）
   ruleType: calculation
   mode: single
-  description: 剩余新料需求 = 物料毛需求 − 替代满足量（主案例 Z9：20,000−6,000=14,000，加 Z9S 共 24,000）（§4.3 ④）
-  ruleConfig:
-    expression: '[物料需求汇总.物料毛需求] - [物料需求汇总.替代满足量]'
   outputEntityCode: MaterialRequirement
   outputPropertyCode: remaining_material_qty
   outputPropertyName: 剩余新料需求
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.gross_qty} - ${x.substitute_satisfied_qty}
+    expressionSources:
+      x:
+        entityCode: MaterialRequirement
+        relationPath: []
 - code: rule_84ef6f3b
   name: 新料缺口
+  description: 新料缺口 = max(剩余新料需求 − 已分配新料供给, 0)（24,000−15,000=9,000）；不得因授权增加而新增供给（§4.3 ④+§11.8 测试四）
   ruleType: calculation
   mode: single
-  description: 新料缺口 = max(剩余新料需求 − 已分配新料供给, 0)（24,000−15,000=9,000）；不得因授权增加而新增供给（§4.3 ④+§11.8 测试四）
-  ruleConfig:
-    expression: MAX([物料需求汇总.剩余新料需求] - [物料需求汇总.已分配供给量], 0)
   outputEntityCode: MaterialRequirement
   outputPropertyCode: physical_gap_qty
   outputPropertyName: 物理缺口
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: MAX(${x.remaining_material_qty} - ${x.allocated_supply_qty}, 0)
+    expressionSources:
+      x:
+        entityCode: MaterialRequirement
+        relationPath: []
 - code: rule_27e9ab4b
   name: 待授权数量
+  description: 待授权数量 = max(毛需求 − 已授权覆盖量, 0)（测试四：18,000−10,000=8,000；授权 v2 生效后 18,000−12,000=6,000）；授权单独核算、不作为物理供给（§4.3 步骤6）
   ruleType: calculation
   mode: single
-  description: 待授权数量 = max(毛需求 − 已授权覆盖量, 0)（测试四：18,000−10,000=8,000；授权 v2 生效后 18,000−12,000=6,000）；授权单独核算、不作为物理供给（§4.3 步骤6）
-  ruleConfig:
-    expression: MAX([物料需求汇总.物料毛需求] - [物料需求汇总.已授权覆盖量], 0)
   outputEntityCode: MaterialRequirement
   outputPropertyCode: pending_auth_qty
   outputPropertyName: 待授权数量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: MAX(${x.gross_qty} - ${x.authorized_coverage_qty}, 0)
+    expressionSources:
+      x:
+        entityCode: MaterialRequirement
+        relationPath: []
 - code: rule_3b05540c
   name: 待授权参考金额
+  description: 待授权参考金额 = 待授权数量 × 参考单价（8,000×20=160,000 元）；供内部审核，不自动生成采购订单（§11.8 测试四+§2.1 场景24）
   ruleType: calculation
   mode: single
-  description: 待授权参考金额 = 待授权数量 × 参考单价（8,000×20=160,000 元）；供内部审核，不自动生成采购订单（§11.8 测试四+§2.1 场景24）
-  ruleConfig:
-    expression: '[物料需求汇总.待授权数量] * [物料需求汇总.参考单价]'
   outputEntityCode: MaterialRequirement
   outputPropertyCode: pending_auth_amount
   outputPropertyName: 待授权参考金额
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.pending_auth_qty} * ${x.unit_price}
+    expressionSources:
+      x:
+        entityCode: MaterialRequirement
+        relationPath: []
 - code: rule_53b6f12b
   name: 本期期末量
+  description: 本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；初始库存只计入一次（§4.4 ①）
   ruleType: calculation
   mode: single
-  description: 本期期末量 = 期初量 + 本期有效到货 + 其他有效流入 − 实际满足需求量 − 其他有效流出；初始库存只计入一次（§4.4 ①）
-  ruleConfig:
-    expression: '[分期供需.本期期初量] + [分期供需.本期有效到货] + [分期供需.其他有效流入] - [分期供需.实际满足需求量] - [分期供需.其他有效流出]'
   outputEntityCode: PeriodSupplyBalance
   outputPropertyCode: ending_qty
   outputPropertyName: 本期期末量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.beginning_qty} + ${x.arrival_qty} + ${x.other_inflow_qty} - ${x.demand_satisfied_qty} - ${x.other_outflow_qty}
+    expressionSources:
+      x:
+        entityCode: PeriodSupplyBalance
+        relationPath: []
 - code: rule_981b585b
   name: 本期未满足需求
+  description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量；保留为逾期需求，后续结转不得重复累计（11 月 9,000 与 12 月底 7,800 分别展示）（§4.4 ①+§5.3.3）
   ruleType: calculation
   mode: single
-  description: 本期未满足需求 = 本期应满足需求 − 实际满足需求量；保留为逾期需求，后续结转不得重复累计（11 月 9,000 与 12 月底 7,800 分别展示）（§4.4 ①+§5.3.3）
-  ruleConfig:
-    expression: '[分期供需.本期应满足需求] - [分期供需.实际满足需求量]'
   outputEntityCode: PeriodSupplyBalance
   outputPropertyCode: unmet_demand_qty
   outputPropertyName: 本期未满足需求
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.required_qty} - ${x.demand_satisfied_qty}
+    expressionSources:
+      x:
+        entityCode: PeriodSupplyBalance
+        relationPath: []
 - code: rule_4095926c
   name: 期末风险量
+  description: 风险量 = max(评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0)；保留量与期后消耗量不得重复覆盖同一用途（§4.4 ②）
   ruleType: calculation
   mode: single
-  description: 风险量 = max(评估期末剩余量 − 经确认的保留量 − 经证实的期后消耗量, 0)；保留量与期后消耗量不得重复覆盖同一用途（§4.4 ②）
-  ruleConfig:
-    expression: MAX([呆滞风险.评估期末剩余量] - [呆滞风险.经确认的保留量] - [呆滞风险.经证实的期后消耗量], 0)
   outputEntityCode: SlowMovingRisk
   outputPropertyCode: risk_qty
   outputPropertyName: 期末风险量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: MAX(${x.ending_remaining_qty} - ${x.reserved_qty} - ${x.post_period_consumed_qty}, 0)
+    expressionSources:
+      x:
+        entityCode: SlowMovingRisk
+        relationPath: []
 - code: rule_10dc02e7
   name: 呆滞风险金额
+  description: 风险金额 = Σ(风险数量 × 对应成本单价)；不等于减值损失或实际收益，敞口≠损失（§4.4 ④+§8 红线）
   ruleType: calculation
   mode: single
-  description: 风险金额 = Σ(风险数量 × 对应成本单价)；不等于减值损失或实际收益，敞口≠损失（§4.4 ④+§8 红线）
-  ruleConfig:
-    expression: '[呆滞风险.期末风险量] * [呆滞风险.成本单价]'
   outputEntityCode: SlowMovingRisk
   outputPropertyCode: risk_amount
   outputPropertyName: 风险金额
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.risk_qty} * ${x.unit_cost}
+    expressionSources:
+      x:
+        entityCode: SlowMovingRisk
+        relationPath: []
 - code: rule_df2501cf
   name: 方案合计敞口
+  description: 合计敞口 = 窗口内风险金额 + 窗口后未消化承诺（S2：24,000+64,000=88,000，不能宣称消除了 64,000 风险）；延期只是把旧料移出评估窗口（§11.7）
   ruleType: calculation
   mode: single
-  description: 合计敞口 = 窗口内风险金额 + 窗口后未消化承诺（S2：24,000+64,000=88,000，不能宣称消除了 64,000 风险）；延期只是把旧料移出评估窗口（§11.7）
-  ruleConfig:
-    expression: '[处理方案.窗口内风险金额] + [处理方案.窗口后未消化承诺]'
   outputEntityCode: SolutionPlan
   outputPropertyCode: total_exposure_amount
   outputPropertyName: 合计敞口金额
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.window_risk_amount} + ${x.post_window_commitment_amount}
+    expressionSources:
+      x:
+        entityCode: SolutionPlan
+        relationPath: []
 - code: rule_cb30677c
   name: 模拟可减少风险量
+  description: 模拟可减少风险量 = max(不干预风险量 − 干预后风险量, 0)（8,000−2,000=6,000）；表示条件成立时可减少的量，不等同已实现收益（§4.5 ③）
   ruleType: calculation
   mode: single
-  description: 模拟可减少风险量 = max(不干预风险量 − 干预后风险量, 0)（8,000−2,000=6,000）；表示条件成立时可减少的量，不等同已实现收益（§4.5 ③）
-  ruleConfig:
-    expression: MAX([处理方案.不干预风险量] - [处理方案.干预后风险量], 0)
   outputEntityCode: SolutionPlan
   outputPropertyCode: reducible_qty
   outputPropertyName: 模拟可减少风险量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: MAX(${x.baseline_risk_qty} - ${x.intervened_risk_qty}, 0)
+    expressionSources:
+      x:
+        entityCode: SolutionPlan
+        relationPath: []
 - code: rule_84a8f4f9
   name: 未归因数量
+  description: 未归因数量 = max(呆滞总量 − Σ各原因归因数量, 0)；各主要原因对应数量之和 ≤ 案例呆滞总量，无法确认的部分保留为未归因、不强行凑足总量（§4.5 ④+§8 防重复归因红线）
   ruleType: calculation
   mode: single
-  description: 未归因数量 = max(呆滞总量 − Σ各原因归因数量, 0)；各主要原因对应数量之和 ≤ 案例呆滞总量，无法确认的部分保留为未归因、不强行凑足总量（§4.5 ④+§8 防重复归因红线）
-  ruleConfig:
-    expression: MAX([历史呆滞案例.呆滞总量] - COALESCE(SUM([原因归因.归因数量]), 0), 0)
   outputEntityCode: HistoricalCase
   outputPropertyCode: unattributed_qty
   outputPropertyName: 未归因数量
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: MAX(${x.stagnant_qty} - COALESCE(SUM(${y.attributed_qty}), 0), 0)
+    expressionSources:
+      x:
+        entityCode: HistoricalCase
+        relationPath: []
+      y:
+        entityCode: CauseAttribution
+        relationPath:
+        - relationCode: rel_0f255887
+          sourceEntityCode: HistoricalCase
+          targetEntityCode: CauseAttribution
+- code: rule_98cd7f2d
+  name: 呆滞风险触发复核
+  description: 风险阈值为未覆盖数量大于 0，一次有效评估即可触发；风险首次可识别日即形成（§11.6 预期结果）；后续形成风险复核任务
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@SlowMovingRisk.risk_qty'
+        operator: gt
+        right: 0
+    run:
+    - action: action_create_risk_review_task
+- code: rule_0b320bff
+  name: 工程变更预防检查触发
+  description: 已批准的工程变更导致未来旧料需求减少时，检查关联的未到货订单，计算无法被需求覆盖的数量并提示可取消数量、办理时间及截止日期；应在变更已获知且影响能够判断时触发、不等 BOM 生效（§5.4.7）；"旧料需求减少"的判定由运行时计算（OQ-02 派生）
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@EcnRecord.approval_status'
+        operator: eq
+        right: approved
+      - left: '@EcnRecord.evidence_status'
+        operator: eq
+        right: complete
+    run:
+    - action: action_check_uncovered_open_orders
+- code: rule_dd053917
+  name: 授权数量变化重核算
+  description: 同一授权对象及口径下比较前后数量，识别授权数量变化后重新核算相关待授权需求或策备建议（A_schema/inspection-rules.csv#授权数量变化）
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@InspectionChange.change_type'
+        operator: eq
+        right: auth_qty_change
+    run:
+    - action: action_recompute_pending_authorization
+- code: rule_4195d880
+  name: 替代关系变化复核分配方案
+  description: 比较方向、范围、比例、有效期及批准状态，检查原分配方案是否仍然有效；失效替代关系保留问题记录，但不得参与替代计算（§4.2 异常处理+A_schema/inspection-rules.csv）
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@InspectionChange.change_type'
+        operator: eq
+        right: substitution_change
+    run:
+    - action: action_review_allocation_validity
+- code: rule_e7421588
+  name: 冻结供给排除待核查
+  description: 质检冻结库存未获放行不参与供给分配，单列待核查数量（1,000 颗/20,000 元），不认定为零风险或全额损失（§11.3 PS-1002）
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@Supply.supply_type'
+        operator: eq
+        right: frozen_stock
+    run:
+    - action: action_exclude_from_allocation_and_flag
+- code: rule_797f65c3
+  name: 归因不得超案例总量
+  description: 写前拦截——新归因数量不得超出案例未归因量（未归因 = max(呆滞总量 − Σ归因, 0)，即"各主要原因数量之和 ≤ 案例呆滞总量"红线）；拦截时动作拒绝执行并提示补充依据或调整数量（OQ-09 裁决，2026-10-14）
+  ruleType: validation
+  when:
+    all:
+    - left: '@HistoricalCase.unattributed_qty'
+      operator: gte
+      right: $attribution_qty
+  failureMessage: 'Action 准入拦截: record_cause_attribution'
+action_types:
+- code: action_30fcba5b
+  name: expand_demand_to_requirement
+  description: 策备需求展开（OQ-02+03 裁决承载）：读取运行 run_id 在 demand_version 数据版本下的 Demand/BomLine/UnitConversion 输入，先按覆盖关系去重（有 covered_by 依据的按确认口径选取冲减， 如 MPS 已含订单并替代早期预测，三者不相加；无覆盖依据不得仅凭来源优先级舍弃）， 再逐层展开「下层需求 = 上层需求 × 标准用量 ÷ 有效良率」（良率仅计入明确适用层级、无损耗层级取 1， 标准用量须先经 UnitConversion 单位换算对齐），将物料毛需求汇总写入 MaterialRequirement。 本动作为写操作，会新增/覆写 MaterialRequirement 记录，存在覆盖既有计算结果的风险， 执行前必须经用户确认卡确认后方可写入。
+  enabled: true
+  steps: []
+- code: action_82b58d7a
+  name: allocate_supply
+  description: 供给分配（OQ-04 裁决承载）：按稳定排序「需要日期 → 项目编码 → 供给可用日期 → 供给ID」执行分配， 先满足合法旧料使用许可并确定被替代数量，再分配新料供给；同一批供给累计分配量不得超过可用数量， 规则路径中的直接供给和替代供给不得重复。分配结果写入 MaterialRequirement 的已分配供给量与替代满足量。 本动作为写操作，会改写 MaterialRequirement 分配字段，影响后续缺口与策备建议， 执行前必须经用户确认卡确认后方可写入。
+  enabled: true
+  steps: []
+- code: action_92a8cd2b
+  name: compute_period_balance
+  description: 分期供需滚动计算（OQ-05 裁决承载）：按期间顺序逐期计算 PeriodSupplyBalance——第一期期初取观察时间可用库存， 后续各期期初 = 上期期末；初始库存只计入一次；本期未满足需求保留为逾期需求结转下期、不得重复累计。 本动作为写操作，会新增/覆写分期供需记录，错误的期间口径会传导至呆滞风险计算， 执行前必须经用户确认卡确认后方可写入。
+  enabled: true
+  steps: []
+- code: action_c06e37c1
+  name: check_substitution_qualification
+  description: 替代资格检查与配额输出（OQ-06 裁决承载）：对每条 SubstitutionPermission 逐一检查七项资格条件—— 替代方向、适用项目、指定批次、有效期、供给可用日期、换算比例、批准用量上限—— 全部通过方可参与替代分配，任一不满足即排除（失效替代关系保留问题记录但不得参与替代计算）， 输出合格替代配额写入 MaterialRequirement 替代满足量。本动作为写操作，会改写替代满足量， 资格误判将直接放大或漏计物理缺口，执行前必须经用户确认卡确认后方可写入。
+  enabled: true
+  steps: []
+- code: action_b2830224
+  name: recompute_scenario
+  description: 呆滞方案完整重算（OQ-07 裁决承载）：按 scenario-recompute 口径对指定 solution_plan_id 的措施类型 （取消/延期/替代消耗/转用）调整计算数据后，用同一套供需公式完整重算各方案结果—— 禁止用"原风险量减措施数量"代替完整计算；延期至评估期外的供给单独展示后续承诺、不视为消失； 造成不允许缺料的方案不进入推荐结果。重算结果对比写入 SolutionPlan。 本动作为写操作，会覆写方案级风险与敞口字段，直接支撑处置决策， 执行前必须经用户确认卡确认后方可写入。
+  enabled: true
+  steps: []
+- code: action_a9a1ef39
+  name: record_cause_attribution
+  description: 历史呆滞原因归因记录写入（OQ-09 裁决承载）：向指定历史案例追加一条原因归因记录（原因类型 + 归因数量）。 写入受 admission 规则「归因不得超案例总量」前置拦截——归因数量不得超过案例未归因量 （未归因 = max(呆滞总量 − Σ归因, 0)），守住"各主要原因数量之和 ≤ 案例呆滞总量"红线； 相关证据可同时保留，不自动定责个人/部门。本动作为写操作，直接改写案例归因账目， 执行前必须经用户确认卡确认后方可写入。
+  enabled: true
+  validation_rules:
+  - rule_797f65c3
+  steps: []

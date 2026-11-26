@@ -1,0 +1,111 @@
+# equipment-repair 本体 DSL v0.1.0-draft.1
+# 依据：case14 平台新格式编译断言夹具（虚构域，覆盖 v0.4 全部新键）
+# 状态：draft——人审是唯一权威，未确认不得注册引擎
+
+ontology: equipment-repair
+version: 0.1.0-draft.1
+base_version: null
+governance:
+  owner: 回归测试
+  maturity: experimental
+
+entities:
+  Equipment:
+    display_name: 设备
+    table_name: equipment
+    description: 需维修维护的生产设备
+    properties:
+      equipment_code: { display_name: 设备编码, description: 主键, type: STRING, primary: true }
+      equipment_name: { display_name: 设备名称, description: '', type: STRING }
+      critical_level: { display_name: 重要度, description: 1=一般 2=重要 3=关键, type: INTEGER, enum_values: [1, 2, 3] }
+      total_downtime_days: { display_name: 累计停机天数, description: 衍生：名下全部工单的停机天数合计, type: DOUBLE, derived: true }
+    links: {}
+  WorkOrder:
+    display_name: 维修工单
+    table_name: work_order
+    description: 一次设备维修任务
+    properties:
+      wo_code: { display_name: 工单编号, description: 主键, type: STRING, primary: true }
+      equipment_code: { display_name: 设备, description: 工单所属设备, type: STRING }
+      repair_hours: { display_name: 维修工时, description: 小时, type: DOUBLE, uom: 小时 }
+      downtime_days: { display_name: 停机天数, description: 衍生：维修工时 ÷ 24，异常记 9999, type: DOUBLE, derived: true }
+      status: { display_name: 工单状态, description: 新建=待派单；处理中=维修进行中；已关闭=完工关闭, type: STRING, enum_values: [新建, 处理中, 已关闭] }
+      assignee: { display_name: 责任人, description: 当前维修责任人, type: STRING }
+      priority_note: { display_name: 优先级备注, description: 升级时写入的级别说明, type: STRING }
+      last_escalate_by: { display_name: 最近升级依据, description: 最近一次升级时引用的设备编码, type: STRING }
+    links:
+      equipment: { target: Equipment, fk: [equipment_code], name: 涉及设备, description: 工单对应的设备, cardinality: "1:1" }
+
+rules:
+  - rule_type: derived_property
+    name: 停机天数折算
+    upstream: [WorkOrder]
+    logic: "downtime_days: COALESCE(repair_hours / 24, 9999)"
+    description: 停机天数 = 维修工时 ÷ 24，分母异常记 9999
+  - rule_type: derived_property
+    name: 累计停机天数
+    upstream: [Equipment]
+    logic: "total_downtime_days: COALESCE(SUM(work_orders.downtime_days), 0)"
+    description: 名下全部工单停机天数合计（反向聚合）
+  - rule_type: trigger
+    name: 停机超限升级
+    upstream: [WorkOrder]
+    branches:
+      - condition: { ALL: [ { field: downtime_days, operator: ">", value: 7 } ] }
+        downstream: escalate_work_order
+        with: { $level: 紧急 }
+      - condition: { ALL: [ { field: equipment.critical_level, operator: "==", value: 3 }, { field: downtime_days, operator: ">", value: 3 } ] }
+        downstream: escalate_work_order
+        with: { $level: 高, $note: "@Equipment.equipment_name" }
+      - downstream: log_routine_check
+    description: 停机超限的工单分级升级，未超限走例行检查
+  - rule_type: admission
+    name: 已关单不得改派
+    upstream: [reassign_work_order]
+    logic:
+      ALL:
+        - { check: instance, entity: WorkOrder, lookup: { wo_code: "@param:wo_code" }, field: status, operator: "!=", value: 已关闭 }
+    downstream: "Action 准入拦截: reassign_work_order"
+    description: 已关闭工单禁止改派
+
+actions:
+  - name: escalate_work_order
+    description: 升级工单：更新优先级备注与状态。写操作——修改工单主数据，执行前须确认卡确认。
+    parameters: { $level: string, $note: string }
+    steps:
+      - type: data
+        entity: WorkOrder
+        operation: update
+        assignments: { priority_note: "@param:$level", status: 处理中, last_escalate_by: "@WorkOrder.equipment_code" }
+  - name: reassign_work_order
+    description: 改派工单：更换责任人。写操作——修改工单主数据，执行前须确认卡确认。
+    parameters: { $wo_code: string, $assignee: string }
+    steps:
+      - type: data
+        entity: WorkOrder
+        operation: update
+        assignments: { assignee: "@param:$assignee" }
+  - name: notify_long_downtime
+    description: 停机超限提醒：向设备运维群发送钉钉通知。通知不写业务数据。
+    parameters: { $content: string }
+    steps:
+      - type: notification
+        channel: dingtalk
+        recipients: 设备运维群
+        content: "@param:$content"
+  - name: schedule_maintenance
+    description: 生成维护计划：函数排程计算。写操作——生成计划记录，执行前须确认卡确认。
+    parameters: { $horizon_days: float }
+    function: { name: maintenance_scheduler, description: 按设备状况生成周期性维护计划 }
+
+competency_questions:
+  - id: cq-001
+    q: 哪些设备的累计停机天数超过 7 天？
+    covered_by: [Equipment.total_downtime_days]
+  - id: cq-002
+    q: 某张工单停机超过 7 天后系统做了什么？
+    covered_by: [WorkOrder.downtime_days]
+
+open_questions: []
+conflicts: []
+assumptions: []

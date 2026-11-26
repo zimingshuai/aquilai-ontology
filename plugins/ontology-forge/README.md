@@ -1,81 +1,85 @@
-# Ontology Forge —— 本体驱动业务建模插件（多平台）
+# Ontology Forge —— 本体建模插件（多平台）
 
-> 一套「资料摄取 → 本体建模 → 引擎格式交付」的**人审制**本体设计技能。与 FDE 自然语言协作，从业务资料（或零文档口述）产出**给人看的拓扑图 + 给平台导入的 yaml**。版本以 `.zcode-plugin/plugin.json` 为准（四平台清单版本一致）。
+> 与 FDE 自然语言协作的本体设计插件：把业务资料（或零文档口述）变成**给人看的拓扑图 + 给 Aquilair 平台导入的 yaml**，全程人审制。版本以 `.zcode-plugin/plugin.json` 为准（四平台清单版本一致）。
 
-## 一、这个插件能做什么
+## 一、插件是怎么工作的
 
-把一批业务资料（DDL、数据字典、需求/规则/流程文档、访谈记录、既有本体导出——**或只有业务方口述**）变成一套可注册、可人审的本体元数据 DSL，并保证：
+三个技能接力 + 确定性脚本把关，你只在与你有关的决策点出场：
 
-- **零资料也能开工**：口述场景走七维对话探索，把问出来的规格当资料（见 user-guide 用法 4）；
-- **产出的永远是 draft**：人审是唯一发布权威——三个确认点 + 终审全在人，插件永不越权；
-- **每个结论可溯源**：实体/属性/规则带资料出处，「资料里没写」的一律列成待确认问题（OQ）等你裁决，定稿前清零；
-- **单一事实源**：DSL `model.yaml` 唯一权威，拓扑图/平台 yaml 全部由它生成，导入后 SDK 四维对账零漂移；
-- **门禁全绿才出门**：L1 lint（条数以 `lint_model.py` docstring 为准）+ L2 语义沙盘（S1-S7）+ CQ 回验 + 分发门禁逐项断言——机器拦确定性缺陷，人审拦业务判断。
+```text
+文档/口述 ──▶ brief-intake ──▶ ontology-modeling（九步流水线）──▶ ontology-review（人审门）
+              摄取与探索          ①Charter★ → ②事实卡片 → ③设计稿★（硬关卡）      机器检查先行
+                                → ④DSL → ⑤lint+沙盘 → ⑥CQ回验 → ⑦交付          + checklist 评审
+                                → ⑧平台导入对账 → ⑨资产回流
+```
 
-## 二、包含内容
+- **brief-intake**（摄取）：文档判型归位、资料清单、完备度评分、冲突预检；零文档/缺口场景走**八维探索**——少问且带建议问（可补全项批量过、必问项仅 6 条），结论逐条落探索记录 `exploration.yaml`，勾选批复、门禁判定可交接才进建模。
+- **ontology-modeling**（主技能）：九步流水线如上；两个硬关卡（Charter 确认点①、设计稿逐表确认点②）之间插件不越权推进；DSL → 平台 yaml 全程机器编译。
+- **ontology-review**（评审）：13 类 checklist 逐项带证据评审，只出报告不做裁决。
+
+**你什么时候出场**：确认 brief.yaml → 批复探索勾选页（零文档场景）→ 确认章程与 CQ → **逐表审设计稿（最重要纠错点）** → 裁决待确认问题（OQ）→ 平台导入后看对账报告 → 定稿批准。
+
+## 二、装好后怎么用
+
+30 秒验证：**新开会话**（旧会话不加载新技能）说一句——
+
+| 你说 | 触发 |
+|---|---|
+| 「我有一份 XX 业务的需求文档和数据字典，帮我建本体」 | 摄取 → 九步流水线（只有 DDL 也能开工） |
+| 「这业务连文档都没有，我口头跟你说」 | 八维口述探索 → 勾选确认 → 建模 |
+| 「基于现有 XX 本体，新增 YY 场景，只出差异」 | 增量模式（复用既有实体、出变更集与 breaking 标记） |
+| 「检查/评审这个本体的质量」「它能支撑 XX 场景吗」 | 评审技能 |
+
+**新手上手最快路径**：通读 `docs/user-guide.md`（详细操作手册）+ 对照 `examples/supplier-recon/`（九步全流程实物范例——每步产物长什么样、追溯链怎么走，看一遍就会）。
+
+## 三、安装（四平台，同一份内容）
+
+| 平台 | 方式 |
+|---|---|
+| ZCode | Plugin Marketplace → Add → 指向 `plugins/marketplace.json` → 安装 |
+| WorkBuddy | 开放平台上传 `pack_workbuddy.py` 构建的 zip（见 `.codebuddy-plugin/README.md`） |
+| Claude Code | `/plugin marketplace add <仓库>/plugins` 后安装 |
+| Codex | `codex plugin marketplace add <仓库>/plugins` 后安装 |
+
+运行环境：Python 3.10+ 与 PyYAML 必须；L2 语义沙盘另需 `rdflib owlrl pyshacl`；拓扑图 PNG 另需 Playwright（断网自动用插件内 mermaid 缓存）。
+
+## 四、包结构
 
 ```text
 ontology-forge/
-├── skills/                       # 三技能（本体流水线拆分）
-│   ├── brief-intake/             #   第 0 步：资料摄取与口述探索（判型归位/完备度评分/冲突预检）
-│   ├── ontology-modeling/        #   主技能：九步建模流水线（references/ 含 dsl-spec 格式权威）
-│   └── ontology-review/          #   评审：机器检查先行 + 人审（唯一发布权威）
-├── agents/aquilair-fde.md        # 总控 agent 人设（随插件自动注册，可派发子代理建模）
-├── scripts/                      # 工具链（lint/沙盘/编译/拓扑/CQ/diff/平台对账/域交接/分发门禁）
-├── seeds/                        # 种子资产：受控词表 + 既有域速查（随域定稿持续进化）
-├── docs/user-guide.md            # 使用手册（FDE 版，完整流程走读）
-├── assets/ avatars/ commands/    # 模板 / 头像 / /onto 命令
-└── .zcode-plugin/ 等四平台清单    # 单内容多清单（ZCode/WorkBuddy/Claude Code/Codex 同一份内容）
+├── skills/
+│   ├── brief-intake/             # 摄取技能（references/exploration-guide 探索手册）
+│   ├── ontology-modeling/        # 建模主技能（references/dsl-spec = DSL v0.4 格式权威）
+│   └── ontology-review/          # 评审技能
+├── agents/aquilair-fde.md        # 总控子代理（自动注册；派发约定见 agents/README.md）
+├── scripts/                      # 确定性工具链 23 件（清单见 scripts/README.md）：
+│                                 #   lint(20条)/语义沙盘/CQ回验/编译(平台新格式)/拓扑渲染/
+│                                 #   变更集diff/平台对账(SDK或MCP JSON)/逆向导出(往返字节一致)/
+│                                 #   探索门禁+批复写回+勾选页/域交接包/分发门禁/打包
+├── examples/supplier-recon/      # 黄金范例（九步全流程实物，受发布门禁机器看守）
+├── seeds/                        # 受控词表 + 域速查（随域定稿持续进化，越用越准）
+├── docs/user-guide.md            # ★ 使用手册（FDE 版，先读这个）
+├── assets/                       # 勾选页模板 + mermaid 离线缓存
+└── .zcode-plugin/ 等四平台清单    # 单内容多清单（ZCode/WorkBuddy/Claude Code/Codex）
 ```
 
-## 三、安装（四平台，同一份插件内容）
+## 五、为什么可以信任产出
 
-| 平台 | 安装方式 |
+- **门禁链**：探索记录门禁（必问项未收口不进建模）→ L1 lint（20 条确定性检查，条数以脚本 docstring 为事实源）→ L2 语义沙盘（OWL/SHACL 语义自洽）→ CQ 回验 → 发布门禁 90 项（含**范例受门禁**：黄金范例与探索记录每次发布前实跑校验，范例漂移=发布失败）。
+- **平台对齐**：编译产物对齐平台现行导入规范（官方升级说明实证）；计算规则关系路径**自动推导**（最短且唯一才自动，多条报错不猜）；逆向导出**往返字节一致**（编译→逆向→lint→再编译，回归锁定）。
+- **以上不是自述是回归资产**：`evals/ontology-modeling/run_evals.py`（46 项）+ `check_dist.py`（90 项）——改插件必跑，绿灯有据可查。
+
+## 六、文档导航
+
+| 想了解 | 去哪 |
 |---|---|
-| **ZCode** | Plugin Marketplace → Add → 指向 `plugins/marketplace.json` → 安装 Ontology Forge |
-| **WorkBuddy** | 开放平台上传 `pack_workbuddy.py` 构建的 zip（详见 `.codebuddy-plugin/README.md`） |
-| **Claude Code** | `/plugin marketplace add <仓库>/plugins` 后安装 |
-| **Codex** | `codex plugin marketplace add <仓库>/plugins` 后安装 |
-
-装好后 30 秒验证：新会话发一句「我有一份 XX 业务的需求文档，帮我建本体」——插件应开始引导给文件。
-
-## 四、快速上手：说什么就能触发（完整表见 user-guide 第三节）
-
-| 你说 | 插件做什么 |
-|---|---|
-| 「我有一份 XX 业务的需求文档和数据字典，帮我建本体」 | 摄取归位 → 九步流水线（只有 DDL 也能开工） |
-| 「基于现有 XX 本体，新增一个 YY 场景，只出差异」 | 增量模式：复用既有实体、只建差异、出变更集 |
-| 「这业务连文档都没有，我口头跟你说」 | 七维口述探索（范围→对象→关系→规则→动作→数据源→CQ） |
-
-## 五、九步流水线（三个人工确认点）
-
-```text
-① 场景圈定 ★你确认 → ② 术语抽取 → ③ 设计稿合成 ★你逐表确认（硬关卡）
-→ ④ DSL 生成 → ⑤ 硬校验（L1 lint + L2 语义沙盘，error 拦截）→ ⑥ CQ 回验
-→ ⑦ 拓扑+双格式交付 → ⑧ 平台导入自检 → ⑨ 资产回流（glossary/域速查，越用越准）
-```
-
-完整流程走读、产物说明、常见问题：`docs/user-guide.md`。
-
-## 六、质量与证据（为什么可以信任产出）
-
-- **L1 lint 硬校验** + **L2 语义沙盘**（DSL 投影 OWL/SHACL 做语义自洽检查，检完即弃不引入推理机）+ **CQ 回验**（建完逐条验证本体能否回答立项时圈定的业务问题）+ **OQ 生命周期** + **平台 SDK 对账** + **人审唯一权威**；
-- **以上不是自述，是回归资产**：行为回归（`evals/ontology-modeling/run_evals.py`）+ 分发门禁（`check_dist.py`，含 lint 条数/S 计数/步数口径的**事实源联动断言**——数字口径漂移会被机器抓住）+ 触发用例集（含 near-miss 反例）。改插件必跑，绿灯有据可查（条数以各脚本实时输出为准）。
-
-## 七、运行环境
-
-| 依赖 | 何时需要 | 安装 |
-|---|---|---|
-| Python 3.10+ 与 PyYAML | 必须（脚本工具链） | `pip install pyyaml` |
-| rdflib + owlrl + pyshacl | L2 语义沙盘（缺失时明确报错退出，不静默跳过） | `pip install rdflib owlrl pyshacl` |
-| Playwright | 只要拓扑图 PNG 才需要 | `pip install playwright && python -m playwright install chromium` |
-
-## 八、文档导航
-
-- **使用手册（先读）**：`docs/user-guide.md`
-- **DSL 规范（格式权威）**：`skills/ontology-modeling/references/dsl-spec.md`
-- **子代理派发约定**：`agents/README.md`
-- **维护与分发（工厂视角）**：仓库根 `README.md`
+| **怎么用（先读）** | `docs/user-guide.md` |
+| 每步产物实物对照 | `examples/supplier-recon/` |
+| DSL 语法（格式权威） | `skills/ontology-modeling/references/dsl-spec.md` |
+| 探索提问规则 | `skills/brief-intake/references/exploration-guide.md` |
+| 脚本工具链清单 | `scripts/README.md` |
+| 子代理派发约定 | `agents/README.md` |
+| 维护与分发（工厂视角） | 仓库根 `README.md` |
 
 ---
 

@@ -1,0 +1,42 @@
+# 资料包清单（brief）——供应商月度对账与差异处理
+# 范例性质：虚构域示范资料包（随插件分发的黄金范例，无任何客户数据）。
+#           五份原始资料与评测合成域 evals/ontology-modeling/goldstandard/modeling-brief/ 逐字节一致，内容未改。
+domain: supplier-recon                  # 域标识（kebab-case，须与探索记录 exploration.yaml 的 domain 一致）
+scenario_name: 供应商月度对账与差异处理    # 业务场景名（中文）
+business_owner: 王财务                   # 业务负责人（自访谈对象推断，见 C_interviews/interview_finance.md 标题）
+target_engine: new                      # 目标引擎：new=从零新建本体（fnb / mfg=在既有本体上增量建模）
+source_systems:                         # 来源系统清单（自 DDL 头注释与数据字典 source 列得出）
+  - SRM                                 # 供应商关系管理（供应商主数据、合同）
+  - WMS                                 # 交货记录
+  - FIM                                 # 财务发票系统（发票金额、对账单）
+exploration_record: modeling-brief/exploration.yaml   # 探索记录路径（做过口述探索或缺口探索即必填）
+materials:                              # 资料清单——逐份登记三键（path / type / note）
+  - path: modeling-brief/A_schema/supplier_ddl.sql     # 归位后的相对路径（相对本资料包所在的域目录）
+    type: A                                             # 判型：A 类 结构化 schema
+    note: 四张表的建表语句，SRM + WMS + FIM 三系统合并导出   # 一句话备注
+  - path: modeling-brief/A_schema/data_dictionary.md
+    type: A
+    note: 数据字典（ISO 11179 简化版），四表 26 个字段的口径、类型、枚举与主外键
+  - path: modeling-brief/B_scenarios/decisions.md
+    type: B                                             # 判型：B 类 业务场景与规则
+    note: 决策清单，3 项业务决策 + 4 条能力问题
+  - path: modeling-brief/B_scenarios/rules.md
+    type: B
+    note: 口径规则，3 条计算口径 + 2 条触发规则
+  - path: modeling-brief/C_interviews/interview_finance.md
+    type: C                                             # 判型：C 类 访谈/口述
+    note: 财务共享中心访谈记录，5 组问答，口径与关系的交叉核验源
+constraints:                            # 设计红线预提取——资料"红线/约束"原文摘录（出处随括号），供建模第 1 步场景章程直接取用
+  - "差异金额超过 2000 元且差异率超过 5% 的对账单，自动标记为「需复核」（B_scenarios/decisions.md#决策 1）"
+  - "两个都超线——金额超 2000 块、差异率超 5%——就必须人工复核，只超一个不用（C_interviews/interview_finance.md#Q：对账差异怎么算、什么情况要人看？）"
+  - "负值 = 多对账（少见，保留负值不取绝对值）（B_scenarios/rules.md#对账差异金额）"
+  - "无已对账金额时按 0 处理（COALESCE 兜底）（B_scenarios/rules.md#对账差异金额）"
+  - "差异金额 ÷ 发票金额（比率，非百分数）（B_scenarios/rules.md#对账差异率）"
+  - "发票金额为 0 或缺失时，差异率记为 9999（视为异常大，保证触发复核规则）（B_scenarios/rules.md#对账差异率）"
+  - "冻结中的供应商，其所有对账单不应继续推进（不自动确认）（B_scenarios/decisions.md#决策 2）"
+  - "冻结期间不能自动确认对账单，系统要给个提醒（C_interviews/interview_finance.md#Q：冻结是什么意思？）"
+  - "三系统各自建表，主键均为业务编码；外键未建约束，业务含义见数据字典（A_schema/supplier_ddl.sql#三系统各自建表，主键均为业务编码）"
+  - "每张对账单按「供应商 + 月份」生成，一个供应商每月一张（C_interviews/interview_finance.md#Q：对账单和供应商的关系是怎么挂的？）"
+known_conflicts: []                     # 冲突预检结果（显式空集合=已逐术语比对、结论为零）；
+                                        #   建模第 2 步交叉比对发现的一处措辞出入见 fact-cards.md 第 6 节
+notes: "财务部希望按月对账，差异超阈值自动进入复核流程"   # 场景背景（资料包原文）

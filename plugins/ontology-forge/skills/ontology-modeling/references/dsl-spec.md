@@ -1,6 +1,7 @@
-# Ontology DSL 规范 v0.3.6
+# Ontology DSL 规范 v0.4
 
-> 版本：v0.3.6（2026-11-02：OQ schema 对齐复验版实战形态（topic/question/proposal 键 + 七态状态机，修订 v0.3.9 固化时未对齐的 q/四态）；lint 新增第 14 条 OQ/conflicts 结构与第 15 条枚举双写）
+> 版本：v0.4（2026-11-26：平台 yaml 导入格式对标（docs/reference/新品上市POC-最新版-20261125_163759.zip 升级说明）——links 显式形态新增可选键 `cardinality`（n:1/1:1）；trigger 规则新增 `branches` 多分支与 `with` 动作参数映射（与旧 logic+downstream 二选一）；actions 新增声明式形态（`steps` 数据/通知步骤、`function` 函数型、`validation_rules` 挂载校验）；derived 增注编译关系路径自动推导。**全部新键可选，旧 DSL 零改动继续合法**——lint 新增第 16-19 条，仅对新键存在时校验）
+> v0.3.6（2026-11-02：OQ schema 对齐复验版实战形态（topic/question/proposal 键 + 七态状态机，修订 v0.3.9 固化时未对齐的 q/四态）；lint 新增第 14 条 OQ/conflicts 结构与第 15 条枚举双写）
 > v0.3.5（2026-11-02：xgimi 全产物遍历反哺——文件头治理注释三行、属性 source 锚点格式、枚举双写、衍生公式 description 重述、可空外键/自引用/单表多态约定、规则级 source 键、编译剥离清单补登 derived 与规则 source）
 > v0.3.4（2026-10-15：关系语义名纪律——links 必须说清"是什么关系"，lint 第 13 条）
 > v0.3（2026-10-13，按 M2/M3 与端到端复验的实证发现升级）
@@ -92,12 +93,14 @@ entities:
 
 ```yaml
     links:
-      supplier: Supplier                          # 简写形态：外键字段 = 目标主键字段名（v0.2 约定不变）
+      supplier: Supplier                          # 简写形态：外键字段 = 目标主键字段名（v0.2 约定不变）；不带基数（缺省 n:1）
       project: { target: Project, name: 隶属项目 }             # 显式形态：fk 可缺省（视同简写约定），仅声明关系语义名
       demand: { target: Demand, fk: [demand_id], name: 项目需求, description: 项目各来源需求（MPS/订单/预测）的挂载 }  # 显式形态：外键+语义名+业务定义
       # description（v0.3.7，用户实证：关系只有名字没有业务定义，平台侧全部空串）：一句话说清这条关系表达的业务含义/约束
-      sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code] }  # 复合外键（桥接引用）
+      sku_in_wh: { target: SKUInWarehouse, fk: [sku_code, wh_code], cardinality: "n:1" }  # 复合外键（桥接引用）+ 基数（v0.4）
 ```
+
+**links 基数（v0.4 新增可选键 `cardinality`，仅显式形态可带）**：取值 `n:1 | 1:1`，方向语义 = 「本实体 : 目标实体」（本实体持有外键时通常 n:1）；缺省 `n:1`（与现行约定一致），简写形态不带基数。**`1:n` 与 `n:n` 不进 DSL**：一对多由目标侧实体的 links 表达（反向集合引擎侧推导，既有约定）；平台 n:n 无建模先例，不引入。lint 第 16 条：显式形态声明 cardinality 时取值必须 ∈ {n:1, 1:1}，其他取值报 error。
 
 `alias: TargetEntity` 表示本实体持有指向 TargetEntity 的引用。**自引用 links 合法（v0.3.5 明示，xgimi 实证：Demand→Demand 的 covered_by）**：别名与被引用实体内同名 links 不冲突；规则表达式中沿自引用别名的引用照常解析，反向复数引用名生成规则不变（表名/别名 + s）。**关系语义名（name）是建模必填纪律（v0.3.4，用户实证：只建连线不说清"是什么关系"，拓扑与平台关系名不可读）**：每条 links 应声明中文关系语义名（动宾/偏正短语，如 订购物料/隶属项目/换算物料），进 studio-model 的 link name 与拓扑连线标签；简写形态无法带 name（lint13 提示）。**显式 fk 形态用于外键字段 ≠ 目标主键名的场景（fk 可缺省）**（xgimi 实证：PurchaseOrder 经 sku_code+wh_code 复合引用 SKUInWarehouse，简写约定无法表达，studio-model 编译报错）；fk 字段列表必须在 properties 中有声明（lint 校验）。反向一对多集合不写进 links（引擎侧推导），规则表达式中可用复数名引用（如 `SUM(purchase_orders.total_order_qty)`）——**复数引用名 = 被引用方的表名 + s 或 其 links 短别名 + s，两种形态均合法**（引擎实证：`purchase_orders`（表名+s）、`sku_in_whs`（别名 sku_in_wh + s）；多形态白名单校验，收敛为单形态待引擎侧确认）。
 
@@ -132,6 +135,8 @@ entities:
 - 加权平均惯例：`SUM(子集合.指标 * 子集合.权重) / SUM(子集合.权重)`（fnb 平均库存元天写法）
 - 空值兜底：`COALESCE(字段, 0)`
 
+**编译关系路径自动推导（v0.4 增注——表达式方言不变，编译行为契约，编译器实施）**：DSL 点路径（如 `sku.product_category.pc_code`）在编译到平台计算规则时**自动推导关系路径**（平台侧 `expressionSources.relationPath`，见 2026-10-20 升级说明：外部实体属性必须明确关系路径）——从输出实体沿 links 图取最短路径：路径**唯一**即自动生成；存在**多条**路径即编译报错，要求建模侧改写表达式（显式经由确定的 links 别名逐跳表达，消除歧义）——不猜。
+
 ### 3.2 trigger（触发规则）
 
 ```yaml
@@ -148,6 +153,32 @@ entities:
 ```
 
 **operator 枚举**：`== != > >= < <= in`（value 为数组时必须用 in）。
+
+**branches 多分支形态（v0.4 新增，与旧 `logic`+`downstream` 二选一，同现即 error——lint 第 17 条）**：
+
+```yaml
+- rule_type: trigger
+  name: 上市事项执行状态
+  upstream: [DishLaunchItem]
+  branches:
+    - condition: { ALL: [ {field: <字段或别名.字段路径>, operator: <op>, value: <标量或数组>} ] }
+      downstream: <action_name>     # 命中此分支即触发该动作
+      with: { "<$参数名>": <常量 | "@Entity.attr"> }      # 可选：动作参数映射，键带 $ 前缀
+    - condition: { ALL: [...] }
+      downstream: <action_name>
+      with: {...}
+    - downstream: <action_name>    # 无条件项即兜底分支（otherwise）
+      with: {...}
+  description: ...
+  source: ...
+```
+
+**branches 约束（lint 第 17 条，仅 branches 存在时校验——旧 DSL 零改动合法）**：
+- `branches` 与旧 `logic`/`downstream` 并存即 error（两种形态二选一，不猜哪种生效）；
+- branches 至少一个**条件分支**（含 condition 项）；**兜底分支**（无 condition 项）至多一个且必须是最后一项（对应平台 cases→if/else_if、otherwise→else，分支按数组顺序首中即止）；
+- condition 沿用既有条件结构：`{ALL: [...]}` 合取、field 以 upstream 实体为起点可解析、operator 沿用枚举 `== != > >= < <= in`、in 配数组；
+- `with` 的键为动作参数名，**必须带 `$` 前缀书写**（如 `$status`）且参数须在 `downstream` 动作的 parameters 中（对照时忽略前缀差异：`$x` ≡ `x`——兼容 recipe 动作不带 $ 与声明式动作带 $ 两种 parameters 键书写）；
+- `with` 的值只允许**常量**或 **`@Entity.attr`** 形式（实体须存在、字段须在其 properties 声明）。
 
 ### 3.3 admission（动作准入，仅含 action 的本体）
 
@@ -170,9 +201,40 @@ entities:
   downstream: "Action 准入拦截: <action_name>"
 ```
 
-## 4. actions（动作，v0.2.2：M3 按引擎 8 个真实 action 实测定稿）
+## 4. actions（动作，v0.2.2：M3 按引擎 8 个真实 action 实测定稿；v0.4：新增声明式形态）
 
 action body 是可执行 Python 源码（无法声明式生成）——DSL 声明**元数据 + 骨架配方（recipe）**，编译器生成 body 骨架，业务逻辑人工插桩（`# TODO` 标记处）。
+
+**声明式形态（v0.4 新增，新键 `steps` 与旧 `recipe`+`body_ref` 互斥，同现即 error——lint 第 18 条）**——数据/通知类动作不再生成 Python 骨架，步骤即动作本体（对齐平台 2026-10-23 简化报文）：
+
+```yaml
+actions:
+  - name: update_recon_status            # snake_case
+    description: <中文三要素：业务语义 + 写操作风险 + 确认卡要求>
+    parameters: { "<$参数名>": "string|float" }     # 仍必写（lint 与文档用；平台 yaml 侧由步骤推导，不重复）
+    steps:                                # 与 recipe 互斥；函数型动作不写 steps
+      - type: data
+        entity: <EntityName>              # 目标实体，须存在
+        operation: create | update
+        assignments:                       # 字段赋值，键须在该实体 properties 声明
+          <field>: <常量 | "@param:$参数名" | "@Entity.attr">
+      - type: notification
+        channel: dingtalk
+        recipients: <常量 | "@param:$参数名" | "@Entity.attr">
+        content: <常量 | "@param:$参数名" | "@Entity.attr">
+    function: { name: <函数名>, description: <一句话> }   # 可选：函数型动作（平台函数是代码包元数据，
+                                                          # 不随 yaml 往返——编译导入说明标注，DSL 只声明契约）
+    validation_rules: [<admission 规则名>]                # 可选：挂载的准入校验（rule_type: admission）
+```
+
+**声明式形态约束（lint 第 18/19 条，仅新键存在时校验）**：
+- `steps` 与 `recipe` 并存即 error、`steps` 与 `function` 并存即 error（函数型动作不带步骤）；
+- `parameters` 仍必写：DSL 侧是 lint 对照与文档的唯一参数口径（平台 yaml 侧由步骤推导，编译时不重复生成）；
+- **参数名 $ 前缀约定**：声明式动作的 parameters 键、`@param:$参数` 引用与 trigger 分支 `with` 的键均以带 `$` 的完整参数名书写；lint 对照 parameters 时忽略前缀差异（`$x` ≡ `x`），兼容 recipe 动作（键不带 $，v0.2.2 形态）与声明式动作（键带 $）两种书写；
+- `steps` 逐项可解析：`type` ∈ {data, notification}；data 步骤的 `entity` 须存在、`operation` ∈ {create, update}、assignments 字段须在该实体 properties 声明、值形态合法（常量 / `@param:$参数` 且参数在本动作 parameters / `@Entity.attr` 且实体字段可解析）；notification 步骤的 `channel`/`recipients`/`content` 必填非空且值形态合法；
+- `validation_rules` 引用的规则必须存在、`rule_type: admission`、且其 upstream 即本动作名（lint 第 19 条）。
+
+**骨架配方形态（v0.2.2 既有，recipe + body_ref）**：
 
 ```yaml
 actions:
@@ -229,11 +291,21 @@ actions:
 | `rules[trigger].logic` | `{rules: [{rule_type: "trigger", logic: {ALL: [...]}, upstream, downstream: <action>, name, description}]}` |
 | `rules[admission].logic` | `{rules: [{rule_type: "admission", logic: {ALL: [...]}, upstream: [<action>], downstream: "Action 准入拦截: <action>", name, description}]}` |
 
+**v0.4 新键的编译映射去向（DSL → 平台 yaml，studio-model/导入格式；缺省新键的旧 DSL 编译行为不变）**：
+
+| DSL | 平台 yaml 目标 |
+|---|---|
+| `links.<alias>.cardinality` | `link_types[].cardinality`（缺省 n:1 由编译器回填；1:n 不进 DSL，由目标侧连线表达） |
+| `rules[trigger].branches` | 触发规则 `cases` / `otherwise`（条件分支按序映射 if/else_if、兜底映射 else；`with` 映射 `run` 项的动作参数映射） |
+| `actions[].steps` | `action_types[].steps`（data 步骤 → {type, entity, operation, assignments}；notification 步骤 → {type, channel, recipients, content}；平台侧参数由步骤推导，DSL parameters 不重复编译） |
+| `actions[].function` | 函数契约标注（平台函数是代码包元数据、不随 yaml 往返——编译导入说明中标注，DSL 只声明契约） |
+| `actions[].validation_rules` | `action_types[].validation_rules`（引用的 admission 规则编译为 `rule_types` 的 `ruleType: validation` 并挂载到该动作） |
+
 **编译剥离清单**：DSL 自有字段（实体级 governance / provenance；属性级 uom / enum_values / source / **derived**；规则级 **source**；顶层 competency_questions / open_questions / conflicts / assumptions）引擎不存储，编译时必须剥离——编译产物只含引擎格式键。**v0.3.5 补登两项（xgimi 遍历实证：此前两处剥离无记载）**：①属性级 `derived` 在 engine 目标下实际被剥离（引擎侧无法区分自然属性与计算属性；studio-model 目标保留为 isDerived，见 §8），②规则级 `source` 全量剥离——**剥离后 description 成为引擎侧唯一语义载体，故 §2 约定 3/4（枚举双写、衍生重述）是强制项而非建议**。
 
 **round-trip 校验口径**：DSL → 编译 → 引擎格式，与引擎实测快照做**深度逐键比对**；编译产物中出现任何引擎格式之外的键 = 失败。
 
-## 7. lint 规则（v0.3 全集，确定性检查）
+## 7. lint 规则（v0.4 全集，确定性检查；第 16-19 条仅对新键存在时校验——旧 DSL 零新报错）
 
 1. schema 合法：类型枚举、必填键、命名风格（实体 PascalCase、字段 snake_case）
 2. 主键：每个实体至少 1 个 primary；主键字段类型建议 STRING
@@ -251,28 +323,36 @@ actions:
 13b. **关系业务定义（v0.3.7）**：显式形态 links 缺 description 报 warning——关系只有名字没有业务定义，平台侧关系描述为空串（用户实证）
 14. **OQ/conflicts 结构（v0.3.6）**：OQ 逐条校验 id 格式（`OQ-NN` 大写，不符报 warning）/ id 域内唯一 / topic+question 非空 / status 在七态枚举内 / status 含 resolved 必带 resolution——违规报 error；conflicts 逐条校验 topic+side_a.claim+side_b.claim 非空、status 在 pending|resolved 内——违规报 error（实证：schema 漂移曾致同域两版 OQ 键名/状态机各说各话，机器无一拦截）
 15. **枚举双写（v0.3.6）**：声明 enum_values 的字段 description 缺失报 error；enum code 未在 description 出现报 warning（孤儿枚举值——enum_values 编译剥离后 description 是唯一语义载体；实证：xgimi 复验版 29 个枚举字段中 2 个存在孤儿值）
+16. **links 基数（v0.4）**：显式形态声明 `cardinality` 时取值必须 ∈ {n:1, 1:1}——其他取值报 error（1:n 由目标侧 links 表达、n:n 不进 DSL）；简写形态不查（缺省 n:1）
+17. **trigger 分支（v0.4）**：同一 trigger 规则 `branches` 与 `logic`/`downstream` 并存报 error；branches 结构违规报 error——条件分支缺 condition/downstream、兜底分支非末项或超过一个、`with` 参数名不带 `$` 前缀或不在 downstream 动作 parameters、`with` 值形式非法（非常量且非 @Entity.attr 可解析形态）、condition 结构不合法（沿用第 5 条条件校验逻辑）
+18. **声明式动作步骤（v0.4）**：`steps` 与 `recipe` 并存报 error、`steps` 与 `function` 并存报 error；steps 逐项——type 枚举（data/notification）、data 的 entity 存在且 operation 枚举（create/update）、assignments 字段在该实体 properties、值形态合法（常量 / `@param:$参数` 且参数存在 / `@Entity.attr` 且可解析）；notification 的 channel/recipients/content 非空且值形态合法。缺省豁免：无新键的旧 DSL 零新报错
+19. **挂载校验（v0.4）**：`validation_rules` 引用的规则名不存在报 error；引用规则 `rule_type != admission` 报 error；引用规则的 upstream 与本动作名不一致报 error
+20. **准入字段可解析（v0.4）**：admission 的 `check: instance` 条目 `field` 须可从该 `entity` 解析（属性或点路径），否则报 error——v0.4 起 admission 编进平台 validation，字段必被编译解析，lint 与编译器同判（评测夹具引用不存在字段的盲区实证）
 
-## 8. studio-model 互导格式（v0.2.1，2026-10-13 按试用上传的两份真实模板实证）
+## 8. studio-model 互导格式（v0.4，2026-11-26 对齐平台官方导入规范——`docs/reference/新品上市POC-最新版-*.zip` 内升级说明）
 
-Studio 模板 YAML 是团队第二种本体载体（与引擎注册 JSON 并存）。格式（两模板一致实证）：
+studio-model YAML 是**平台导入/导出的官方载体**（与引擎注册 JSON 并存）。现行格式四段（2026-10-20/10-23/11-02 三次格式变更后的形态，官方说明为准）：
 
 ```yaml
 format: studio-model
 object_types: [ {code, name, description, enabled, attrs: [{code, name, type, required, isKey, defaultValue, description, isDerived}]} ]
 link_types:   [ {code, source, target, name, cardinality, description, sourcePropertyCode, targetPropertyCode} ]
-rule_types:   [ {code, name, ruleType, mode, description, ruleConfig: {expression}, outputEntityCode, outputPropertyCode, outputPropertyName, initializationStrategy} ]
+rule_types:   [ {code, name, description, ruleType: calculation|trigger|validation, mode, ruleConfig, ...} ]
+action_types: [ {code, name, description, enabled, validation_rules?, steps} ]
 ```
 
-**类型映射**：STRING↔string、BOOLEAN↔boolean、DATE↔date、TIMESTAMP↔datetime、DOUBLE↔double、INTEGER→double、DECIMAL→double（模板侧数值统一 double；逆向 double→DSL DOUBLE 并注记，不猜 INTEGER）。模板侧 string 存数值的字段（如 sled_days）是模板质量问题，lint 报 warning。
+**类型映射**：STRING↔string、BOOLEAN↔boolean、DATE↔date、TIMESTAMP↔datetime、DOUBLE↔double、**INTEGER↔integer（精确保留，不再压 double）**、DECIMAL→double（逆向 double→DSL DOUBLE 并注记，不猜 INTEGER）。模板侧 string 存数值的字段（如 sled_days）是模板质量问题，lint 报 warning。
 
-**编译约定（DSL → studio-model）**：
-- 实体→object_type（code=实体名、name=display_name）；`derived: true` 或衍生规则目标字段 → attrs.isDerived=true（实证：16 衍生字段与 16 条 calculation 输出严格对应）。
-- links→link_type：`links.{alias}: Target` → `{source: Target, target: 本实体, cardinality: "1:n", sourcePropertyCode: Target 主键, targetPropertyCode: 外键字段}`。**外键字段约定 = 目标主键字段名**（fnb/gold 全部满足；不满足时编译报错，v0.3 候选：links 显式 fk 声明）。**关系 name 平台必填非空**（2026-10-14 导入平台实证）：DSL 可用显式形态声明业务名（`alias: {target: X, fk: [...], name: 属于XX}`）；未声明时编译器兜底 = 目标实体的 display_name（名词式关系名，如"供应商"），恒不为空。
-- 表达式：DSL 英文 code 引用（`sku.abc_type`、`SUM(sales_orders.x)`）→ 模板中文名引用（`[SKU.abc_type 的 display_name]`、`SUM([对方实体 display_name（复数语境）.属性 display_name])`）——统一用 display_name 生成，模板内部自洽即可。
-- **trigger/admission 规则模板不承载**（实证：两模板 ruleType 仅 calculation）——编译时告警并在导入说明列出"N 条 trigger 规则不进模板，需引擎侧配置"。
-- code 生成（rel_/rule_ 前缀）：稳定 hash（如 md5(关键要素)[:8]），保证重复编译幂等。
+**编译约定（DSL → studio-model，v0.4 全面切新格式）**：
+- 实体→object_type（code=实体名、name=display_name）；`derived: true` 或衍生规则目标字段 → attrs.isDerived=true。
+- links→link_type：`{source: 目标实体, target: 本实体, sourcePropertyCode: 目标主键, targetPropertyCode: 外键字段}`；基数按翻转映射（DSL `cardinality` n:1（本实体:目标）→ 平台该方向 `1:n`、1:1→`1:1`，未声明缺省同 n:1）；关系 name 平台必填非空（显式形态声明，未声明时编译器兜底 = 目标实体 display_name）。
+- **计算规则表达式（10-20 新格式）**：DSL 点路径 → `${别名.属性code}` 占位符 + `ruleConfig.expressionSources`（别名→{entityCode, relationPath}）；自身属性 `relationPath: []`；关系路径由编译器沿 links 图 BFS **自动推导**——最短路径唯一自动采用，多条等长报 error 指名不猜；同一 (实体, 路径) 共用一个别名；路径跳数不限（xgimi 实证 3 跳）。**旧中文名引用格式 `[实体名.属性名]` 已废弃（平台导入校验会拒绝缺关系路径的历史格式）**。
+- **trigger → rule_types[trigger]**（10-23/11-02 新格式）：旧形态（logic+downstream）→ `mode: single` + `cases[0]`；branches → `mode: multi` + cases + 可选 `otherwise`（分支上限 10）；条件 `field` 路径 → `left: "@实体.属性"`、operator 映射（`==`→eq、`!=`→ne、`>`→gt、`>=`→gte、`<`→lt、`<=`→lte、`in`→in）；`downstream` → `run[].action`（稳定 code）；`with` 键保留 `$` 前缀、值=常量或 `@实体.属性`。
+- **admission → rule_types[validation] + 挂载**：`check: param` → `left: "$参数"`、`check: instance` → `left: "@实体.属性"`（lookup 不编进 when——实例定位由动作运行时 instances 提供，导入说明注明）；`downstream` 文本 → `failureMessage`；规则 code 挂载到宿主动作 `action_types[].validation_rules`。
+- **动作 → action_types**（10-23 简化报文）：声明式 steps 逐项映射（data：`{type, entity, operation, assignments}`，值=常量/`"$参数"`/`"@实体.属性"`；notification：`{type, channel, recipients, content}`）；**不写 parameters**（平台由步骤 `$参数` 推导）；函数型与 recipe 动作 `steps: []` 并在 import-README 列「需平台侧配置」名单；trigger 引用但未声明的动作（平台内置）同样列入 import-README（不静默）；trigger 与 action 每条带 `enabled: true`。
+- code 生成（rel_/rule_/action_ 前缀）：稳定 hash（如 md5(关键要素)[:8]），保证重复编译幂等。
 
-**逆向（studio-model → DSL）**：结构直接映射；cardinality 信息丢失（DSL 无基数，接受并注记）；表达式中文名→code 需按 name 映射解析，解析不到的引用报 error。lint 输入支持：对 studio-model 文件做结构检查（主键存在、连线属性可解析、悬空引用、孤立实体、表达式函数白名单、isDerived 与 calculation 输出一致性）——试用评审暴露的 P0（上卷公式引用错属性、主键连主键、孤立实体）均属此检查范围。
+**逆向（studio-model → DSL，`export_dsl.py --platform-yaml`）**：结构直接映射 + 表达式占位符按 expressionSources 还原为点路径（正向段用 links 别名、反向段用持有方复数引用名）；cases→trigger（multi）/validation→admission（含挂载还原）；action_types→声明式动作（空步骤按函数型占位）。**有损处一律注记进 assumptions**（table_name/links 别名按 snake_case 惯例重造、lookup 平台不承载、parameters 从引用推导、CQ 空）。**往返保证**：编译→逆向→lint→再编译，产物 sha256 字节一致（case14 与 xgimi 双实证）。旧引擎快照入口（--objects/--rules）保留。lint 输入支持：对 studio-model 文件做结构检查（主键存在、连线属性可解析、悬空引用、孤立实体、表达式函数白名单、isDerived 与 calculation 输出一致性）。
 
 ## 9. 变更集（changeset）格式
 

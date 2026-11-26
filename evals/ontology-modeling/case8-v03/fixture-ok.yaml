@@ -19,6 +19,7 @@ entities:
       supplier_name: { display_name: 供应商名称, description: 供应商营业执照全称, type: STRING }
       settlement_type: { display_name: 结算方式, description: 与供应商约定的付款周期, type: STRING, enum_values: [月结30天, 月结60天, 货到付款] }
       frozen_flag: { display_name: 冻结标记, description: true=冻结（停止对账与付款）；false=正常, type: BOOLEAN }
+      status: { display_name: 状态, description: 供应商状态（正常=在册可往来；已注销=停止往来，冻结前准入检查字段）, type: STRING, enum_values: [正常, 已注销] }
       create_time: { display_name: 创建时间, description: 供应商主数据创建时间, type: TIMESTAMP }
       update_time: { display_name: 更新时间, description: 供应商主数据最近更新时间, type: TIMESTAMP }
       total_delivery_amount: { display_name: 供应商交货总额, description: 该供应商所有合同下全部交货记录的交货金额合计（元，含税）；由规则「供应商交货总额」衍生, type: DECIMAL, uom: 元 }

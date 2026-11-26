@@ -30,7 +30,7 @@ compatibility: 机器检查需 Python 3.10+ 与 PyYAML（运行 lint_model.py �
 5. 口径正确性：derived 表达式与业务口径一致吗？（试用实证：上卷公式引用错字段——SUM 了缺货量而非未交货量）
 6. 术语一致性：与既有本体（seeds）、与 brief/访谈用语一致吗？同一概念有两种建模吗？
 7. 冲突处理：conflicts 全部裁决了吗？未裁决的定稿了吗（不得）？
-8. open_questions 清零：全部解决或显式标记"接受风险"了吗？
+8. open_questions 清零：全部解决或显式标记"接受风险"了吗？**探索记录收口**：资料包含 `exploration.yaml` 时，必问项必须全部收口——`check_exploration.py` 判定可交接（阻塞清单为空）；`rejected` 条目不得以任何形式回到设计稿，发现即 ❌ 不通过。
 9. **卡片↔DSL 一致性（v0.4.5 新增，xgimi 遍历实证：卡片写"六类变化"、DSL 枚举实为 7 值；卡片 demand_source=order、DSL=sales_order）**：fact-cards 的字段名/枚举值/数量口径与 model.yaml 逐项对照——自由文本卡片→DSL 的形态转换无 lint 可查，漂移只在此处人审拦截；顺带核对 description 与 enum_values 的数量一致性（描述"三态"但枚举 4 值=描述漂移）。
 
 **应用层**：

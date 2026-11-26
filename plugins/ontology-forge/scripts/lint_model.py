@@ -1,13 +1,19 @@
-"""DSL v0.3 模型硬校验器（lint）——ontology-forge 工具链第一环。
+"""DSL v0.4 模型硬校验器（lint）——ontology-forge 工具链第一环（v0.4 新键全部可选，旧 DSL 零改动合法）。
 
 主要 Input：DSL YAML 模型文件路径（命令行位置参数）。
 主要 Output：stdout 中文 lint 报告 + 退出码（0=通过；1=存在 error；2=文件/解析失败）。
-实现 dsl-spec.md §7 全部 15 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
+实现 dsl-spec.md §7 全部 20 条确定性检查：第 1-8 条 v0.2 既有（schema/主键/links 闭合/
 表达式方言/trigger/下游声明/衍生一致/外键一致）；第 9 条受控词表（v0.3，解析逻辑在
 lint_glossary.py）；第 10-11 条动作准入（v0.2.2 §4）；第 12 条规则名全局唯一（v0.3，
 studio-model code 需唯一）；第 13 条关系业务语义名 + 13b 关系业务定义（v0.3.4/0.3.7，
 warning 级）；第 14 条 OQ/conflicts 结构（v0.3.6，七态状态机）；第 15 条枚举双写
-（v0.3.6，孤儿枚举值）；外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
+（v0.3.6，孤儿枚举值）；第 16 条 links 基数枚举（v0.4，显式形态 cardinality
+n:1/1:1）；第 17 条 trigger 分支（v0.4，branches 与 logic/downstream 互斥、分支
+结构/兜底位置/with 参数映射）；第 18 条声明式动作步骤（v0.4，steps 与 recipe/function
+互斥、步骤逐项可解析）；第 19 条动作挂载校验（v0.4，validation_rules 引用 admission
+且 upstream 即本动作）；第 20 条准入字段可解析（v0.4，admission 的 check:instance
+字段须可从目标实体解析——编译进平台 validation 后字段必被解析，lint 与编译器同判）；
+外加 v0.2 §3 的 upstream 单元素约束。links 同时支持简写
 ``alias: Target`` 与显式 fk ``alias: {target, fk: [字段...]}``（简写行为不变）。
 error 影响退出码，warning 仅提示。逻辑完全由 DSL 结构驱动，不含实体名特判。
 """
@@ -46,6 +52,13 @@ ALLOWED_OQ_STATUS = {
 }
 # ALLOWED_CONFLICT_STATUS：§1 conflicts 状态两态（人审裁决前一律 pending）。
 ALLOWED_CONFLICT_STATUS = {"pending", "resolved"}
+# ALLOWED_CARDINALITY：§2 links 显式形态 cardinality 枚举（v0.4）——方向语义 = 本实体:目标实体；
+# 1:n 由目标侧 links 表达、n:n 平台无建模先例不引入，均不进 DSL。
+ALLOWED_CARDINALITY = {"n:1", "1:1"}
+# STEP_TYPES：§4 声明式动作步骤类型枚举（v0.4，dsl-spec §4 声明式形态）。
+STEP_TYPES = {"data", "notification"}
+# DATA_OPERATIONS：§4 data 步骤 operation 枚举（v0.4，对齐平台简化报文）。
+DATA_OPERATIONS = {"create", "update"}
 # PASCAL_RE / SNAKE_RE：实体 PascalCase、字段 snake_case 的命名风格正则。
 PASCAL_RE = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 SNAKE_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
@@ -266,9 +279,17 @@ def _check_links(entities: dict, report: Report) -> None:
                     if field not in own_props:
                         report.err("lint3 links", where,
                                    f"显式 fk 字段 {field!r} 未在本实体 properties 声明（v0.3 约定）")
+            # raw：links 原始值（简写为字符串、显式为映射——供 lint16/13/13b 判形态）
+            raw = (ent.get("links") or {}).get(alias)
+            # lint16：links 基数（v0.4，仅显式形态声明 cardinality 时校验；简写形态缺省 n:1 不查）
+            if isinstance(raw, dict) and "cardinality" in raw:
+                card = raw.get("cardinality")
+                if card not in ALLOWED_CARDINALITY:
+                    report.err("lint16 links基数", where,
+                               f"cardinality={card!r} 不在枚举 n:1/1:1 内（方向语义=本实体:目标实体，"
+                               "缺省 n:1；1:n 由目标侧 links 表达，n:n 不进 DSL——v0.4）")
             # lint13：关系业务语义名缺失（简写形态无 name / 显式形态未写 name）——warning
             # （用户实证：只建连线不说清"是什么关系"，拓扑与平台关系名不可读）
-            raw = (ent.get("links") or {}).get(alias)
             has_name = isinstance(raw, dict) and isinstance(raw.get("name"), str) and raw["name"].strip()
             if not has_name:
                 report.warn("lint13 关系语义名", where,
@@ -308,7 +329,7 @@ def _check_foreign_keys(entities: dict, report: Report) -> None:
                             " 兼容的外键字段（v0.2 约定 2：外键属性与 links 并存）")
 
 
-# ===========五、表达式静态检查（lint 规则 4/6/7 + upstream 约束）==========
+# ===========五、表达式与 trigger 静态检查（lint 规则 4/5/6/7/17 + upstream 约束）==========
 def _build_plural_index(entities: dict) -> dict[str, dict[str, set[str]]]:
     """构建复数引用索引：复数前缀 -> {被指向实体 -> set(引用方实体)}。
 
@@ -428,6 +449,42 @@ def _derived_target(logic: Any) -> tuple[Optional[str], Optional[str]]:
     return target.strip() or None, expr.strip() or None
 
 
+def _check_condition_items(conds: list, entity_upstreams: list[str], entities: dict,
+                           plural_index: dict, report: Report, where: str,
+                           tag: str) -> None:
+    """条件级校验（lint 规则 5 与 17 共用）：field 可解析、operator 合法、in 配数组。
+
+    Args:
+        conds: 条件数组（logic.ALL 或 branches[].condition.ALL 的取值）。
+        entity_upstreams: upstream 实体名列表（实体存在者，field 解析起点）。
+        entities: 实体名 -> 实体定义 dict。
+        plural_index: 复数引用索引。
+        report: 问题收集器。
+        where: 报告定位串。
+        tag: 报告规则编号前缀（lint5 trigger / lint17 trigger分支）。
+    Returns:
+        None。
+    """
+    for cond in conds:
+        if not isinstance(cond, dict) or not cond.get("field"):
+            report.err(tag, where, f"条件结构不合法：{cond!r}")
+            continue
+        op = cond.get("operator")
+        value = cond.get("value")
+        where_cond = f"{where} 条件 {cond['field']}"
+        if op not in ALLOWED_OPERATORS:
+            report.err(tag, where_cond, f"operator={op!r} 不在枚举 ==/!=/>/>=/</<=/in 内")
+        if op == "in" and not isinstance(value, list):
+            report.err(tag, where_cond, f"operator=in 的 value 必须为数组，得到 {value!r}")
+        if isinstance(value, list) and op != "in":
+            report.err(tag, where_cond, f"value 为数组时 operator 必须为 in，当前 {op!r}")
+        segs = str(cond["field"]).split(".")
+        if entity_upstreams and not any(
+                _path_ok(segs, 0, u, entities, plural_index) for u in entity_upstreams):
+            report.err(tag, where_cond,
+                       f"field 无法从 upstream（{'/'.join(entity_upstreams)}）解析")
+
+
 def _check_trigger(rule: dict, entity_upstreams: list[str], entities: dict,
                    plural_index: dict, report: Report, where: str) -> None:
     """lint 规则 5：trigger 条件 field 可解析、operator 合法、in 配数组。
@@ -445,26 +502,176 @@ def _check_trigger(rule: dict, entity_upstreams: list[str], entities: dict,
     logic = rule.get("logic")
     conds = logic.get("ALL") if isinstance(logic, dict) else None
     if not isinstance(conds, list) or not conds:
-        report.err("lint5 trigger", where, "logic.ALL 须为非空条件数组（当前引擎仅支持 ALL 合取）")
+        report.err("lint5 trigger", where, "logic.All 须为非空条件数组（当前引擎仅支持 ALL 合取）")
         return
-    for cond in conds:
-        if not isinstance(cond, dict) or not cond.get("field"):
-            report.err("lint5 trigger", where, f"条件结构不合法：{cond!r}")
+    _check_condition_items(conds, entity_upstreams, entities, plural_index, report,
+                           where, "lint5 trigger")
+
+
+def _stripped_params(action: Any) -> set:
+    """取动作 parameters 键集合并统一剥 $ 前缀（v0.4 参数名匹配口径）。
+
+    兼容两种 parameters 书写：recipe 动作键不带 $（v0.2.2 形态）、声明式动作键带 $
+    （v0.4 §4）；对照时一律剥前缀比对（$x ≡ x），避免新旧动作混挂时误报。
+
+    Args:
+        action: 动作定义 dict（可为 None——动作未声明场景）。
+    Returns:
+        剥前缀后的参数名集合；action 无 parameters 时为空集合。
+    """
+    params = action.get("parameters") if isinstance(action, dict) else None
+    if not isinstance(params, dict):
+        return set()
+    return {str(p)[1:] if str(p).startswith("$") else str(p) for p in params}
+
+
+def _check_value_form(value: Any, action: Any, entities: dict,
+                      report: Report, where: str, tag: str, allow_param: bool) -> None:
+    """校验 v0.4 新键中的引用值形态：常量 / @Entity.attr 可解析 /（可选）@param:$参数。
+
+    Args:
+        value: 被检值（steps 的 assignments/通知字段、trigger 分支 with 的取值）。
+        action: 值所依附的动作定义（@param 引用对照 parameters；with 场景为 downstream 动作）。
+        entities: 实体名 -> 实体定义 dict。
+        report: 问题收集器。
+        where: 报告定位串。
+        tag: 报告规则编号前缀（lint17 trigger分支 / lint18 声明式动作）。
+        allow_param: 是否允许 @param:$参数 引用（steps 值允许；with 值只允许常量或 @Entity.attr）。
+    Returns:
+        None。
+    """
+    if isinstance(value, (bool, int, float)):
+        return  # 数值/布尔标量常量
+    if isinstance(value, str):
+        if value.startswith("@param:"):
+            ref = value[len("@param:"):]
+            if not allow_param:
+                report.err(tag, where, f"值 {value!r} 形态非法——只允许常量或 @Entity.attr（@param 引用不用于此处）")
+            elif not ref.startswith("$"):
+                report.err(tag, where, f"@param 引用 {value!r} 的参数名未带 $ 前缀（v0.4 约定：@param:$参数）")
+            elif ref[1:] not in _stripped_params(action):
+                report.err(tag, where, f"@param 引用 {value!r} 的参数不在本动作 parameters 中")
+            return
+        if value.startswith("@"):
+            # @Entity.attr 引用形态：实体须存在、字段须在其 properties 声明（单层，不带点路径）
+            ent_name, dot, attr = value[1:].partition(".")
+            if not dot or not ent_name or not attr or "." in attr:
+                report.err(tag, where, f"值 {value!r} 不是合法的 @Entity.attr 形态")
+                return
+            ent = entities.get(ent_name)
+            if not isinstance(ent, dict):
+                report.err(tag, where, f"@Entity.attr 引用 {value!r} 的实体 {ent_name!r} 不存在")
+            elif attr not in (ent.get("properties") or {}):
+                report.err(tag, where,
+                           f"@Entity.attr 引用 {value!r} 的字段 {attr!r} 未在实体 {ent_name} properties 声明")
+            return
+        return  # 普通字符串常量
+    forms = "常量、@param:$参数 或 @Entity.attr" if allow_param else "常量或 @Entity.attr"
+    report.err(tag, where, f"值 {value!r} 形态非法——只允许 {forms}")
+
+
+def _check_with_mapping(branch: dict, downstream: Any, actions_index: dict,
+                        entities: dict, report: Report, label: str) -> None:
+    """lint 规则 17（with 部分）：参数名带 $ 前缀、在 downstream 动作 parameters、值形态合法。
+
+    Args:
+        branch: 单个分支 dict（含可选 with）。
+        downstream: 分支的 downstream 取值（动作名字符串或缺失）。
+        actions_index: DSL actions 段索引（动作名 -> 动作定义）。
+        entities: 实体名 -> 实体定义 dict。
+        report: 问题收集器。
+        label: 分支级报告定位串（如 规则「x」 分支[0]）。
+    Returns:
+        None。
+    """
+    with_map = branch.get("with")
+    if with_map is None:
+        return
+    if not isinstance(with_map, dict):
+        report.err("lint17 trigger分支", label, "with 须为映射结构（$参数名 -> 值）")
+        return
+    # with 存在即要求 downstream 动作可对照（引擎内置隐式动作不承载自定义参数映射）
+    action = actions_index.get(downstream) if isinstance(downstream, str) else None
+    params = _stripped_params(action)
+    for key, value in with_map.items():
+        key_str = str(key)
+        if not key_str.startswith("$"):
+            report.err("lint17 trigger分支", label,
+                       f"with 参数名 {key_str!r} 未带 $ 前缀（v0.4 约定：with 键以 $ 书写）")
+        elif action is None:
+            report.err("lint17 trigger分支", label,
+                       f"with 参数 {key_str!r} 无法对照——downstream 动作 {downstream!r} 未在 DSL actions 中声明")
+        elif key_str[1:] not in params:
+            report.err("lint17 trigger分支", label,
+                       f"with 参数 {key_str!r} 不在 downstream 动作 {downstream!r} 的 parameters 中")
+        _check_value_form(value, action, entities, report, label,
+                         "lint17 trigger分支", allow_param=False)
+
+
+def _check_trigger_branches(rule: dict, entity_upstreams: list[str], entities: dict,
+                            actions_index: dict, plural_index: dict,
+                            report: Report, where: str) -> None:
+    """lint 规则 17（v0.4）：trigger branches 多分支结构、条件合法性与 with 参数映射。
+
+    Args:
+        rule: 声明了 branches 的 trigger 规则 dict。
+        entity_upstreams: upstream 实体名列表（实体存在者，条件 field 解析起点）。
+        entities: 实体名 -> 实体定义 dict。
+        actions_index: DSL actions 段索引（动作名 -> 动作定义）。
+        plural_index: 复数引用索引。
+        report: 问题收集器。
+        where: 报告定位串。
+    Returns:
+        None。
+    """
+    #   1. 与旧 logic/downstream 二选一：同现即 error（结构违规，不猜哪种生效）
+    legacy_keys = [k for k in ("logic", "downstream") if k in rule]
+    if legacy_keys:
+        report.err("lint17 trigger分支", where,
+                   f"branches 与旧键 {'/'.join(legacy_keys)} 并存——branches 与 logic+downstream 二选一（v0.4）")
+    branches = rule.get("branches")
+    if not isinstance(branches, list) or not branches:
+        report.err("lint17 trigger分支", where, "branches 须为非空分支数组（v0.4 §3.2）")
+        return
+    # fallback_indices/cond_count：兜底分支（无 condition 项）下标收集与条件分支计数
+    fallback_indices: list[int] = []
+    cond_count = 0
+    for idx, branch in enumerate(branches):
+        if not isinstance(branch, dict):
+            report.err("lint17 trigger分支", where, f"branches[{idx}] 不是映射结构")
             continue
-        op = cond.get("operator")
-        value = cond.get("value")
-        where_cond = f"{where} 条件 {cond['field']}"
-        if op not in ALLOWED_OPERATORS:
-            report.err("lint5 trigger", where_cond, f"operator={op!r} 不在枚举 ==/!=/>/>=/</<=/in 内")
-        if op == "in" and not isinstance(value, list):
-            report.err("lint5 trigger", where_cond, f"operator=in 的 value 必须为数组，得到 {value!r}")
-        if isinstance(value, list) and op != "in":
-            report.err("lint5 trigger", where_cond, f"value 为数组时 operator 必须为 in，当前 {op!r}")
-        segs = str(cond["field"]).split(".")
-        if entity_upstreams and not any(
-                _path_ok(segs, 0, u, entities, plural_index) for u in entity_upstreams):
-            report.err("lint5 trigger", where_cond,
-                       f"field 无法从 upstream（{'/'.join(entity_upstreams)}）解析")
+        label = f"{where} 分支[{idx}]"
+        downstream = branch.get("downstream")
+        if not (isinstance(downstream, str) and downstream):
+            report.err("lint17 trigger分支", label, "缺少 downstream（分支触发的动作名）")
+        condition = branch.get("condition")
+        if condition is None:
+            fallback_indices.append(idx)  # 无条件项 = 兜底分支（otherwise）
+        elif not isinstance(condition, dict):
+            cond_count += 1
+            report.err("lint17 trigger分支", label, "condition 不是映射结构（须为 {ALL: [...]}）")
+        else:
+            cond_count += 1
+            conds = condition.get("ALL")
+            if not isinstance(conds, list) or not conds:
+                report.err("lint17 trigger分支", label,
+                           "condition.ALL 须为非空条件数组（当前引擎仅支持 ALL 合取）")
+            else:
+                _check_condition_items(conds, entity_upstreams, entities, plural_index,
+                                       report, label, "lint17 trigger分支")
+        _check_with_mapping(branch, downstream, actions_index, entities, report, label)
+    #   2. 至少一个条件分支（全部为无条件项时分支结构失去判别意义）
+    if cond_count == 0:
+        report.err("lint17 trigger分支", where,
+                   "branches 至少要有一个条件分支（无条件项只能是兜底分支）")
+    #   3. 兜底分支至多一个且必须是最后一项（平台 otherwise 唯一）
+    if len(fallback_indices) > 1:
+        report.err("lint17 trigger分支", where,
+                   f"兜底分支（无 condition 项）至多一个，实际 {len(fallback_indices)} 个（下标 {fallback_indices}）")
+    for idx in fallback_indices:
+        if idx != len(branches) - 1:
+            report.err("lint17 trigger分支", where,
+                       f"兜底分支（无 condition 项）必须是最后一项，当前在下标 {idx}")
 
 
 def _check_rules(model: dict, entities: dict, plural_index: dict,
@@ -504,15 +711,18 @@ def _check_rules(model: dict, entities: dict, plural_index: dict,
         upstreams = [u for u in upstream_raw if isinstance(u, str)]
         if (unknown := [u for u in upstreams if u not in entities]) and rule_type != "admission":
             report.err("lint1 schema", where, f"upstream 实体不存在：{'/'.join(unknown)}")
-        # lint 规则 6：derived 的 downstream 由编译器回填，DSL 不得声明；trigger/admission 必须自带
+        # lint 规则 6：derived 的 downstream 由编译器回填，DSL 不得声明；trigger/admission 必须自带。
+        # v0.4：trigger 的 branches 形态 downstream 由分支承载（lint17 管辖），本检查只管旧形态。
         if rule_type == "derived_property" and "downstream" in rule:
             report.err("lint6 downstream", where,
                        f"derived_property 不得声明 downstream（{rule['downstream']!r}），编译时回填 Computed Property")
-        if rule_type in ("trigger", "admission") and not rule.get("downstream"):
+        branches_form = rule_type == "trigger" and "branches" in rule
+        if rule_type in ("trigger", "admission") and not branches_form \
+                and not rule.get("downstream"):
             report.err("lint6 downstream", where, f"{rule_type} 规则缺少 downstream")
         if rule_type == "admission":
             # v0.2.2 §4：admission 依附动作（upstream 为 action 名而非实体），走规则 10/11 专项检查
-            _check_admission(rule, actions_index, where, report)
+            _check_admission(rule, actions_index, where, report, entities, plural_index)
             continue
         entity_upstreams = [u for u in upstreams if u in entities]
         if rule_type == "derived_property":
@@ -531,7 +741,12 @@ def _check_rules(model: dict, entities: dict, plural_index: dict,
                 derived_targets.add((entity_upstreams[0], target))
             _check_expression(expr, entity_upstreams, entities, plural_index, report, where)
         else:
-            _check_trigger(rule, entity_upstreams, entities, plural_index, report, where)
+            # v0.4：trigger 的 branches 多分支形态走 lint17 专项检查；旧形态（logic 合取）走 lint5
+            if branches_form:
+                _check_trigger_branches(rule, entity_upstreams, entities, actions_index,
+                                        plural_index, report, where)
+            else:
+                _check_trigger(rule, entity_upstreams, entities, plural_index, report, where)
     # lint 规则 7 方向 B：properties 中显式标记 derived 的字段必须有规则承载
     for name, ent in entities.items():
         for field, spec in (ent.get("properties") or {}).items():
@@ -588,14 +803,17 @@ def _collect_param_refs(node: Any, refs: list[str]) -> None:
 
 
 def _check_admission(rule: dict, actions_index: dict[str, dict],
-                     where: str, report: Report) -> None:
-    """lint 规则 10/11：admission 的 upstream action 声明与参数引用合法性。
+                     where: str, report: Report,
+                     entities: dict, plural_index: dict) -> None:
+    """lint 规则 10/11/20：admission 的动作声明、参数引用与实例字段可解析性。
 
     Args:
         rule: admission 规则 dict（upstream 为 action 名列表）。
         actions_index: DSL actions 段索引（动作名 -> 动作定义）。
         where: 报告定位串。
         report: 问题收集器。
+        entities: 实体名 -> 实体定义 dict（规则 20 的字段解析用）。
+        plural_index: 复数引用索引（规则 20 的点路径解析用）。
     Returns:
         None。
     """
@@ -608,7 +826,8 @@ def _check_admission(rule: dict, actions_index: dict[str, dict],
     known_params: set[str] = set()
     for act in (valid_actions := [u for u in upstreams if u in actions_index]):
         if isinstance(params := actions_index[act].get("parameters"), dict):
-            known_params |= set(params)
+            # 参数键前缀归一（$x ≡ x）：recipe 动作键不带 $、v0.4 声明式带 $，与 @param: 引用对照前统一
+            known_params |= {str(p).lstrip("$") for p in params}
     if not valid_actions:
         return
     refs: list[str] = []
@@ -617,9 +836,150 @@ def _check_admission(rule: dict, actions_index: dict[str, dict],
         if ref not in known_params:
             report.err("lint11 参数引用", where,
                        f"参数引用 {ref!r} 不存在于 upstream 动作（{'/'.join(valid_actions)}）的 parameters")
+    #   3. 规则 20：check: instance 条目的 field 须可从该 entity 解析（属性或点路径）。
+    #    v0.4 起 admission 编进平台 validation，字段必被编译解析——lint 与编译器须同判
+    #    （评测夹具引用不存在字段的盲区实证：旧编译器不编 admission 故从未暴露）。
+    for cond in ((rule.get("logic") or {}) or {}).get("ALL") or []:
+        if not (isinstance(cond, dict) and cond.get("check") == "instance"):
+            continue
+        entity, field = cond.get("entity"), cond.get("field")
+        if entity not in entities or not isinstance(field, str) or not field:
+            continue  # entity 不存在由 schema 侧管辖；field 缺失同理，不重复计数
+        if not _path_ok(field.split("."), 0, entity, entities, plural_index):
+            report.err("lint20 准入字段", where,
+                       f"实例字段 {field!r} 无法在实体 {entity!r} 上解析（须为该实体属性或点路径）")
 
 
-# ===========七、顶层 OQ/conflicts 与枚举双写检查（lint 规则 14、15，v0.3.6）==========
+# ===========七、声明式动作步骤与挂载校验检查（lint 规则 18/19，v0.4）==========
+def _check_steps(action: dict, entities: dict, report: Report, where: str) -> None:
+    """lint 规则 18（steps 部分）：步骤类型枚举、data 步骤可解析性、notification 必填与值形态。
+
+    Args:
+        action: 含 steps 的动作定义 dict。
+        entities: 实体名 -> 实体定义 dict。
+        report: 问题收集器。
+        where: 报告定位串（动作「名」）。
+    Returns:
+        None。
+    """
+    steps = action.get("steps")
+    if not isinstance(steps, list) or not steps:
+        report.err("lint18 声明式动作", where, "steps 须为非空步骤数组（v0.4 §4）")
+        return
+    for idx, step in enumerate(steps):
+        label = f"{where} 步骤[{idx}]"
+        if not isinstance(step, dict):
+            report.err("lint18 声明式动作", label, "步骤不是映射结构")
+            continue
+        stype = step.get("type")
+        if stype not in STEP_TYPES:
+            report.err("lint18 声明式动作", label, f"type={stype!r} 不在枚举 data/notification 内")
+            continue
+        if stype == "data":
+            # data 步骤：目标实体存在、operation 枚举、assignments 字段可解析且值形态合法
+            entity_name = step.get("entity")
+            ent = None
+            if not (isinstance(entity_name, str) and entity_name):
+                report.err("lint18 声明式动作", label, "缺少 entity（数据步骤的目标实体）")
+            else:
+                ent = entities.get(entity_name)
+                if not isinstance(ent, dict):
+                    report.err("lint18 声明式动作", label, f"entity {entity_name!r} 不存在")
+                    ent = None
+            operation = step.get("operation")
+            if operation not in DATA_OPERATIONS:
+                report.err("lint18 声明式动作", label, f"operation={operation!r} 不在枚举 create/update 内")
+            assignments = step.get("assignments")
+            if not isinstance(assignments, dict) or not assignments:
+                report.err("lint18 声明式动作", label, "assignments 须为非空映射（字段 -> 值）")
+                continue
+            for field, value in assignments.items():
+                if ent is not None and str(field) not in (ent.get("properties") or {}):
+                    report.err("lint18 声明式动作", label,
+                               f"赋值字段 {field!r} 未在实体 {entity_name} properties 声明")
+                _check_value_form(value, action, entities, report, label,
+                                  "lint18 声明式动作", allow_param=True)
+        else:
+            # notification 步骤：channel/recipients/content 必填非空且值形态合法
+            for field in ("channel", "recipients", "content"):
+                value = step.get(field)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    report.err("lint18 声明式动作", label, f"缺少 {field}（通知步骤必填且非空）")
+                    continue
+                _check_value_form(value, action, entities, report, label,
+                                  "lint18 声明式动作", allow_param=True)
+
+
+def _check_action_validation_rules(action: dict, rules_by_name: dict,
+                                   report: Report, where: str) -> None:
+    """lint 规则 19（v0.4）：validation_rules 引用存在、rule_type=admission、upstream 即本动作。
+
+    Args:
+        action: 含 validation_rules 的动作定义 dict。
+        rules_by_name: 规则名 -> 规则定义索引（重名由 lint12 全局报错，此处同名取后值即可）。
+        report: 问题收集器。
+        where: 报告定位串（动作「名」）。
+    Returns:
+        None。
+    """
+    vrules = action.get("validation_rules")
+    if not isinstance(vrules, list) or not vrules:
+        report.err("lint19 挂载校验", where, "validation_rules 须为非空数组（挂载的 admission 规则名列表）")
+        return
+    action_name = action.get("name")
+    for ref in vrules:
+        ref_str = str(ref)
+        rule = rules_by_name.get(ref_str)
+        if rule is None:
+            report.err("lint19 挂载校验", where, f"validation_rules 引用的规则 {ref_str!r} 不存在")
+            continue
+        if rule.get("rule_type") != "admission":
+            report.err("lint19 挂载校验", where,
+                       f"引用规则 {ref_str!r} 的 rule_type 为 {rule.get('rule_type')!r}"
+                       "——挂载校验只能引用 admission 规则")
+        upstreams = [u for u in (rule.get("upstream") or []) if isinstance(u, str)]
+        if action_name not in upstreams:
+            report.err("lint19 挂载校验", where,
+                       f"引用规则 {ref_str!r} 的 upstream（{'/'.join(upstreams) or '∅'}）与本动作名不一致")
+
+
+def _check_actions(model: dict, entities: dict, report: Report) -> None:
+    """lint 规则 18/19 主检查（v0.4）：声明式动作互斥约束、步骤结构与挂载校验引用。
+
+    v0.4 新键全部可选——无 steps/validation_rules 的旧 DSL 不触发任何新检查（零新报错）。
+
+    Args:
+        model: DSL 模型 dict。
+        entities: 实体名 -> 实体定义 dict。
+        report: 问题收集器。
+    Returns:
+        None。
+    """
+    # rules_by_name：规则名 -> 规则定义（lint19 引用对照用）
+    rules_by_name: dict = {}
+    for rule in model.get("rules") or []:
+        if isinstance(rule, dict) and isinstance(rule.get("name"), str):
+            rules_by_name[rule["name"]] = rule
+    for idx, action in enumerate(model.get("actions") or []):
+        if not isinstance(action, dict):
+            continue  # actions 元素结构非法不属 lint18 职责（既有检查亦未覆盖，不新增报错）
+        name = action.get("name") or f"actions[{idx}]"
+        where = f"动作「{name}」"
+        # lint18：steps 与 recipe / function 互斥（同现即 error，不猜哪种生效）
+        if "steps" in action:
+            if "recipe" in action:
+                report.err("lint18 声明式动作", where,
+                           "steps 与 recipe 并存——声明式与骨架配方二选一（v0.4）")
+            if "function" in action:
+                report.err("lint18 声明式动作", where,
+                           "steps 与 function 并存——函数型动作不带步骤（v0.4）")
+            _check_steps(action, entities, report, where)
+        # lint19：挂载校验引用（独立于 steps——recipe/函数型动作亦可挂载 admission）
+        if "validation_rules" in action:
+            _check_action_validation_rules(action, rules_by_name, report, where)
+
+
+# ===========八、顶层 OQ/conflicts 与枚举双写检查（lint 规则 14、15，v0.3.6）==========
 def _check_open_questions(model: dict, report: Report) -> None:
     """lint 规则 14（OQ 部分）：id 格式与唯一性、topic/question 非空、status 七态、resolved 必带 resolution。
 
@@ -730,7 +1090,7 @@ def _check_enum_doublewrite(entities: dict, report: Report) -> None:
                             "（剥离后 description 是引擎侧唯一语义载体）")
 
 
-# ===========八、主流程与命令行入口==========
+# ===========九、主流程与命令行入口==========
 def lint_model(model: dict, report: Report) -> None:
     """执行全部 lint 检查（入口聚合）。Args: model DSL 模型 dict；report 问题收集器。Returns: None。"""
     _check_schema(model, report)
@@ -743,6 +1103,7 @@ def lint_model(model: dict, report: Report) -> None:
     _check_foreign_keys(entities, report)
     lint_glossary.check_entities(entities, report)  # lint 规则 9：受控词表（v0.3，缺表降级跳过）
     _check_rules(model, entities, _build_plural_index(entities), report)
+    _check_actions(model, entities, report)  # lint 规则 18/19：声明式动作与挂载校验（v0.4，新键可选）
     _check_open_questions(model, report)  # lint 规则 14：OQ 结构（v0.3.6，七态状态机）
     _check_conflicts(model, report)  # lint 规则 14：conflicts 结构（v0.3.6）
     _check_enum_doublewrite(entities, report)  # lint 规则 15：枚举双写（v0.3.6，孤儿枚举值）

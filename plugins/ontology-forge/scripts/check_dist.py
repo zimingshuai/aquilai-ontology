@@ -1,4 +1,4 @@
-"""分发结构门禁：多平台清单合规 + frontmatter 必填 + 渲染缓存与版本锁 + zip 结构断言 + 口径漂移断言 + 规范符合性断言。
+"""分发结构门禁：多平台清单合规 + frontmatter 必填 + 渲染缓存与版本锁 + zip 结构断言 + 口径漂移断言 + 规范符合性断言 + 范例门禁断言。
 
 用途：发布/打包前自检（教训沉淀：WorkBuddy 首次上传因缺 avatars 与 description
      两次被平台拒收，均属"机器可判定"的合规项——本脚本把它们固化为断言闸门；
@@ -8,16 +8,23 @@
      另含 Agent Skills 开放规范（agentskills.io/specification）机器可判定项：
      name 字符规则与长度、description/compatibility 长度上限；
      另含触发用例集（evals/trigger）结构断言——用例集是触发回归的载体，
-     目录/文件静默缺失或结构坏件即回归失效，一律 fail 不降级）。
+     目录/文件静默缺失或结构坏件即回归失效，一律 fail 不降级；
+     另含范例门禁断言——黄金范例 examples/supplier-recon 的关键文件在位、
+     探索记录可交接、DSL 过 lint、CQ 全解析、编译幂等、拓扑同步、与评测
+     黄金答案结构等价（范例 README 第六节口径的机器固化，任一不过即范例
+     不可再被当作对照物，等同插件回归失败））。
 主要 Input：无必填参数（插件根按脚本位置自定位）。
 主要 Output：stdout 中文逐项检查报告；退出码 0=全部通过，1=任一断言失败
      （含"zip 产物版本落后于清单"的过期检查——防止旧包被误传平台）。
 """
 
 import ast
+import hashlib
 import json
 import re
+import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 from typing import Optional
@@ -83,6 +90,46 @@ SKILL_DESC_MAX_LEN = 1024
 SKILL_COMPAT_MAX_LEN = 500
 # TRIGGER_DIR：仓库根触发用例集目录（技能触发回归的载体，结构有效性进门禁；写法参考 EVALS_DIR）
 TRIGGER_DIR = EVALS_DIR / "trigger"
+# EXAMPLES_README：范例总导读（门禁节存在性断言对象——该节是范例门禁的验收口径）
+EXAMPLES_README = PLUGIN_ROOT / "examples" / "README.md"
+# EXAMPLE_DOMAIN_DIR：范例域目录（黄金范例唯一域：供应商月度对账与差异处理）
+EXAMPLE_DOMAIN_DIR = PLUGIN_ROOT / "examples" / "supplier-recon"
+# EXAMPLE_REQUIRED_FILES：范例域关键文件相对路径（域导读 + 九步各产物 + 资料包清单，缺一即 fail 指名）
+EXAMPLE_REQUIRED_FILES = (
+    "README.md", "model.yaml", "topology.md", "charter.md", "fact-cards.md",
+    "design-proposal.md", "business-inquiry.md",
+    "modeling-brief/exploration.yaml", "modeling-brief/brief.yaml", "modeling-brief/intake-log.md",
+)
+# EXAMPLE_MODEL_YAML：范例本体 DSL（lint/CQ/编译幂等/拓扑同步/结构等价断言对象）
+EXAMPLE_MODEL_YAML = EXAMPLE_DOMAIN_DIR / "model.yaml"
+# EXAMPLE_EXPLORATION_YAML：范例探索记录（可交接断言对象）
+EXAMPLE_EXPLORATION_YAML = EXAMPLE_DOMAIN_DIR / "modeling-brief" / "exploration.yaml"
+# EXAMPLE_TOPOLOGY_MD：范例拓扑源（render_topology.py 重渲染须与其逐字节一致）
+EXAMPLE_TOPOLOGY_MD = EXAMPLE_DOMAIN_DIR / "topology.md"
+# GOLD_MODEL_YAML：评测黄金答案 DSL（结构等价防漂移的对照源——它在评测仓里必须存在）
+GOLD_MODEL_YAML = EVALS_DIR / "ontology-modeling" / "goldstandard" / "gold" / "model.yaml"
+# CHECK_EXPLORATION_PY：探索记录门禁脚本（范例可交接断言实跑对象）
+CHECK_EXPLORATION_PY = PLUGIN_ROOT / "scripts" / "check_exploration.py"
+# CHECK_CQ_PY：CQ 回验脚本（范例 CQ 全解析断言实跑对象）
+CHECK_CQ_PY = PLUGIN_ROOT / "scripts" / "check_cq.py"
+# COMPILE_MODEL_PY：DSL 编译脚本（范例编译幂等断言实跑对象）
+COMPILE_MODEL_PY = PLUGIN_ROOT / "scripts" / "compile_model.py"
+# RENDER_TOPOLOGY_PY：拓扑渲染脚本（范例拓扑同步断言实跑对象）
+RENDER_TOPOLOGY_PY = PLUGIN_ROOT / "scripts" / "render_topology.py"
+# COMPILE_BUNDLE_FILES：编译幂等断言的产物文件名（两次编译逐文件 sha256 相等）
+COMPILE_BUNDLE_FILES = ("studio-model.yaml", "objects.json", "rules.json")
+# EXPLORATION_HANDOFF_LINE：check_exploration.py 可交接结论行（期望输出行）
+EXPLORATION_HANDOFF_LINE = "====探索记录可交接建模===="
+# LINT_CLEAN_LINE：lint_model.py 零错零警结论行（期望输出行）
+LINT_CLEAN_LINE = "error 0 处，warning 0 处"
+# CQ_RESOLVED_LINE：check_cq.py 全解析结论行（期望输出行）
+CQ_RESOLVED_LINE = "不可解析引用 0 处"
+# EXPLORE_CHECKLIST_HTML：缺口探索勾选呈审模板（render_explore_checklist.py 的代入依赖）
+EXPLORE_CHECKLIST_HTML = PLUGIN_ROOT / "assets" / "explore-checklist.html"
+# EXPLORE_CHECKLIST_HOLDERS：勾选模板必需占位符（缺失即 render_explore_checklist.py 产出坏件）
+EXPLORE_CHECKLIST_HOLDERS = ("__DOMAIN__", "__GENERATED_AT__", "__ITEM_DATA__")
+# EXAMPLES_GUARD_HEADLINE：范例总导读的门禁节标题（防范例导读被删成"范例仅供参考"）
+EXAMPLES_GUARD_HEADLINE = "范例受发布门禁保护"
 
 
 # ===========一、检查框架==========
@@ -662,7 +709,154 @@ def check_trigger_cases(report: Report) -> None:
               not problems, "；".join(problems))
 
 
-# ===========六、zip 产物检查==========
+# ===========六、范例门禁检查==========
+def _run_tool(script: Path, args: list) -> subprocess.CompletedProcess:
+    """以子进程实跑插件脚本并捕获输出（范例门禁脚本级断言的统一入口）。
+
+    Args:
+        script: 插件脚本路径（以 sys.executable 执行，与当前解释器同源）。
+        args: 传给脚本的参数列表（路径一律传绝对路径，断言不依赖 cwd）。
+    Returns:
+        CompletedProcess（stdout/stderr 已按 utf-8 解码为文本；目标脚本均
+        自带 sys.stdout.reconfigure(encoding="utf-8")，管道输出无乱码）。
+    """
+    return subprocess.run([sys.executable, str(script)] + [str(a) for a in args],
+                          capture_output=True, text=True, encoding="utf-8")
+
+
+def _tool_fail_detail(proc: subprocess.CompletedProcess, expected_line: str) -> str:
+    """组装脚本级断言的失败明细（退出码 + 期望行 + stdout 尾部）。
+
+    Args:
+        proc: _run_tool 返回的子进程结果。
+        expected_line: 断言要求出现的关键输出行（中文）。
+    Returns:
+        形如「退出码 1，期望行「…」，stdout 尾部：…」的明细文本。
+    """
+    tail = (proc.stdout or "")[-200:]
+    return f"退出码 {proc.returncode}，期望行「{expected_line}」，stdout 尾部：{tail}"
+
+
+def _structure_name_sets(model: dict) -> dict:
+    """从 DSL 模型提取结构等价比较用的三个名称集合（实体/规则/能力问题）。
+
+    Args:
+        model: yaml.safe_load 解析后的 DSL 模型（dict）。
+    Returns:
+        {维度名: 名称集合}——实体名取 entities 键集合，规则名取 rules[].name，
+        能力问题 id 取 competency_questions[].id。
+    """
+    return {
+        "实体名": set((model.get("entities") or {}).keys()),
+        "规则名": {str(r.get("name")) for r in (model.get("rules") or [])},
+        "能力问题 id": {str(q.get("id")) for q in (model.get("competency_questions") or [])},
+    }
+
+
+def check_examples(report: Report) -> None:
+    """黄金范例（examples/supplier-recon）受门禁断言：关键文件在位 + 门禁命令逐条实跑。
+
+    范例 README 第六节声明「改动范例后须重过门禁」——本函数把该口头约定固化为
+    机器断言（探索记录可交接、DSL 过 lint、CQ 全解析、编译幂等、拓扑同步、
+    与评测黄金答案结构等价、勾选模板与门禁节在位）。任一断言失败即范例不可再
+    被当作对照物，等同插件回归失败。check_dist 是发布前手动跑的门禁、非高频
+    CI，每次都真跑脚本（运行成本可接受，本函数不做缓存）。
+
+    Args:
+        report: 结果收集器。
+    Returns:
+        None（结果记入 report；脚本/范例/模板缺失、退出码非 0、关键输出行缺失
+        都 fail 指名，不得 SKIP、不得"文件不存在就跳过"）。
+    """
+    #   1. 范例域目录与关键文件在位（缺一即 fail 指名）
+    check(report, "范例门禁：域目录在位（examples/supplier-recon）", EXAMPLE_DOMAIN_DIR.is_dir(),
+          f"缺 {EXAMPLE_DOMAIN_DIR.relative_to(PLUGIN_ROOT)}——黄金范例整体缺失")
+    for rel in EXAMPLE_REQUIRED_FILES:
+        check(report, f"范例门禁：{rel} 在位", (EXAMPLE_DOMAIN_DIR / rel).is_file(),
+              f"缺 examples/supplier-recon/{rel}")
+
+    #   2. 探索记录可交接（check_exploration.py 退出 0 + 可交接结论行）
+    proc = _run_tool(CHECK_EXPLORATION_PY, [EXAMPLE_EXPLORATION_YAML])
+    check(report, "范例门禁：探索记录可交接建模",
+          proc.returncode == 0 and EXPLORATION_HANDOFF_LINE in (proc.stdout or ""),
+          _tool_fail_detail(proc, EXPLORATION_HANDOFF_LINE))
+
+    #   3. DSL 过 lint（lint_model.py 退出 0 + 零错零警结论行）
+    proc = _run_tool(LINT_MODEL_PY, [EXAMPLE_MODEL_YAML])
+    check(report, "范例门禁：DSL 过 lint（error 0 / warning 0）",
+          proc.returncode == 0 and LINT_CLEAN_LINE in (proc.stdout or ""),
+          _tool_fail_detail(proc, LINT_CLEAN_LINE))
+
+    #   4. CQ 全解析（check_cq.py 退出 0 + 不可解析引用 0 处结论行）
+    proc = _run_tool(CHECK_CQ_PY, [EXAMPLE_MODEL_YAML])
+    check(report, "范例门禁：CQ 全解析（不可解析引用 0 处）",
+          proc.returncode == 0 and CQ_RESOLVED_LINE in (proc.stdout or ""),
+          _tool_fail_detail(proc, CQ_RESOLVED_LINE))
+
+    #   5. 编译幂等：临时目录连续编译两次，三产物逐文件 sha256 相等
+    with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
+        proc1 = _run_tool(COMPILE_MODEL_PY, [EXAMPLE_MODEL_YAML, "--target", "both", "-o", td1])
+        proc2 = _run_tool(COMPILE_MODEL_PY, [EXAMPLE_MODEL_YAML, "--target", "both", "-o", td2])
+        check(report, "范例门禁：编译可完成（两次退出码均 0）",
+              proc1.returncode == 0 and proc2.returncode == 0,
+              f"第一次退出码 {proc1.returncode}、第二次退出码 {proc2.returncode}，"
+              f"stderr 尾部：{(proc1.stderr or proc1.stdout or '')[-200:]}")
+        compile_ok = proc1.returncode == 0 and proc2.returncode == 0
+        for name in COMPILE_BUNDLE_FILES:
+            f1, f2 = Path(td1) / name, Path(td2) / name
+            if compile_ok and f1.is_file() and f2.is_file():
+                check(report, f"范例门禁：编译幂等——{name} 两次 sha256 一致",
+                      hashlib.sha256(f1.read_bytes()).hexdigest()
+                      == hashlib.sha256(f2.read_bytes()).hexdigest(),
+                      f"{name} 两次编译产物 sha256 不一致——编译非确定性")
+            else:
+                report.fail(f"范例门禁：编译幂等——{name} 两次 sha256 一致",
+                            "编译未完成或产物缺失，sha256 无法比较")
+
+    #   6. 拓扑同步：临时目录重渲染 topology.md 与仓库内版本逐字节一致（范例声明过"topology.md 与 DSL 保持同步"）
+    with tempfile.TemporaryDirectory() as td:
+        out_md = Path(td) / "topology.md"
+        proc = _run_tool(RENDER_TOPOLOGY_PY, [EXAMPLE_MODEL_YAML, "-o", out_md])
+        sync_ok = (proc.returncode == 0 and out_md.is_file() and EXAMPLE_TOPOLOGY_MD.is_file()
+                   and hashlib.sha256(out_md.read_bytes()).hexdigest()
+                   == hashlib.sha256(EXAMPLE_TOPOLOGY_MD.read_bytes()).hexdigest())
+        check(report, "范例门禁：拓扑同步（topology.md 与 DSL 一致）", sync_ok,
+              f"退出码 {proc.returncode}——重渲染产物与仓库内 topology.md 不一致"
+              f"（范例侧在位：{EXAMPLE_TOPOLOGY_MD.is_file()}）")
+
+    #   7. 结构等价防漂移：范例与评测黄金答案的实体名/规则名/能力问题 id 三集合完全一致
+    if not (GOLD_MODEL_YAML.is_file() and EXAMPLE_MODEL_YAML.is_file()):
+        missing = "评测黄金答案" if not GOLD_MODEL_YAML.is_file() else "范例"
+        report.fail("范例门禁：结构等价可比较（黄金答案与范例 model.yaml 均在位）",
+                    f"缺 {missing} model.yaml——结构等价断言失去对照源")
+    else:
+        example_sets = _structure_name_sets(yaml.safe_load(EXAMPLE_MODEL_YAML.read_text(encoding="utf-8")))
+        gold_sets = _structure_name_sets(yaml.safe_load(GOLD_MODEL_YAML.read_text(encoding="utf-8")))
+        for label, ex_set in example_sets.items():
+            gold_set = gold_sets[label]
+            check(report, f"范例门禁：结构等价——{label}集合与黄金答案一致（{len(ex_set)} 项）",
+                  ex_set == gold_set,
+                  f"范例多出 {sorted(ex_set - gold_set)}，范例缺失 {sorted(gold_set - ex_set)}")
+
+    #   8. 缺口探索勾选模板在位且占位符齐全（render_explore_checklist.py 的代入依赖，与 cq-checklist 断言同款）
+    if EXPLORE_CHECKLIST_HTML.is_file():
+        tpl_text = EXPLORE_CHECKLIST_HTML.read_text(encoding="utf-8")
+        check(report, "范例门禁：探索勾选模板在位且占位符齐全",
+              all(h in tpl_text for h in EXPLORE_CHECKLIST_HOLDERS),
+              "assets/explore-checklist.html 缺占位符——render_explore_checklist.py 会产出坏件")
+    else:
+        report.fail("范例门禁：探索勾选模板在位且占位符齐全", "缺 assets/explore-checklist.html")
+
+    #   9. 范例总导读的门禁节在位（该节是范例门禁的验收口径，防范例导读被删成"范例仅供参考"）
+    if EXAMPLES_README.is_file():
+        check(report, "范例门禁：范例导读的门禁节在位（范例受发布门禁保护）",
+              EXAMPLES_GUARD_HEADLINE in EXAMPLES_README.read_text(encoding="utf-8"),
+              "examples/README.md 缺「范例受发布门禁保护」节——范例门禁口径被删")
+    else:
+        report.fail("范例门禁：范例导读的门禁节在位", "缺 examples/README.md")
+
+
+# ===========七、zip 产物检查==========
 def check_zip(report: Report) -> None:
     """WorkBuddy zip 产物存在性、新鲜度与结构断言。
 
@@ -687,7 +881,8 @@ def check_zip(report: Report) -> None:
     names = [info.filename for info in infos]
     sizes = {info.filename: info.file_size for info in infos}
     for required in (".codebuddy-plugin/plugin.json", "agents/aquilair-fde.md",
-                     "avatars/expert.png", "assets/mermaid.min.js"):
+                     "avatars/expert.png", "assets/mermaid.min.js",
+                     "examples/supplier-recon/model.yaml"):
         check(report, f"zip 结构：{required} 在位", f"aquilair-fde/{required}" in names)
     # 渲染缓存必须真的进包，否则 WorkBuddy 分发形态下 --image 断网只剩 CDN 单路径
     asset_entry = "aquilair-fde/assets/mermaid.min.js"
@@ -699,7 +894,7 @@ def check_zip(report: Report) -> None:
     check(report, "zip 结构：含 scripts/（宿主通用）", any(n.startswith("aquilair-fde/scripts/") for n in names))
 
 
-# ===========七、模块入口==========
+# ===========八、模块入口==========
 def main() -> int:
     """命令行入口：跑全部分发结构检查。
 
@@ -719,6 +914,7 @@ def main() -> int:
     check_s_count_wording(report)
     check_pipeline_wording(report)
     check_trigger_cases(report)
+    check_examples(report)
     check_zip(report)
     print(report.summary())
     return 0 if report.done else 1

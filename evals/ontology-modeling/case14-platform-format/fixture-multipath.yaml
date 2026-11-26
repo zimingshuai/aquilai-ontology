@@ -1,0 +1,48 @@
+# unit-demo 本体 DSL v0.1.0-draft.1
+# 依据：case14 多路径冲突夹具（虚构域——同一目标实体两条等长 links，表达式路径不可判定）
+# 状态：draft——人审是唯一权威，未确认不得注册引擎
+
+ontology: unit-demo
+version: 0.1.0-draft.1
+base_version: null
+governance:
+  owner: 回归测试
+  maturity: experimental
+
+entities:
+  Unit:
+    display_name: 计量单位
+    table_name: unit
+    description: 计量单位字典
+    properties:
+      unit_code: { display_name: 单位编码, description: 主键, type: STRING, primary: true }
+      unit_name: { display_name: 单位名称, description: 单位中文名, type: STRING }
+    links: {}
+  Material:
+    display_name: 物料
+    table_name: material
+    description: 被计量物料
+    properties:
+      material_code: { display_name: 物料编码, description: 主键, type: STRING, primary: true }
+      in_unit_code: { display_name: 入库单位编码, description: 入库计量单位外键, type: STRING }
+      out_unit_code: { display_name: 出库单位编码, description: 出库计量单位外键, type: STRING }
+      in_unit_display: { display_name: 入库单位名, description: 衍生：入库单位名称, type: STRING, derived: true }
+    links:
+      in_unit: { target: Unit, fk: [in_unit_code], name: 入库计量单位, description: 入库时使用的计量单位, cardinality: "n:1" }
+      out_unit: { target: Unit, fk: [out_unit_code], name: 出库计量单位, description: 出库时使用的计量单位, cardinality: "n:1" }
+
+rules:
+  - rule_type: derived_property
+    name: 入库单位名回填
+    upstream: [Material]
+    logic: "in_unit_display: in_unit.unit_name"
+    description: 从入库单位回填单位名称——in_unit/out_unit 两条等长路径，编译须报不可判定
+
+competency_questions:
+  - id: cq-001
+    q: 某物料的入库单位名称是什么？
+    covered_by: [Material.in_unit_display]
+
+open_questions: []
+conflicts: []
+assumptions: []

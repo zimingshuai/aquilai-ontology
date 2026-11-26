@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<!-- 探索确认清单模板（确定性产物源）——由 scripts/render_explore_checklist.py 代入域名、生成时间、页面数据三个占位符后输出。
+     注意：本注释不得出现占位符的字面名，否则整份页面数据会被重复注入到注释里（含注释结束符的业务文本会提前闭合注释）。
+     零外部依赖自包含：浏览器直接打开即可逐条批复；回传通道为「生成批复文本 → 复制回贴对话」，
+     由 scripts/apply_exploration_feedback.py 确定性应用（行格式：编号 符号 动作词[:备注]，符号仅人读）。
+     维度名称、条目内容全部来自注入数据，模板内不写死任何维度名与业务条目；
+     勾选状态同时挂 window.__exploreState__ 供宿主桥接扩展。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>探索确认清单 · __DOMAIN__</title>
+<style>
+  /* 基调：清爽呈审表单风（浅底/藏蓝主色/三态色标），与 CQ 勾选呈审组件同款 */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f7fa; color: #24292f; padding: 24px; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 20px; color: #1a3a5c; margin-bottom: 4px; }
+  .meta { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+  .guide { background: #eef4fb; border-left: 4px solid #1a6fc4; padding: 10px 14px; font-size: 13px; line-height: 1.7; border-radius: 4px; margin-bottom: 12px; }
+  .stats { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 16px; font-size: 14px; margin-bottom: 6px; }
+  .stats b { color: #1a6fc4; }
+  .stats b.must { color: #a40e26; }
+  .dim { margin-top: 18px; }
+  .dim-t { font-size: 15px; font-weight: 600; color: #1a3a5c; border-left: 4px solid #1a6fc4; padding-left: 10px; margin-bottom: 8px; }
+  .dim-na { font-size: 12px; color: #4b5563; background: #eef2f7; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; }
+  .item-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .item-card.on-keep { background: #f3fbf6; border-color: #2da44e; }
+  .item-card.on-revise { background: #fffbf0; border-color: #d4a72c; }
+  .item-card.on-drop { background: #fef5f5; border-color: #cf222e; }
+  .item-card.on-opt { background: #f2f6fd; border-color: #1a6fc4; }
+  .card-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .item-id { display: inline-block; font-size: 11px; font-weight: 600; color: #1a6fc4; background: #e8f1fb; border-radius: 4px; padding: 1px 7px; }
+  .tag { display: inline-block; font-size: 11px; border-radius: 4px; padding: 1px 7px; background: #f1f5f9; color: #4b5563; border: 1px solid #e2e8f0; }
+  /* 「必问」徽标：红底红边加粗，业务方一眼可辨 */
+  .tag-must { background: #fdebec; color: #a40e26; font-weight: 700; border: 1px solid #cf222e; }
+  .tag-basis.inferred { background: #fdf6e3; color: #8a5a00; border-color: #ecd9a0; }
+  .tag-confirmed { background: #e6f7ec; color: #1a7f37; border-color: #a6d8b5; }
+  .tag-rejected { background: #fdebec; color: #a40e26; border-color: #f3c1c1; }
+  .block-warn { color: #a40e26; font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .row { font-size: 13.5px; line-height: 1.65; margin-bottom: 4px; }
+  .row b { color: #1a3a5c; margin-right: 4px; }
+  .row.statement { font-size: 14.5px; }
+  .options { margin: 2px 0 6px 4px; }
+  .option { font-size: 13px; line-height: 1.7; }
+  .opt-letter { display: inline-block; min-width: 20px; color: #1a6fc4; font-weight: 600; }
+  /* 状态按钮组（radio 语义：三态与选备选互斥，再点同态可取消回未选） */
+  .states { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .state-btn, .opt-btn { border: 1.5px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 5px 14px; font-size: 13px; cursor: pointer; user-select: none; transition: all .12s; font-family: inherit; }
+  .state-btn:hover, .opt-btn:hover { border-color: #1a6fc4; }
+  .state-btn.on[data-s="keep"] { background: #e6f7ec; border-color: #2da44e; color: #1a7f37; font-weight: 600; }
+  .state-btn.on[data-s="revise"] { background: #fff8e6; border-color: #d4a72c; color: #9a6700; font-weight: 600; }
+  .state-btn.on[data-s="drop"] { background: #fdebec; border-color: #cf222e; color: #a40e26; font-weight: 600; }
+  .opt-btn { border-style: dashed; color: #1a6fc4; }
+  .opt-btn.on { background: #e8f1fb; border-color: #1a6fc4; border-style: solid; font-weight: 600; }
+  .note { width: 100%; margin-top: 8px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 10px; font-size: 13px; display: none; font-family: inherit; }
+  .note.show { display: block; }
+  details.settled { margin: 4px 0 14px; border: 1px dashed #cbd5e1; border-radius: 8px; background: #fafbfc; padding: 6px 12px; }
+  details.settled summary { font-size: 13px; color: #4b5563; cursor: pointer; padding: 4px 0; }
+  .settled-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+  .settled-table td { border-top: 1px solid #e8edf3; padding: 6px 8px; vertical-align: top; line-height: 1.6; }
+  .settled-table td.resolution { color: #57606a; width: 38%; }
+  .settled-row.rejected td.statement-cell { color: #8a9199; text-decoration: line-through; }
+  .actions { margin-top: 18px; display: flex; gap: 10px; }
+  .btn-main { background: #1a6fc4; color: #fff; border: none; border-radius: 6px; padding: 9px 22px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .btn-main:hover { background: #155a9f; }
+  .btn-copy { background: #fff; color: #1a6fc4; border: 1.5px solid #1a6fc4; border-radius: 6px; padding: 9px 22px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .btn-copy:hover { background: #e8f1fb; }
+  .warn { color: #a40e26; font-size: 12px; margin-top: 8px; display: none; line-height: 1.7; }
+  .result { display: none; margin-top: 16px; }
+  .result pre { background: #0d2137; color: #d8e6f3; border-radius: 8px; padding: 14px 16px; font-size: 12.5px; line-height: 1.7; overflow-x: auto; white-space: pre-wrap; }
+  .section-t { font-size: 14px; font-weight: 600; margin: 18px 0 8px; color: #1a3a5c; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>__DOMAIN__ 探索确认清单</h1>
+  <div class="meta">生成时间：__GENERATED_AT__ ｜ 探索记录更新：<span id="meta-updated"></span> ｜ 受访人：<span id="meta-interviewee"></span> ｜ ontology-forge 确定性呈审产物</div>
+  <div class="guide">
+    逐条确认探索结论：<b>✅ 按建议</b>（认可卡片上的陈述；待定条目即采纳「AI 建议答案」）｜<b>✏️ 改为</b>（方向对但表述要改，在输入框里写修改意见）｜<b>❌ 否决</b>（结论不成立，可填理由）。
+    有备选的卡片可直接<b>选备选 A/B</b>（与三态互斥）。带「必问」徽标的条目<b>未确认将阻塞进入建模</b>。
+    完成后点<b>「生成批复」</b>，复制批复文本回贴给建模 agent。
+  </div>
+  <div class="stats" id="stats"></div>
+  <div id="groups"></div>
+
+  <div class="actions">
+    <button class="btn-main" onclick="genVerdict()">生成批复</button>
+    <button class="btn-copy" id="copy-btn" onclick="copyVerdict()" style="display:none">复制批复</button>
+  </div>
+  <div class="warn" id="warn"></div>
+  <div class="result" id="result">
+    <div class="section-t">批复文本（复制回贴给 agent，由 apply_exploration_feedback.py 应用）</div>
+    <pre id="verdict"></pre>
+  </div>
+</div>
+
+<script>
+// DATA：页面数据（由 render_explore_checklist.py 注入）——{domain, updated_at, interviewee, groups:[{id, name, not_applicable, cards:[…], settled:[…]}]}
+const DATA = __ITEM_DATA__;
+
+// KIND_LABEL / BASIS_LABEL / STATUS_LABEL / SETTLED_LABEL：条目类型、依据、未定案状态、已定案状态的中文展示标签（纯展示用）
+const KIND_LABEL = { scope: '范围', object: '对象', property: '属性', relation: '关系', state: '状态', action: '动作', trigger: '触发', rule: '规则', constraint: '约束', function: '功能', query: '查询' };
+const BASIS_LABEL = { stated: '资料/口述明示', inferred: 'AI 建议' };
+const STATUS_LABEL = { proposed: 'AI 建议·待确认', pending: '未决·待确认' };
+const SETTLED_LABEL = { confirmed: '已确认', rejected: '已否决' };
+
+// state：勾选状态 state[条目id] ∈ {keep, revise, drop, opt-序号, undefined}；note：备注文本 note[条目id]
+const state = {}, note = {};
+
+// cards：全部可勾选卡片（按渲染顺序展平，下标即卡片序号）；cardIndex：条目 id → 卡片序号
+const cards = DATA.groups.reduce((all, group) => all.concat(group.cards), []);
+const cardIndex = {};
+cards.forEach((item, index) => { cardIndex[item.id] = index; });
+
+// ===========一、清单渲染==========
+function optionLetter(index) {
+  // 备选序号字母：A、B、C……（与 apply_exploration_feedback.py 的「选备选X」一致）
+  return String.fromCharCode(65 + index);
+}
+
+function row(label, text, extraClass) {
+  return `<div class="row ${extraClass || ''}"><b>${label}</b>${escapeHtml(text)}</div>`;
+}
+
+function cardHtml(item, index) {
+  // options：该条目的备选列表（没有则为空数组）
+  const options = Array.isArray(item.options) ? item.options : [];
+  // head：编号、必问徽标、类型/依据/状态标签
+  const head = `<div class="card-head">
+      <span class="item-id">${escapeHtml(item.id)}</span>
+      ${item.must_ask ? '<span class="tag tag-must">必问</span>' : ''}
+      <span class="tag">${escapeHtml(KIND_LABEL[item.kind] || item.kind)}</span>
+      <span class="tag tag-basis ${escapeHtml(item.basis)}">${escapeHtml(BASIS_LABEL[item.basis] || item.basis)}</span>
+      <span class="tag">${escapeHtml(STATUS_LABEL[item.status] || item.status)}</span>
+    </div>`;
+  // body：陈述、理由、问句、AI 建议答案（待定条目必显示）、待定原因、备选列表
+  const body = [
+    row('陈述', item.statement, 'statement'),
+    item.rationale ? row('理由', item.rationale) : '',
+    item.question ? row('问句', item.question) : '',
+    // 待定条目必显示 AI 建议答案；依据资料明示的条目可能没有单独建议，此时「按建议」即采纳陈述本身
+    item.status === 'pending' ? row('AI 建议答案', item.proposal || '（无单独建议答案；「按建议」即采纳上面的陈述）') : '',
+    item.pending_reason ? row('待定原因', item.pending_reason) : '',
+    options.length ? `<div class="row"><b>备选</b></div><div class="options">${
+      options.map((text, optionIndex) => `<div class="option"><span class="opt-letter">${optionLetter(optionIndex)}.</span>${escapeHtml(text)}</div>`).join('')
+    }</div>` : ''
+  ].join('');
+  // buttons：三态按钮 + （有备选时）选备选按钮，data-s 为状态键
+  const buttons = `<div class="states">
+      <button class="state-btn" data-i="${index}" data-s="keep" onclick="toggle(${index}, 'keep')">✅ 按建议</button>
+      <button class="state-btn" data-i="${index}" data-s="revise" onclick="toggle(${index}, 'revise')">✏️ 改为</button>
+      <button class="state-btn" data-i="${index}" data-s="drop" onclick="toggle(${index}, 'drop')">❌ 否决</button>
+      ${options.map((text, optionIndex) => `<button class="opt-btn" data-i="${index}" data-s="opt-${optionIndex}" onclick="toggle(${index}, 'opt-${optionIndex}')">选备选${optionLetter(optionIndex)}</button>`).join('')}
+    </div>
+    <input class="note" id="note-${index}" oninput="setNote(${index}, this.value)">`;
+  return `<div class="item-card" id="card-${index}">${head}
+    ${item.must_ask ? '<div class="block-warn">未确认将阻塞进入建模</div>' : ''}${body}${buttons}</div>`;
+}
+
+function settledHtml(settled) {
+  // 已定案条目折叠区：仅供核对，不参与批复
+  const rows = settled.map(item => `<tr class="settled-row ${escapeHtml(item.status)}">
+      <td><span class="item-id">${escapeHtml(item.id)}</span></td>
+      <td><span class="tag ${item.status === 'rejected' ? 'tag-rejected' : 'tag-confirmed'}">${escapeHtml(SETTLED_LABEL[item.status] || item.status)}</span></td>
+      <td class="statement-cell">${escapeHtml(item.statement)}</td>
+      <td class="resolution">${escapeHtml(item.resolution || '')}</td>
+    </tr>`).join('');
+  return `<details class="settled"><summary>已定案（仅供核对）· ${settled.length} 条</summary>
+    <table class="settled-table"><tbody>${rows}</tbody></table></details>`;
+}
+
+function renderPage() {
+  // mustCount：待确认条目中的必问条数；settledCount：已定案条目数
+  const mustCount = cards.filter(item => item.must_ask).length;
+  const settledCount = DATA.groups.reduce((sum, group) => sum + group.settled.length, 0);
+  document.getElementById('meta-updated').textContent = DATA.updated_at;
+  document.getElementById('meta-interviewee').textContent = DATA.interviewee || '未记录';
+  document.getElementById('stats').innerHTML =
+    `待确认 <b>${cards.length}</b> 条（其中必问 <b class="must">${mustCount}</b> 条）｜已定案 ${settledCount} 条`;
+  document.getElementById('groups').innerHTML = DATA.groups.map(group => `
+    <div class="dim">
+      <div class="dim-t">${escapeHtml(group.id)} ${escapeHtml(group.name)}</div>
+      ${group.not_applicable ? `<div class="dim-na">本维度不适用：${escapeHtml(group.not_applicable)}</div>` : ''}
+      ${group.cards.map(item => cardHtml(item, cardIndex[item.id])).join('')}
+      ${group.settled.length ? settledHtml(group.settled) : ''}
+    </div>`).join('');
+}
+
+// ===========二、状态切换（三态与选备选互斥，再点同态取消）==========
+function setNote(index, value) {
+  note[cards[index].id] = value;
+  syncState();
+}
+
+function toggle(index, next) {
+  // item / current：当前卡片的条目与切换后的状态
+  const item = cards[index];
+  state[item.id] = (state[item.id] === next) ? undefined : next;
+  const current = state[item.id];
+  document.querySelectorAll(`[data-i="${index}"]`).forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.s === current);
+  });
+  const card = document.getElementById(`card-${index}`);
+  card.className = 'item-card' + (current ? ` on-${current.split('-')[0]}` : '');
+  // 备注框：仅「改为」（必填文本）与「否决」（可空理由）时显示并聚焦
+  const noteEl = document.getElementById(`note-${index}`);
+  const needNote = current === 'revise' || current === 'drop';
+  noteEl.classList.toggle('show', needNote);
+  noteEl.placeholder = current === 'revise' ? '改为：填写确认后的陈述（必填）' : '否决理由（可留空）';
+  if (needNote) noteEl.focus();
+  syncState();
+}
+
+// ===========三、批复文本生成（行格式与 apply_exploration_feedback.py 一致）==========
+function buildFeedback() {
+  // lines：批复行；unanswered：未勾选的条目 id；missingText：选了「改为」但未填文本的条目 id
+  const lines = [], unanswered = [], missingText = [];
+  cards.forEach(item => {
+    // current / text：该卡片的勾选状态与备注
+    const current = state[item.id], text = (note[item.id] || '').trim();
+    if (!current) { unanswered.push(item.id); return; }
+    if (current === 'keep') lines.push(`${item.id} ✅ 按建议`);
+    else if (current === 'revise') {
+      if (text) lines.push(`${item.id} ✏️ 改为：${text}`);
+      else missingText.push(item.id);
+    }
+    else if (current === 'drop') lines.push(`${item.id} ❌ 否决${text ? '：' + text : ''}`);
+    else {
+      const optionIndex = Number(current.slice(4));
+      lines.push(`${item.id} ➜ 选备选${optionLetter(optionIndex)}：${item.options[optionIndex]}`);
+    }
+  });
+  return { lines, unanswered, missingText };
+}
+
+function genVerdict() {
+  const feedback = buildFeedback();
+  // pendingCount：将保持原状态的条目数（未勾选 + 改为缺文本）
+  const pendingCount = feedback.unanswered.length + feedback.missingText.length;
+  // tips：如实提示（未批复的条目不生成行，保持原状态）
+  const tips = [];
+  if (!feedback.lines.length) tips.push('尚未勾选任何条目。');
+  tips.push(pendingCount
+    ? `未批复 ${pendingCount} 条将保持原状态。`
+    : `全部 ${cards.length} 条均已批复。`);
+  if (feedback.missingText.length) {
+    tips.push(`${feedback.missingText.join('、')} 选了「改为」但未填写文本，请补充后再生成。`);
+  }
+  const warn = document.getElementById('warn');
+  warn.textContent = tips.join('');
+  warn.style.display = 'block';
+  document.getElementById('verdict').textContent = feedback.lines.join('\n');
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('copy-btn').style.display = feedback.lines.length ? 'inline-block' : 'none';
+  syncState();
+}
+
+// ===========四、状态同步与复制工具==========
+function syncState() {
+  const feedback = buildFeedback();
+  // 勾选状态挂全局，供宿主桥接扩展读取；unanswered 为未产生批复行的条目（将保持原状态）
+  window.__exploreState__ = {
+    domain: DATA.domain, state, note,
+    unanswered: feedback.unanswered.concat(feedback.missingText)
+  };
+}
+
+function copyVerdict() {
+  const text = document.getElementById('verdict').textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => { const btn = document.getElementById('copy-btn'); btn.textContent = '已复制 ✓'; setTimeout(() => { btn.textContent = '复制批复'; }, 1500); })
+    .catch(() => { // 非 https/老浏览器：全选文本供手动复制
+      const range = document.createRange(); range.selectNodeContents(document.getElementById('verdict'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    });
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+renderPage();
+syncState();
+</script>
+</body>
+</html>

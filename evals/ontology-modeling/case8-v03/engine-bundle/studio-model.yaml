@@ -37,6 +37,14 @@ object_types:
     defaultValue: ''
     description: true=冻结（停止对账与付款）；false=正常
     isDerived: false
+  - code: status
+    name: 状态
+    type: string
+    required: false
+    isKey: false
+    defaultValue: ''
+    description: 供应商状态（正常=在册可往来；已注销=停止往来，冻结前准入检查字段）
+    isDerived: false
   - code: create_time
     name: 创建时间
     type: datetime
@@ -256,34 +264,101 @@ link_types:
 rule_types:
 - code: rule_06abb59a
   name: 对账差异金额
+  description: 发票金额 − 已对账金额（元）；无已对账金额按 0 处理；负值=多对账，保留不取绝对值
   ruleType: calculation
   mode: single
-  description: 发票金额 − 已对账金额（元）；无已对账金额按 0 处理；负值=多对账，保留不取绝对值
-  ruleConfig:
-    expression: '[对账单.发票金额] - COALESCE([对账单.已对账金额], 0)'
   outputEntityCode: ReconciliationStatement
   outputPropertyCode: recon_diff_amount
   outputPropertyName: 对账差异金额
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: ${x.invoice_amount} - COALESCE(${x.reconciled_amount}, 0)
+    expressionSources:
+      x:
+        entityCode: ReconciliationStatement
+        relationPath: []
 - code: rule_0adf3d8e
   name: 对账差异率
+  description: 差异金额 ÷ 发票金额（比率）；发票金额为 0 或缺失时记 9999（异常大，保证触发复核）
   ruleType: calculation
   mode: single
-  description: 差异金额 ÷ 发票金额（比率）；发票金额为 0 或缺失时记 9999（异常大，保证触发复核）
-  ruleConfig:
-    expression: COALESCE([对账单.对账差异金额] / [对账单.发票金额], 9999)
   outputEntityCode: ReconciliationStatement
   outputPropertyCode: recon_diff_rate
   outputPropertyName: 对账差异率
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: COALESCE(${x.recon_diff_amount} / ${x.invoice_amount}, 9999)
+    expressionSources:
+      x:
+        entityCode: ReconciliationStatement
+        relationPath: []
 - code: rule_9824568c
   name: 供应商交货总额
+  description: 该供应商所有合同下全部交货记录的交货金额合计（元，含税）
   ruleType: calculation
   mode: single
-  description: 该供应商所有合同下全部交货记录的交货金额合计（元，含税）
-  ruleConfig:
-    expression: SUM([交货记录.交货金额])
   outputEntityCode: Supplier
   outputPropertyCode: total_delivery_amount
   outputPropertyName: 供应商交货总额
   initializationStrategy: full_recompute
+  ruleConfig:
+    expression: SUM(${x.delivery_amount})
+    expressionSources:
+      x:
+        entityCode: DeliveryRecord
+        relationPath:
+        - relationCode: rel_d4301b95
+          sourceEntityCode: Supplier
+          targetEntityCode: PurchaseContract
+        - relationCode: rel_ec1c7c1a
+          sourceEntityCode: PurchaseContract
+          targetEntityCode: DeliveryRecord
+- code: rule_0a088784
+  name: 对账差异复核触发
+  description: 差异金额超 2000 元且差异率超 5% 的对账单自动标记需复核
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@ReconciliationStatement.recon_diff_amount'
+        operator: gt
+        right: 2000
+      - left: '@ReconciliationStatement.recon_diff_rate'
+        operator: gt
+        right: 0.05
+    run:
+    - action: action_mark_recon_review
+- code: rule_96fda712
+  name: 供应商冻结提醒
+  description: 供应商冻结时触发提醒，对账单不再自动推进
+  ruleType: trigger
+  mode: single
+  enabled: true
+  cases:
+  - when:
+      all:
+      - left: '@Supplier.frozen_flag'
+        operator: eq
+        right: true
+    run:
+    - action: action_mark_supplier_frozen
+- code: rule_3a19eabe
+  name: 禁止冻结已注销供应商
+  description: 防冻结已注销供应商——目标供应商状态为已注销时拦截 freeze_supplier 动作
+  ruleType: validation
+  when:
+    all:
+    - left: '@Supplier.status'
+      operator: ne
+      right: 已注销
+  failureMessage: 'Action 准入拦截: freeze_supplier'
+action_types:
+- code: action_fe278458
+  name: freeze_supplier
+  description: 冻结供应商：把指定供应商置为冻结状态（停止对账与付款）。写操作——直接修改供应商主数据 frozen_flag，执行前必须经用户在确认卡中明确确认，不得仅凭指令性措辞直接执行。
+  enabled: true
+  validation_rules:
+  - rule_3a19eabe
+  steps: []

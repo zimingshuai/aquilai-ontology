@@ -1,6 +1,6 @@
 # scripts/ —— 插件工具链（多技能共用的公共基础设施）
 
-> 定位声明：这里的 18 个脚本是 **ontology-forge 插件的公共工具链层**，不是某个技能的私有实现。
+> 定位声明：这里的 23 个脚本是 **ontology-forge 插件的公共工具链层**，不是某个技能的私有实现。
 > 调用方：ontology-modeling（流水线）、ontology-review（机器检查先行）、/onto 命令路由、WorkBuddy agent 总控提示词、evals 回归（全量覆盖）。
 > 版本：随插件整体版本化（见 .zcode-plugin/plugin.json），与技能同版本演进，无独立漂移。
 
@@ -14,14 +14,17 @@
 | render_topology.py | 拓扑渲染（classDiagram / layered / --interactive / --diff / --image） | ontology-modeling ③⑧ |
 | compile_model.py | DSL → studio-model.yaml / 引擎 JSON / actions.json | ontology-modeling ⑧ |
 | diff_model.py | 变更集（JSON Patch + breaking + 版本冲突拒绝） | ontology-modeling（增量） |
-| export_dsl.py | 引擎快照 JSON → DSL（逆向导出） | 增量建模 / 平台同步 |
+| export_dsl.py | 逆向导出为 DSL：引擎快照 JSON（--objects/--rules）或平台新格式 yaml（--platform-yaml，往返字节一致） | 增量建模 / 平台同步 |
 | gen_action_skeleton.py | action 骨架生成（三配方） | ontology-modeling（动作域） |
 | gen_handoff.py | 域交接包生成（本体定稿 → 技能工厂立项素材五件） | ontology-modeling ⑨（资产回流） |
-| check_platform_sync.py | DSL ↔ 平台 SDK 一致性自检 | ontology-modeling ⑨（导入后闭环） |
+| check_platform_sync.py | DSL ↔ 平台侧一致性自检（平台侧输入：SDK aquilair.py 或 MCP 元数据 JSON） | ontology-modeling ⑨（导入后闭环） |
 | lint_studio_model.py | studio-model 模板结构 lint | 模板评审 |
 | check_dist.py | 分发结构门禁（清单合规/口径漂移/规范断言） | 发布前自检、evals |
 | pack_workbuddy.py | WorkBuddy zip 构建打包 | 发布前 |
 | render_cq_checklist.py | CQ 勾选呈审 HTML 生成 | ontology-modeling ③ |
-| studio_model.py / lint_glossary.py / render_image.py / owl_converter.py | 内部模块（被 compile / lint / render / sandbox import，勿直接调用） | — |
+| check_exploration.py | 探索记录门禁——结构校验（检查项以脚本 docstring 为准）与建模交接判定（必问未确认即拦截） | brief-intake 收尾、ontology-modeling ①（抽取前置）、ontology-review |
+| apply_exploration_feedback.py | 探索批复确定性写回（四类动作 + 已确认条目更正通道，先全校验后原子写入） | 探索批复回传、Charter 必问收口 |
+| render_explore_checklist.py | 探索确认清单 HTML 生成（按维度分组、必问徽标、一键生成批复文本） | brief-intake 探索呈审 |
+| studio_model.py / lint_glossary.py / render_image.py / owl_converter.py / exploration_record.py / platform_reverse.py | 内部模块（被 compile / lint / render / sandbox / 探索与逆向脚本 import，勿直接调用） | — |
 
 > 决策记录（2026-10-15）：若未来插件演化为"技能可独立拆分发售"，独享脚本按归属原则下沉到 `skills/<name>/scripts/`；当前整体分发形态下维持公共工具链定位。

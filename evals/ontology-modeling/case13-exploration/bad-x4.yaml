@@ -1,0 +1,245 @@
+# bad-x4 —— case13 探索记录断言夹具：只违反 X4（编号唯一与格式），其余与 good.yaml 一致。
+# 坏点：X-018 的 id 写成 X-18（非三位数字）。
+# blocked.yaml 与 bad-x1..x8.yaml 均由本文件单点改动派生。条目设计：18 条，状态计数 confirmed 10 / proposed 6 / pending 1 / rejected 1。
+format: exploration-record
+version: 1
+domain: device-patrol
+updated_at: "2026-11-20 16:30:00"
+interviewee: "张主管"
+
+dimensions:
+  - id: D1
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D2
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D3
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D4
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D5
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D6
+    status: not_applicable
+    reason: "本域只记录巡检结果与异常上报，不含计算口径与校验规则"
+    confirmed_by: "张主管"
+  - id: D7
+    status: covered
+    reason: ""
+    confirmed_by: ""
+  - id: D8
+    status: covered
+    reason: ""
+    confirmed_by: ""
+
+items:
+  - id: X-001
+    dimension: D1
+    kind: scope
+    statement: "本期范围覆盖一车间全部动设备的日常巡检，不含静态点检与润滑保养"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "口述探索 2026-11-20 张主管"
+  - id: X-002
+    dimension: D1
+    kind: scope
+    statement: "巡检按班组排班，每个班次巡检一次"
+    basis: inferred
+    must_ask: true
+    status: confirmed
+    rationale: "按班次巡检是制造现场的通行做法，与排班表一致便于考核"
+    resolution: "2026-11-20 张主管：确认按班次巡检"
+    source: "AI 建议 2026-11-20"
+  - id: X-003
+    dimension: D2
+    kind: object
+    statement: "巡检任务是巡检业务的主体对象，一条任务对应一个班次的一次巡检"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "口述探索 2026-11-20 张主管"
+  - id: X-004
+    dimension: D2
+    kind: object
+    statement: "巡检项是任务下的检查条目，按设备类型预置"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "资料：巡检标准作业指导书#3.2"
+  - id: X-005
+    dimension: D2
+    kind: relation
+    statement: "一个巡检任务包含多个巡检项"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "口述探索 2026-11-20 张主管"
+    refs: ["X-003", "X-004"]
+  - id: X-006
+    dimension: D2
+    kind: object
+    statement: "设备台账沿用设备主数据，不新建对象"
+    basis: inferred
+    must_ask: false
+    status: confirmed
+    rationale: "设备主数据已由设备科维护，重复建模会造成双源头"
+    resolution: "2026-11-20 张主管：确认沿用设备主数据"
+    source: "AI 建议 2026-11-20"
+  - id: X-007
+    dimension: D2
+    kind: object
+    statement: "异常记录独立成对象，不并入巡检项"
+    basis: stated
+    must_ask: false
+    status: proposed
+    question: "异常记录是否需要独立跟踪到闭环？"
+    rationale: "资料提到异常要登记并跟踪处理进度，独立对象才能承载闭环状态"
+    source: "资料：异常处理规定#2.1"
+  - id: X-008
+    dimension: D2
+    kind: property
+    statement: "异常记录的「更换备件数量」以「件」为计量单位，只填非负整数"
+    basis: inferred
+    must_ask: false
+    status: proposed
+    question: "是否存在按米或升计量的备件？"
+    rationale: "备件库按件发放与记账，异常记录沿用同一计量单位便于对账"
+    source: "资料：备件台账字段说明#unit"
+  - id: X-009
+    dimension: D3
+    kind: state
+    statement: "异常记录按 待处理、处理中、已关闭 三态流转，不设挂起态"
+    basis: inferred
+    must_ask: false
+    status: pending
+    question: "等待备件到货期间异常记录停在哪个状态？"
+    proposal: "三态为 待处理、处理中、已关闭，等件期间停在处理中并用备注说明"
+    rationale: "等件是处理过程中的正常环节，单设挂起态会让状态机多出两条迁移"
+    source: "AI 建议 2026-11-20"
+    asked_rounds: 1
+    pending_reason: "张主管需与维修班组核对是否增加「挂起」态"
+  - id: X-010
+    dimension: D3
+    kind: state
+    statement: "巡检任务状态为 待巡检、巡检中、已完成 三态"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "口述探索 2026-11-20 张主管"
+  - id: X-011
+    dimension: D4
+    kind: action
+    statement: "提交巡检任务"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "资料：巡检标准作业指导书#4.1"
+  - id: X-012
+    dimension: D4
+    kind: action
+    statement: "转派巡检任务"
+    basis: inferred
+    must_ask: false
+    status: proposed
+    rationale: "班组请假时需要把任务转给他人，否则任务会超期"
+    source: "AI 建议 2026-11-20"
+  - id: X-013
+    dimension: D5
+    kind: trigger
+    statement: "巡检项判定不合格时触发"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "口述探索 2026-11-20 张主管"
+    refs: ["X-007"]
+  - id: X-014
+    dimension: D5
+    kind: trigger
+    statement: "任务超时未开始时提醒"
+    basis: inferred
+    must_ask: false
+    status: proposed
+    rationale: "现场存在任务漏做情况，超时提醒可以减少漏检"
+    source: "AI 建议 2026-11-20"
+  - id: X-015
+    dimension: D7
+    kind: object
+    statement: "设备台账来自设备主数据库，每日同步一次"
+    basis: stated
+    must_ask: true
+    status: confirmed
+    source: "口述探索 2026-11-20 张主管"
+  - id: X-016
+    dimension: D7
+    kind: query
+    statement: "巡检历史默认可查询近 12 个月"
+    basis: inferred
+    must_ask: false
+    status: proposed
+    question: "巡检历史需要保留多久？"
+    rationale: "设备年度盘点看一年内的巡检记录，12 个月可覆盖"
+    options: ["改为近 6 个月", "近 24 个月", "长期保留不清理"]
+    source: "AI 建议 2026-11-20"
+  - id: X-017
+    dimension: D8
+    kind: constraint
+    statement: "移动端离线巡检本期不做"
+    basis: inferred
+    must_ask: false
+    status: proposed
+    rationale: "车间网络已全覆盖，离线会带来冲突合并问题"
+    source: "AI 建议 2026-11-20"
+  - id: X-18
+    dimension: D8
+    kind: function
+    statement: "巡检路线自动优化"
+    basis: inferred
+    must_ask: false
+    status: rejected
+    rationale: "按固定路线巡检即可，路线优化收益不明确"
+    resolution: "2026-11-20 张主管：否决，本期不做路线优化"
+    source: "AI 建议 2026-11-20"
+
+linkage:
+  - id: L-001
+    source_item: X-011
+    source_object: "巡检任务"
+    target_object: "巡检项"
+    verdict: linkage
+    reason: "提交任务时批量生成各巡检项的结果记录"
+    rule_mediated: false
+    on_failure: "巡检项结果写入失败则本次提交不生效"
+    status: confirmed
+  - id: L-002
+    source_item: X-013
+    source_object: "巡检项"
+    target_object: "异常记录"
+    verdict: linkage
+    reason: "判定不合格须生成异常记录跟踪闭环"
+    rule_mediated: true
+    on_failure: "异常记录创建失败则本次判定不生效"
+    status: confirmed
+  - id: L-003
+    source_item: X-012
+    source_object: "巡检任务"
+    target_object: ""
+    verdict: none
+    reason: "转派只改责任人，不联动其它对象"
+    status: proposed
+  - id: L-004
+    source_item: X-014
+    source_object: "巡检任务"
+    target_object: ""
+    verdict: none
+    reason: "本期不做超时联动，只在任务上打超时标记"
+    status: proposed

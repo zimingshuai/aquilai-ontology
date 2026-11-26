@@ -16,22 +16,24 @@ compatibility: 工具链脚本需 Python 3.10+ 与 PyYAML；拓扑图片渲染�
 - **脚本定位**：脚本随插件分发于**插件根的 `scripts/` 目录**。优先以插件根的绝对路径调用（本机源仓库为 `D:\documents\elitesland-workspace\aquilair-ontology\plugins\ontology-forge\scripts\`；安装缓存路径以运行环境为准——技能目录的上级即插件根）。相对路径 `scripts/xxx.py` 找不到时，**回退到插件根绝对路径**，禁止"找不到脚本就自实现等效校验"的绕行——校验必须由本插件脚本执行，结果才可信、可回归。
 - **图片渲染依赖**：`--image` 需要 Playwright（首次使用：`pip install playwright` + `python -m playwright install chromium`，一次性）；mermaid 走 CDN（版本由 `scripts/render_image.py` 的 `MERMAID_VERSION` 锁定）、断网自动用本地缓存 `assets/mermaid.min.js`（插件根，同版本）。环境不满足时如实告知用户装依赖，**不静默退化为只出 Mermaid 代码**（除非用户同意）。
 - **产物根目录**：`models/<domain>/` 相对**当前会话工作区**落位。会话工作区不是专门的本体仓库时，先向用户确认产物根目录（团队协作场景应落到统一仓库），不要静默散落到默认工作区。
+- **实物范本先对照**：每步产物都有随包的实物范本——`examples/supplier-recon/`（插件根）。起草任何一步的产物前，先对照其中同步骤的范例文件。
 
 ## 三、流水线（九步，强制顺序——设计稿确认为硬关卡；**本节是全插件唯一的"建模流水线"步数口径，其他文档提及步数一律以本节为准**）
 
-1. **场景圈定**：读 brief.yaml + B_scenarios → 产出 **Scenario Charter**（业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ **5~10 条能力问题 CQ**（写法见 references/cq-guide.md）。**Charter 未经用户确认，不进入抽取**。
-2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（`fact-cards.md`，markdown 表格载体：候选/来源/置信度/状态/三源交叉列）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。
+1. **场景圈定**：读 brief.yaml（含 `exploration_record` 指向的探索记录 `exploration.yaml`）+ B_scenarios → 产出 **Scenario Charter**（模板见 [`references/charter-template.md`](references/charter-template.md)；业务目标/触发事件/决策对象/KPI/参与角色/审批边界）+ **5~10 条能力问题 CQ**（写法与数量口径见 references/cq-guide.md；用户与资料都没提时按其"主动补缺"办）。有探索记录时，章程须含**「必问收口清单」**（来自探索记录阻塞清单，Charter 确认时逐条批复，批复经 `apply_exploration_feedback.py` 写回）。**两道前置条件**：①Charter 未经用户确认，不进入抽取；②**进入第 2 步抽取前 `check_exploration.py` 必须判定可交接**——`python scripts/check_exploration.py <modeling-brief/exploration.yaml>` 退出码 0；阻塞清单非空即停，不得带病抽取。
+2. **术语与候选抽取**：从 A/B/C 类材料抽实体/属性/关系/规则候选，产出「业务事实卡片」（`fact-cards.md`，模板见 [`references/fact-cards-template.md`](references/fact-cards-template.md)；markdown 表格载体：候选/来源/置信度/状态/三源交叉列）——每条候选带 provenance（来源文档#位置）、置信度、状态标签（已确认/候选/冲突/待确认）。**探索记录承接**：探索记录中 `status: confirmed` 的条目直接作为已确认候选进事实卡片，provenance 写探索条目编号（`X-NNN`）并在卡片「探索记录承接表」登记；**不得把未确认的 AI 建议（`proposed` / `pending`）写成已确认候选**，`rejected` 条目不得进卡片。A 类表→实体/列→属性/外键→link；C 类先抽术语再建关系（两段式，禁止一步直出）；同一术语多源交叉比对，口径出入写入 conflicts。
    **规则抽取强制扫描区（v0.3.8，两版对照实证：触发规则最密集的区域恰恰不在正文公式段）**：逐节扫描文档的 ①异常处理/异常小节 ②处理步骤里的"当…则…"句式 ③设计红线/约束段 ④附录表格的限制列与注释（如 PS-1002"未获放行不参与供给"）⑤演示案例中"系统应识别/应拒绝"的期望行为——产出**异常语义→规则映射表**（每条异常语义注明落到的规则或"不建规则的理由"），随 fact-cards 呈现，不允许静默跳过。
    **方言可表达性分诊（v0.4.5，xgimi 实证反哺）**：规则候选表加「方言可表达」列，卡片阶段即判定每条候选能否用表达式方言写出来（§3.1 白名单）——✅ 可表达 / ❌ 需条件逻辑等方言外能力→**当场登记 open_question（pending-engine）**，不等 DSL 起草才发现写不出来；契约类规则（如"需求去重=covered_by 排除"）是 ❌ 高发区。
 3. **★设计稿合成（确认点①与②的呈审材料）**：从事实卡片合成呈审材料包——
    - **design-proposal.md**（模板见 [`references/design-proposal-template.md`](references/design-proposal-template.md)）：实体表（名称/展示名/主键/关键字段/来源）、关系表（A→B/语义名/基数/来源）、规则表（类型/口径/来源）、CQ 映射、open_questions/conflicts——纯自然语言+表格，FDE 不需要懂任何格式规范就能审；
+   - **探索记录提示清单升格**：探索记录的提示清单（非必问且未确认的 AI 建议）必须在 design-proposal.md「待确认事项」节**逐条显式列出并标『AI 建议，未确认』**，同时升格为 open_questions（`status: pending-business`，必须带 proposal 与备选——备选及其影响写入 proposal 文本）；不得静默并入候选当事实。无探索记录时在待确认事项节写明"无探索记录提示清单"；
    - **交互式拓扑**（核心呈审图）：骨架 DSL（实体+links[语义名]+主键与名称字段+layer 分层）→ `render_topology.py --interactive` 产出**自包含 HTML**（分层+点击聚焦+全部关系名开关，浏览器直接打开）+ `--image both` 出静态 PNG/SVG（发人或存档两用）；
    - **CQ 勾选呈审（确定性产物）**：把 CQ 清单经 `render_cq_checklist.py <来源> -o cq-checklist.html` 生成自包含 HTML（模板 `assets/cq-checklist.html`：三态勾选 ✅真业务/✏️要改/❌删 + 备注 + 补充框 + 一键生成批复文本）——来源支持 charter 阶段的 JSON（`[{id,q}]`）或 DSL model.yaml（competency_questions 段）。用户浏览器打开（或内联渲染宿主直接呈审）勾选后**复制批复文本回贴**；无 HTML 环境降级为 Markdown 勾选表。禁止现场手写 HTML 组件替代脚本产物。
    - **呈审分批纪律（v0.4.8）**：设计稿按「**对象层（实体+关系）→ 规则与联动层（规则表+动作+归属判定自检）→ 全稿合卷**」分批呈审，每批确认后推进下一批——不一次吐全量（吸收自八阶段确认法：探索过程分批设门，防大稿一次审不动）。域小（≤8 实体）可合并一批，批注须说明合并理由。
 4. **★设计稿确认（硬关卡）**：**design-proposal.md 与骨架拓扑未经 FDE 逐表确认，禁止进入 DSL 生成**（对齐楠总蓝图 OntologyProposal 理念：先提案后形式化）。FDE 的修改意见当场回改设计稿与骨架并重新呈审；确认结论在设计稿头部留痕（确认人/日期/修改记录）。**呈审提问一律用五要素格式**（v0.4.8）：**问题 + AI 建议 + 理由 + 其他选项 + 快捷回复**——FDE 批的是带建议的决策点，不是开放式问卷。**合并呈审变体**：重跑/用户在场要求快速推进时，确认点①（Charter）与②（设计稿）可一并呈审，但两项须分别批复——Charter 被驳回回第 1 步、设计稿被驳回回第 3 步，互不牵连。
-5. **DSL 生成**：确认后的设计稿→完整 `model.yaml`（此步是**机械形式化**——语义已在确认点②定死，这里只做形态转换：补全属性/类型/规则表达式）。按 [`references/dsl-spec.md`](references/dsl-spec.md)（v0.3.5）与 [`references/modeling-guide.md`](references/modeling-guide.md) 执行。**文件头治理注释三行 + 枚举双写 + 衍生公式重述是本步必查项**（dsl-spec §1 开头与 §2 写法约定 3/4/5——枚举与公式编译时剥离 description 兜底，漏写即孤儿语义）。
+5. **DSL 生成**：确认后的设计稿→完整 `model.yaml`（此步是**机械形式化**——语义已在确认点②定死，这里只做形态转换：补全属性/类型/规则表达式）。按 [`references/dsl-spec.md`](references/dsl-spec.md)（v0.3.6）与 [`references/modeling-guide.md`](references/modeling-guide.md) 执行。**文件头治理注释三行 + 枚举双写 + 衍生公式重述是本步必查项**（dsl-spec §1 开头与 §2 写法约定 3/4/5——枚举与公式编译时剥离 description 兜底，漏写即孤儿语义）。
 6. **硬校验（L1 lint + L2 语义沙盘）**：两道机器检查连续执行，error 均拦截；机器检查只拦确定性缺陷，人审权威不变——
-   - **L1 结构校验**：运行 `python scripts/lint_model.py <model.yaml>`——15 条确定性检查。**lint 不过不进 L2**；修复意见由你提出，但修复后再跑。
+   - **L1 结构校验**：运行 `python scripts/lint_model.py <model.yaml>`——20 条确定性检查。**lint 不过不进 L2**；修复意见由你提出，但修复后再跑。
    - **L2 语义沙盘**：lint 通过后运行 `python scripts/semantic_sandbox.py <model.yaml> --out-dir <模型目录>`——把 DSL 一次性投影为 OWL/SHACL（假设投影，检完即弃，不引入推理机进运行时），做结构层查不出的语义自洽性检查（S1-S7，与 lint 1-15 编号独立、职责互斥，对照表见 report.md）。**error 同样拦截、不进下一步**；warning/info 不拦截，随产物呈审给 FDE。产物 sandbox.owl.ttl / sandbox.shapes.ttl / report.md 落模型目录存档（有实例样本时可加 `--data data.json` 做实例校验）。
 7. **CQ 回验**：运行 `python scripts/check_cq.py <model.yaml>` 生成覆盖矩阵；逐条核对 CQ 是否被 DSL 元素覆盖，未覆盖项要么补元素、要么修改 CQ 并请用户确认。
 8. **交付初版候选本体（两大核心交付物）**：`render_topology.py --image both` 产出 **topology.png/svg**（完整版拓扑）；`compile_model.py --target studio-model` 产出 **studio-model.yaml**。**你不执行任何生产写入**；`--target engine` 仅用户明确需要时可选导出。产物标注 draft 版本，进入人审（ontology-review 技能）。
@@ -47,7 +49,7 @@ M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲�
 ## 四、建模铁律（违背即违规）
 
 1. **不脑补**：资料包没说的信息一律进 `open_questions`（含 missing_from 指明缺在哪份材料），人审前必须清零或标记接受；禁止用常识/记忆补齐。
-   **OQ 生命周期（v0.3.9 沉淀，xgimi 实战验证；状态机 v0.3.6 对齐复验版形态）**：生成（抽取中随手登记，键=topic/question/proposal?/missing_from?）→ 分类（七态三组：pending-engine/pending-business/pending-input 未裁决，resolved 已裁决已落地，resolved-pending-* 已裁决待落地佐证——裁决时不删原文只加 resolution）→ **pending-business 类汇总成业务问询单**（按【问什么/为什么问/不回复的影响/期望答复形态】组织，业务方零技术门槛可答，模板见 references/business-inquiry-template.md）→ 回复后补 DSL 并改 status → 定稿前 OQ 清零报告（全部 resolved/resolved-pending-* 带佐证计划 或显式接受风险）。增量建模时继承上版 OQ 不得丢失（lint14 校验结构）。
+   **OQ 生命周期（v0.3.9 沉淀，xgimi 实战验证；状态机 v0.3.6 对齐复验版形态）**：生成（抽取中随手登记，键=topic/question/proposal?/missing_from?）→ 分类（七态三组：pending-engine/pending-business/pending-input 未裁决，resolved 已裁决已落地，resolved-pending-* 已裁决待落地佐证——裁决时不删原文只加 resolution）→ **pending-business 类汇总成业务问询单**（按 references/business-inquiry-template.md 的要素组织：每条带 AI 建议答案与备选，业务方零技术门槛、可直接回"按建议"，未决项也留建议）→ 回复后补 DSL 并改 status → 定稿前 OQ 清零报告（全部 resolved/resolved-pending-* 带佐证计划 或显式接受风险）。增量建模时继承上版 OQ 不得丢失（lint14 校验结构）。
 2. **增量优先复用**：brief.yaml 的 target_engine 为 fnb/mfg 时，先读 `seeds/` 既有实体速查，复用既有实体与术语，只建差异；禁止重复建模已有对象。
 3. **LLM 不写自由 YAML**：起草时先在内部形成结构化 JSON（遵循 dsl-spec），再落为 YAML 文件；落盘后必须过 lint。
 4. **分步确认**：Charter 确认（点①）→ **设计稿逐表确认（点②，硬关卡：design-proposal.md + 骨架拓扑未经确认禁止生成完整 DSL）** → DSL/CQ 产物呈审；不一次吐全量。
@@ -61,18 +63,17 @@ M2 起已就绪：变更集 diff（`diff_model.py`，含 breaking 与版本冲�
 ```text
 models/<domain>/
 ├── README.md                  # 域资产说明 + 任务日志（每次任务收尾追加一行：日期|任务类型|关键产物|确认人；六步工作流归档制反哺）
-├── charter.md                 # Scenario Charter（第 1 步产物：业务目标/CQ/KPI 等，v0.4.5 补列）
-├── fact-cards.md              # 业务事实卡片（第 2 步产物：候选/规则/异常映射/术语对齐，v0.4.5 补列）
+├── charter.md                 # 场景章程（第 1 步产物：Charter 表/必问收口清单/设计红线/CQ；模板 references/charter-template.md）
+├── fact-cards.md              # 业务事实卡片（第 2 步产物：候选/规则/异常映射/探索记录承接；模板 references/fact-cards-template.md）
 ├── design-proposal.md         # ★ 设计提案（确认点②呈审材料，含确认记录）
 ├── model.skeleton.yaml        # 骨架 DSL（实体+links+主键，画图用；确认后对照补全）
 ├── model.yaml                 # 本体 DSL（source of truth，确认点②之后生成）
 ├── sandbox.owl.ttl / sandbox.shapes.ttl / report.md # L2 语义沙盘产物（第 6 步假设投影+分级报告，存档呈审）
 ├── topology.png / topology.svg # ★ 核心交付物①：可视化图片（实体/属性/关系，给人看）
-├── studio-model.yaml          # ★ 核心交付物②：设计稿格式 yaml（供导入本体）
 ├── topology.md                # Mermaid 源（图片的可编辑形态）
 ├── competency-questions.yaml  # CQ 清单（并入 model.yaml 时可省）
-├── modeling-brief/            # 资料包（brief-intake 产出）
-└── engine-bundle/             # 可选：引擎注册格式 JSON（仅用户明确需要时导出）
+├── modeling-brief/            # 资料包（brief-intake 产出；含 exploration.yaml 探索记录——口述/缺口探索的结构化结论）
+└── engine-bundle/             # 编译产物目录（compile_model.py 默认落位）：studio-model.yaml ★ 核心交付物②设计稿格式 yaml（供导入本体）+ objects.json/rules.json 引擎注册 JSON（仅用户明确需要时导出）
 ```
 
 ## 六、反合理化表格（借口 → 反驳）

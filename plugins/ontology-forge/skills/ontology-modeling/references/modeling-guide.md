@@ -68,6 +68,20 @@
 3. **跨对象才联动**：同一实体内的级联计算用 derived_property（规则链），不用 trigger 自我联动；
 4. **失败语义显式**：downstream 失败的处置（重试 / 降级 / 人工介入）在 description 或 open_questions 写明，禁止隐含吞掉。
 
+**状态语义落点（v0.4 固化，2026-11-26 用户裁决：平台与运行时没有状态机——状态机不建 DSL 结构）**：
+
+有状态对象的状态语义按三层落点拆解，**禁止为状态机单独建 DSL 结构**：
+
+| 状态语义 | 落点 | DSL 形态 |
+|---|---|---|
+| 状态清单（有哪些状态） | 属性 + description 双写（既有约定 3） | `status` 属性 + `enum_values: [open, confirmed, disputed]` + description 逐一 `code=中文含义` |
+| 什么条件下允许迁移 | admission（挂对应动作）或 trigger 规则 | 动作 `validation_rules` 挂载 admission，或 trigger `branches`/`logic` 判条件 |
+| 非法迁移拒绝 | admission 的准入条件 | upstream=[动作名]，logic 判源状态非法即拦截 |
+
+- **正例（对账单三态）**：`ReconciliationStatement.status` 枚举 open/confirmed/disputed 落 enum_values + description 双写；「仅 open 状态可确认、disputed 必须先解决争议」的迁移条件落**确认动作的 admission**（upstream=[confirm_recon]，准入条件查 `status == open`），非法迁移（confirmed/disputed 再确认）由该 admission 拦截。
+- **反例（过度设计）**：为表达状态机建 `StateMachine`/`Transition` 实体——平台无对应元数据（平台只有对象/关系/规则/动作四类载体），运行时也不消费迁移表；此类实体编译后无任何落点，纯属设计噪音。
+- 探索记录 D3 维度的状态结论经事实卡片承接后，按上表落点拆进规则；**设计稿与 charter 里可保留状态流转表**（图形化呈审表达，人审用），但不进 DSL。
+
 ## 四、受控词表策略
 
 - 优先复用 `seeds/` 中 fnb/mfg 既有术语（实体名、字段名、展示名三层）。
